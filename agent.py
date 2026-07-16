@@ -14,6 +14,7 @@ from agents import Agent, Runner
 from agents.models.openai_chatcompletions import OpenAIChatCompletionsModel
 from tools import agent_tools
 import init
+from openai import AsyncOpenAI
 
 def exit_function():
     """Cleanup function executed upon program exit"""
@@ -48,7 +49,12 @@ You are an intelligent 6-axis robotic arm assistant. Your mission is to understa
     
     # We must use OpenAIChatCompletionsModel instead of the default Responses API
     # because third-party providers (Deepseek, Ollama) only support Chat Completions.
-    model_config = OpenAIChatCompletionsModel(model=llm_model_name)
+    # It requires an explicit openai_client.
+    client = AsyncOpenAI()
+    model_config = OpenAIChatCompletionsModel(
+        model=llm_model_name, 
+        openai_client=client
+    )
 
     robotic_arm_agent = Agent(
         name="Robotic Arm Assistant",
