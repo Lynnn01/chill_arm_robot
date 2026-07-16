@@ -76,34 +76,16 @@ class ReactAgent:
             }
         ]
 
-    def extract_functions_and_args(self,input_str):
-        # Initialize result list
+    def extract_functions_and_args(self, input_str):
         result = []
-
-        # Use regular expression to find all function name and argument pairs
-        function_matches = re.findall(r'✿FUNCTION✿:\s*(\w+)', input_str)
-        args_matches = re.findall(r'✿ARGS✿:\s*(\{.*?\})', input_str, re.DOTALL)
-
-        # Iterate through matched function name and argument pairs, and parse arguments
-        for i in range(len(function_matches)):
-            function_name = function_matches[i]
-            args_str = args_matches[i]
-
+        matches = re.findall(r'✿FUNCTION✿:\s*(\w+).*?✿ARGS✿:\s*(\{.*?\})', input_str, re.DOTALL)
+        for fn_name, args_str in matches:
             try:
-                # Parse argument string to dictionary
                 args_dict = json.loads(args_str)
             except json.JSONDecodeError:
                 args_dict = {}
-
-            result.append((function_name, args_dict))
-
-
+            result.append((fn_name, args_dict))
         return result
-    
-    def stream_output(self, response):
-        for chunk in response:
-            print(chunk, flush=True, end='')
-        print()
 
     def extract_code(self,generated_content: str):
         # Use regular expression to extract code snippet
@@ -160,12 +142,10 @@ class ReactAgent:
                     continue  # Continue loop to get new code
              # After successfully executing code, get final LLM response
             final_response = self.model.chat_nostream(prompt=execution_result)
-            print('<LLM>:', end='')
-            self.stream_output(final_response)
+            print(f'<LLM>:{final_response}')
         else:
          # If no code was generated, use LLM's original response directly
-            print('<LLM>:', end='')
-            self.stream_output(response)
+            print(f'<LLM>:{response}')
 
         functions_and_args = self.extract_functions_and_args(self.model.messages[-1]['content'])
 
