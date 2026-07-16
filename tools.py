@@ -7,7 +7,7 @@ from react_agent.tools import BaseTool, register_tool
 from pymycobot.mycobot import MyCobot
 from pymycobot.genre import Angle
 import numpy as np
-from pymycobot import PI_PORT, PI_BAUD  # 褰撲娇鐢ㄦ爲鑾撴淳鐗堟湰鐨刴ycobot鏃讹紝鍙互寮曠敤杩欎袱涓彉閲忚繘琛孧yCobot鍒濆鍖?
+from pymycobot import PI_PORT, PI_BAUD  # When using the Raspberry Pi version of MyCobot, these two variables can be referenced to initialize MyCobot
 import init
 import cv2
 import eyeonhand
@@ -30,7 +30,7 @@ class MoveTo(BaseTool):
             'name': 'target_coord',
             'type': 'list',
             'example':'[int,int] ',
-            'description':'The target coordinate of the object.The number of it should be the same as object_number. x coordinate should range from -70 to 140, y coordinate should range from 150 to 280. When using this function, you have to generate Python code to get the correct coordinate and I will execute the code for you.涓ょ偣涔嬮棿鐨勮窛绂讳笉灏忎簬50',
+            'description':'The target coordinate of the object.The number of it should be the same as object_number. x coordinate should range from -70 to 140, y coordinate should range from 150 to 280. When using this function, you have to generate Python code to get the correct coordinate and I will execute the code for you. The distance between two points should not be less than 50.',
             'get_from_code':True,
             'required':True
         },
@@ -48,7 +48,7 @@ class MoveTo(BaseTool):
     def call(self, target_coord, target_height,**kwargs):
         width, height = Image.open("captured_image.jpg").size
 
-        # 灏嗙墿浣撶Щ鍔ㄥ埌鐩爣浣嶇疆
+        # Move the object to the target position
         target_robot_coord = target_coord
         print("*************")
         print(target_robot_coord)
@@ -92,7 +92,7 @@ class GrabObject(BaseTool):
         init.GetImage()
 
         width, height = Image.open('captured_image.jpg').size
-        positions = api.QwenVLRequest("一个" + object_name, "captured_image.jpg").get("coordinates", [])
+        positions = api.QwenVLRequest("a " + object_name, "captured_image.jpg").get("coordinates", [])
         print(positions)
 
         with open("config.json", "r", encoding="utf-8") as config_file:
@@ -102,15 +102,15 @@ class GrabObject(BaseTool):
         y_offset = config_data.get("y", 0)
         z_offset = config_data.get("z", 0)
 
-        # 只处理 positions 中的第一个坐标
+        # Process only the first coordinate in positions
         if positions:
             position = positions[0]
-            # 计算中心点坐标
+            # Calculate center point coordinates
             center_x = (position['x1'] + position['x2']) / 2
             center_y = (position['y1'] + position['y2']) / 2
             target_coord = (center_x / 1000 * width, center_y / 1000 * height)
             robot_coord = eyeonhand.pixel_to_arm(target_coord)
-            print("像素坐标 {} 对应的机械臂坐标为 {}".format(target_coord, robot_coord))
+            print("Pixel coordinates {} correspond to robot arm coordinates {}".format(target_coord, robot_coord))
             robot_coord[0]=robot_coord[0]+x_offset
             robot_coord[1]=robot_coord[1]+y_offset
             if robot_coord[0] >210:
@@ -129,7 +129,7 @@ class GrabObject(BaseTool):
             time.sleep(3)
             mc.send_angles([0, 0, 0, 0, 0, -45], 40)
         else:
-            print("没有找到任何位置数据")
+            print("No position data found")
             return None 
 
         return robot_coord

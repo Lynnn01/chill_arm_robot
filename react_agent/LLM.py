@@ -3,7 +3,7 @@ import openai
 class RequestLLM:
 
     def __init__(self, base_url, model_name) -> None:
-        # 记录上下文
+        # Record context
         self.messages = []
         self.base_url = base_url
         self.model_name = model_name

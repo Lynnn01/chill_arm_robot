@@ -7,7 +7,7 @@ from react_agent.LLM import RequestLLM
 class ReactAgent:
 
     def __init__(self, model: RequestLLM) -> None:
-        # 提示词
+        # Prompts
         self.FN_NAME = '✿FUNCTION✿'
         self.FN_ARGS = '✿ARGS✿'
         self.FN_RESULT = '✿RESULT✿'
@@ -15,42 +15,42 @@ class ReactAgent:
         self.FN_STOP_WORDS = [self.FN_RESULT, self.FN_RESULT+':', self.FN_RESULT+':\n']
 
         self.functions = {}
-        self.FN_CALL_TEMPLATE_ZH = """
-        # 你是我的机械臂助手，帮我控制一个六关节机械臂。机械臂内置了一些函数，请你根据我的指令和下面要求，输出对应需要执行的函数。
-        ## 你拥有如下工具：
+        self.FN_CALL_TEMPLATE_EN = """
+        # You are my robotic arm assistant, helping me control a 6-axis robotic arm. The arm has built-in functions, please output the corresponding functions to execute according to my instructions and the requirements below.
+        ## You have the following tools:
         {tool_descs}
-        ## move_to用于将物体放到指定位置形成特定图案，show_object用于展示物体，grab_object用于寻找并抓取指定物体。必须首先使用grab_object工具，接着必须紧跟move_to或show_object工具。
-        ## 所有工具一次都只能处理一个物体，因此当需要处理多个物体时，需要重复grab_object和move_to或show_object！
-        ## 你可以在回复中插入零次、一次或多次以下命令以调用工具,最后恢复初始位置。如果需要循环，你可以多次调用同一工具；如果命令中需要实现多个功能，你也可以按顺序调用多个工具。工具函数出现的先后顺序，表示执行的先后顺序
-        ## 这里有一些例子：
-            一：我的指令：“抓取两个红色方块,一个展示给我，一个放到任意位置”。
-            你输出：“
+        ## move_to is used to move objects to specified positions to form a specific pattern, show_object is used to display objects, and grab_object is used to find and grab a specified object. You must first use the grab_object tool, followed immediately by either the move_to or show_object tool.
+        ## All tools can only handle one object at a time, so when you need to handle multiple objects, you need to repeat grab_object and move_to or show_object!
+        ## You can insert zero, one, or multiple of the following commands in your reply to call tools, and finally return to the initial position. If you need a loop, you can call the same tool multiple times; if you need to implement multiple functions in a command, you can also call multiple tools in sequence. The order in which tool functions appear represents the order of execution.
+        ## Here are some examples:
+            One: My instruction: "Grab two red blocks, show one to me, and put the other in an arbitrary position".
+            You output: "
 ✿FUNCTION✿: grab_object
 ✿FUNCTION✿: show_object
 ✿FUNCTION✿: grab_object
 ✿FUNCTION✿: move_to
-✿ARGS✿: {{"object_name": "红色方块"}}
-✿ARGS✿: {{"object_name": "红色方块"}}
-✿ARGS✿: {{"object_name": "红色方块"}}
+✿ARGS✿: {{"object_name": "red block"}}
+✿ARGS✿: {{"object_name": "red block"}}
+✿ARGS✿: {{"object_name": "red block"}}
 ✿ARGS✿: {{"target_coord": [-80,200]}}
-”；因为我需要两个红色方块，所以你需要连续执行grab_object两次，第一次用show_object展示给我，第二次用Move_to移动到指定位置。其他指令的逻辑也类似
-二：我的指令：“用八个方块组成一个圆形,用代码计算精确坐标”。
-这里,指令中明确要求了指定的图形，并且要求用代码计算坐标。因此首先你需要编写一段完整的python代码，需要可以直接运行并返回坐标结果，根据指令中要求的图案，计算出精确的各个点的坐标。所有点的X坐标范围是-70至140，Y坐标范围是150到280，"相邻两点之间的距离不小于50"，绝对不可以超出范围！要求结果必须存在全局变量global Result中！然后等待我帮你执行代码获取结果，接着根据我给你的结果给出工具参数。
-        #只需要在指令中明确要求编写代码时，再使用代码计算坐标！代码要放到字符串“```python”和“```”中间以方便提取。
-        %s: 工具名称，如果使用工具则必须是[{tool_names}]之一，工具的名称不得修改或翻译！
-        %s: 工具输入，json格式输入！
-        %s: 工具结果。
-        %s: 根据工具结果必须使用用户问题的语种(汉语或其他语言)进行回复""" % (
+"; Because I need two red blocks, you need to execute grab_object twice consecutively, the first time use show_object to show me, the second time use Move_to to move to the specified position. The logic for other instructions is similar.
+Two: My instruction: "Use eight blocks to form a circle, use code to calculate precise coordinates".
+Here, the specified pattern is explicitly requested in the instruction, and it requires calculating coordinates with code. Therefore, first you need to write a complete python code, which can be run directly and returns coordinate results, and according to the pattern required in the instruction, calculates the precise coordinates of each point. The X coordinate range of all points is -70 to 140, the Y coordinate range is 150 to 280, "the distance between any two adjacent points is not less than 50", absolutely cannot exceed the range! The results must be stored in the global variable 'Result'! Then wait for me to help you execute the code to get the results, and then provide tool parameters based on the results I give you.
+        # Only when the instruction explicitly asks to write code, then use code to calculate coordinates! Code should be placed between "```python" and "```" strings for easy extraction.
+        %s: Tool name, if using a tool it must be one of [{tool_names}], the name of the tool must not be modified or translated!
+        %s: Tool inputs, in json format!
+        %s: Tool result.
+        %s: You must reply using the user's language (Chinese or other languages) based on the tool result""" % (
             self.FN_NAME,
             self.FN_ARGS,
             self.FN_RESULT,
             self.FN_EXIT,
         )
 
-        self.tool_descs_template = '{func_name}: {description_for_func} 输入参数：{parameters}'
+        self.tool_descs_template = '{func_name}: {description_for_func} Input parameters: {parameters}'
         self.model = model
 
-    # 注册工具
+    # Register tool
     def register_tool(self, name, cls):
         self.functions[name] = {
             'function': cls().call,
@@ -58,7 +58,7 @@ class ReactAgent:
             'parameters': cls.parameters
         }
 
-    # 更新sys_message
+    # Update sys_message
     def update_system_message(self):
         tool_descs = '\n'.join([
             self.tool_descs_template.format(
@@ -71,14 +71,14 @@ class ReactAgent:
         self.model.messages = [
             {
                 'role': 'system',
-                'content': self.FN_CALL_TEMPLATE_ZH.format(
+                'content': self.FN_CALL_TEMPLATE_EN.format(
                     tool_descs=tool_descs,
                     tool_names=tool_names
                 )
             }
         ]
 
-    # 移除特殊字符
+    # Remove special characters
     def remove_special_tokens(self, text, strip=True):
         text = text.replace('✿:', '✿')
         text = text.replace('✿：', '✿')
@@ -96,20 +96,20 @@ class ReactAgent:
         return out
 
     def extract_functions_and_args(self,input_str):
-        # 初始化结果列表
+        # Initialize result list
         result = []
 
-        # 使用正则表达式找到所有的函数名和参数对
+        # Use regular expression to find all function name and argument pairs
         function_matches = re.findall(r'✿FUNCTION✿:\s*(\w+)', input_str)
         args_matches = re.findall(r'✿ARGS✿:\s*(\{.*?\})', input_str, re.DOTALL)
 
-        # 遍历匹配的函数名和参数对，并解析参数
+        # Iterate through matched function name and argument pairs, and parse arguments
         for i in range(len(function_matches)):
             function_name = function_matches[i]
             args_str = args_matches[i]
 
             try:
-                # 解析参数字符串为字典
+                # Parse argument string to dictionary
                 args_dict = json.loads(args_str)
             except json.JSONDecodeError:
                 args_dict = {}
@@ -125,7 +125,7 @@ class ReactAgent:
         print()
 
     def extract_code(self,generated_content: str):
-        # 使用正则表达式提取代码段
+        # Use regular expression to extract code snippet
         code_match = re.search(r"```python\s*(.*?)```", generated_content, re.DOTALL)
         if code_match:
             print("%%%%%%%%%")
@@ -153,7 +153,7 @@ class ReactAgent:
             print("&&&&&&&&&&&&")
             return json.dumps({"error": str(e), "traceback": traceback.format_exc()})
 
-    # 对话
+    # Chat
     def chat(self, prompt):
         response = self.model.chat_nostream(
              prompt=prompt,
@@ -164,40 +164,40 @@ class ReactAgent:
 
         if code_to_run:
             while True:
-                # 3. 执行代码并获取结果
+                # 3. Execute code and get results
                 execution_result = self.run_code_and_format_result(code_to_run)
 
-                # 4. 检查是否发生错误
+                # 4. Check if an error occurred
                 if "error" not in execution_result:
-                    # 如果没有错误，跳出循环
+                    # If no error, break loop
                     break
                 else:
-                    # 如果发生错误，将错误信息返回给大模型并获取新的修改代码
+                    # If an error occurred, return error message to LLM and get new modified code
                     response = self.model.chat_nostream(prompt=execution_result)
-                    # 重新提取生成的代码
+                    # Re-extract generated code
                     code_to_run = self.extract_code(response)
-                    continue  # 继续循环，获取新的代码
-             # 当成功执行代码后，获取最终的 LLM 响应
+                    continue  # Continue loop to get new code
+             # After successfully executing code, get final LLM response
             final_response = self.model.chat_nostream(prompt=execution_result)
             print('<LLM>:', end='')
             self.stream_output(final_response)
         else:
-         # 如果没有生成代码，直接使用 LLM 的原始响应
+         # If no code was generated, use LLM's original response directly
             print('<LLM>:', end='')
             self.stream_output(response)
 
         functions_and_args = self.extract_functions_and_args(self.model.messages[-1]['content'])
 
         print('functions_and_args:', functions_and_args)
-        # 检查是否有提取到函数和参数对
+        # Check if function and argument pairs were extracted
         if functions_and_args:
-            # 清空当前assistant消息内容
+            # Clear current assistant message content
             #self.model.messages[-1] = {'role': 'assistant', 'content': '', 'function_call': []}
 
-            # 处理每个函数和参数对
+            # Process each function and argument pair
             for fn_name, fn_args in functions_and_args:
                 if fn_name and fn_args:
-                    # 添加到消息的function_call列表中
+                    # Add to message's function_call list
                     self.model.messages[-1] = {
                         'role': 'assistant',
                         'content': '',
@@ -209,9 +209,9 @@ class ReactAgent:
 
 
                     if fn_name in self.functions:
-                        print("#" * 20, "<函数执行>", "#" * 20)
+                        print("#" * 20, "<Function Execution>", "#" * 20)
                         res_func = self.functions[fn_name]['function'](**fn_args)
-                        print("#" * 20, "<函数执行>", "#" * 20, '\n')
+                        print("#" * 20, "<Function Execution>", "#" * 20, '\n')
 
                         '''
                         response = self.model.chat_stream(

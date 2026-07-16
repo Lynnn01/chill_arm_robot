@@ -6,21 +6,21 @@ import transforms3d as tfs
 
 def distance(point_1, point_2 ):
     """
-    计算两个点间欧氏距离
-    :param point_1: 点1
-    :param point_2: 点2
-    :return: 两点间的距离
+    Calculate Euclidean distance between two points
+    :param point_1: Point 1
+    :param point_2: Point 2
+    :return: Distance between two points
     """
     if len(point_1) != len(point_2):
-        raise ValueError("两点的维度不一致")
+        raise ValueError("The dimensions of the two points are inconsistent")
     return math.sqrt(sum([(point_2[i] - point_1[i]) ** 2 for i in range(len(point_1))]))
 
 def vector_2d_angle(v1, v2):
     """
-    计算两向量间的夹角 -pi ~ pi
-    :param v1: 第一个向量
-    :param v2: 第二个向量
-    :return: 角度
+    Calculate the angle between two vectors -pi ~ pi
+    :param v1: First vector
+    :param v2: Second vector
+    :return: Angle
     """
     norm_v1_v2 = np.linalg.norm(v1) * np.linalg.norm(v2)
     cos = v1.dot(v2) / (norm_v1_v2)
@@ -30,10 +30,10 @@ def vector_2d_angle(v1, v2):
 
 def get_area_max_contour(contours, threshold=100):
     """
-    获取轮廓中面积最重大的一个, 过滤掉面积过小的情况
-    :param contours: 轮廓列表
-    :param threshold: 面积阈值, 小于这个面积的轮廓会被过滤
-    :return: 如果最大的轮廓面积大于阈值则返回最大的轮廓, 否则返回None
+    Get the one with the largest area in the contour, filter out cases where the area is too small
+    :param contours: Contour list
+    :param threshold: Area threshold, contours smaller than this area will be filtered out
+    :return: Returns the largest contour if its area is greater than the threshold, otherwise returns None
     """
     contour_area = zip(contours, tuple(map(lambda c: math.fabs(cv2.contourArea(c)), contours)))
     contour_area = tuple(filter(lambda c_a: c_a[1] > threshold, contour_area))

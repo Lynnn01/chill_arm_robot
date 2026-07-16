@@ -18,7 +18,7 @@ except Exception as exc:
 else:
     GPIO_IMPORT_ERROR = None
 #GPIO.setmode(GPIO.BCM)
-    # 引脚20/21分别控制电磁阀和泄气阀门
+    # Pins 20/21 control solenoid valve and air release valve respectively
 #GPIO.setup(20, GPIO.OUT)
 #GPIO.setup(21, GPIO.OUT)
 
@@ -29,12 +29,12 @@ with open("config.json", "r") as config_file:
     config_data = json.load(config_file)
 
 calibration=Arm_Calibration()
-#打开夹爪
+# Open gripper
 def open_gripper():
     mc.set_gripper_value(100, 50)
     time.sleep(1)
 
-#加紧夹爪
+# Close gripper
 def close_gripper():
     mc.set_gripper_value(0, 50)
     time.sleep(1)
@@ -43,18 +43,18 @@ def close_gripper():
 def pump_on():
     if GPIO is None:
         raise RuntimeError(f"GPIO is unavailable: {GPIO_IMPORT_ERROR}")
-    # 打开电磁阀
+    # Open solenoid valve
     GPIO.output(20, 0)
 
 
-# 停止吸泵
+# Stop suction pump
 def pump_off():
     if GPIO is None:
         raise RuntimeError(f"GPIO is unavailable: {GPIO_IMPORT_ERROR}")
-    # 关闭电磁阀
+    # Close solenoid valve
     GPIO.output(20, 1)
     time.sleep(0.05)
-    # 打开泄气阀门
+    # Open air release valve
     GPIO.output(21, 0)
     time.sleep(1)
     GPIO.output(21, 1)
@@ -82,8 +82,8 @@ def adjust_gamma(image, gamma=1.0):
 def GetImage():
     capture = cv2.VideoCapture(0, cv2.CAP_V4L2)
 
-    capture.set(cv2.CAP_PROP_FRAME_WIDTH, 640)  # 设置图像宽度
-    capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)  # 设置图像高度
+    capture.set(cv2.CAP_PROP_FRAME_WIDTH, 640)  # Set image width
+    capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)  # Set image height
     #capture.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter.fourcc('M', 'J', 'P', 'G'))
     index=1
 
@@ -95,13 +95,13 @@ def GetImage():
             #threshold = config_data.get('threshold', 130)
             #dp, img = calibration.calibration_map(frame,threshold)
             #img = calibration.Perspective_transform(dp,img)
-            # 保存图片
+            # Save image
             filename = "captured_image.jpg"
             cv2.imwrite(filename, frame)
             print(f"Image saved as {filename}")
         else:
             print("Failed to capture image")
 
-    # 释放摄像头
+    # Release camera
     capture.release()
     cv2.destroyAllWindows()

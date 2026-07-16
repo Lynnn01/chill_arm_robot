@@ -13,27 +13,27 @@ vl_client = openai.OpenAI(api_key="EMPTY", base_url=qwen_vl_url)
 
 def AudioRecognize(flac_file):
     """
-    将 FLAC 文件发送到 /audio 端点进行语音识别，并返回 %...% 中的部分内容
+    Send FLAC file to /audio endpoint for speech recognition, and return the content within %...%
     """
     files = {'audio_url': open(flac_file, 'rb')}
     try:
         response = requests.post(qwen_audio_url, files=files)
         if response.status_code == 200:
             result = response.json()
-            print("语音识别结果:", result)
+            print("Speech recognition result:", result)
 
-            # 使用正则表达式提取 %...% 中的内容
+            # Use regular expression to extract content within %...%
             matches = re.findall(r'"(.*?)"', result["response"])
             print(matches[0])
             if matches:
-                return matches[0]  # 返回匹配到的内容
+                return matches[0]  # Return matched content
             else:
-                return None  # 如果没有找到匹配的内容，返回 None
+                return None  # Return None if no match found
         else:
-            print("请求失败，状态码:", response.status_code)
+            print("Request failed, status code:", response.status_code)
             return None
     except Exception as e:
-        print("请求失败:", str(e))
+        print("Request failed:", str(e))
         return None
 
 def _extract_json_from_text(text):
@@ -177,11 +177,11 @@ def _normalize_vl_text_result(text, image_size=None):
 
 def QwenVLRequest(object_name, image_path):
     """
-       使用 OpenAI-compatible 视觉模型检测指定物体。
+       Use OpenAI-compatible vision model to detect specified object.
 
-       :param object_name: 要识别或处理的物体名称
-       :param image_path: 本地图像文件路径
-       :return: 返回 {"coordinates": [{"x1": ..., "y1": ..., "x2": ..., "y2": ...}]}，坐标为 0-1000 归一化坐标
+       :param object_name: Object name to identify or process
+       :param image_path: Local image file path
+       :return: Returns {"coordinates": [{"x1": ..., "y1": ..., "x2": ..., "y2": ...}]}, coordinates are 0-1000 normalized coordinates
        """
     try:
         with open(image_path, "rb") as image_file:

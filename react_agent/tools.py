@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-# 工具仓库
+# Tool registry
 tools_registry = {}
 
 class BaseTool(ABC):

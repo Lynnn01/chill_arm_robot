@@ -1,12 +1,12 @@
 import cv2
 
-# 截图
+# Screenshot
 def capture(img_path):
-    cap = cv2.VideoCapture(0)  # 打开摄像头
-    # 获取一个frame
+    cap = cv2.VideoCapture(0)  # Open camera
+    # Get a frame
     ret, frame = cap.read()
-    frame = cv2.flip(frame, 1)  # 摄像头是和人对立的，将图像左右调换回来正常显示
-    cv2.imwrite(img_path, frame)  # 保存路径
+    frame = cv2.flip(frame, 1)  # The camera is facing the person, flip the image horizontally for normal display
+    cv2.imwrite(img_path, frame)  # Save path
     cap.release()
     return img_path
 

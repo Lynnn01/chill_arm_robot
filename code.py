@@ -1,22 +1,22 @@
 code = """
 import math
 
-# 定义中心点和半径（这里以原点为中心）
+# Define center point and radius (here centered at origin)
 center = (0, 215)
 radius = 100
 
-# 计算6个点的位置，每个点相隔的角度为360/6=60度
+# Calculate the position of 6 points, the angle between each point is 360/6=60 degrees
 angles = [math.radians(60 * i) for i in range(6)]
 points = [(int(center[0] + radius * math.cos(angle)), int(center[1] + radius * math.sin(angle))) for angle in angles]
 
-Result = points  # 返回坐标结果变量名为Result
+Result = points  # Return coordinate result variable named Result
 """
 
-# 使用 exec 执行代码
+# Use exec to execute code
 exec(code)
 
-# 检查全局作用域中的 Result 变量
+# Check the Result variable in global scope
 execution_result = globals().get('Result', None)
 
-# 返回获取到的结果
+# Return the obtained result
 print(execution_result)
