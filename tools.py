@@ -22,13 +22,13 @@ init.BotInit(mc)
 
 @register_tool('move_to')
 class MoveTo(BaseTool):
-    description = 'This f unction arranges multiple objects into a specific pattern within a designated area after calling function grab_object. You should generate the target_coord parameter dynamically using Python code, and ensure the arrangement follows the given constraints.'
+    description = 'Moves the currently grabbed object to a specific target coordinate [x, y] and releases it at target_height.'
     parameters = [
         {
             'name': 'target_coord',
             'type': 'list',
             'example':'[int,int] ',
-            'description':'The target coordinate of the object.The number of it should be the same as object_number. x coordinate should range from -70 to 140, y coordinate should range from 150 to 280. When using this function, you have to generate Python code to get the correct coordinate and I will execute the code for you. The distance between two points should not be less than 50.',
+            'description':'The target coordinate [x, y] to place the object. For complex patterns, calculate this using Python code first.',
             'get_from_code':True,
             'required':True
         },
@@ -36,7 +36,7 @@ class MoveTo(BaseTool):
             'name': 'target_height',
             'type': 'int',
             'example': '110',
-            'description': 'Defines the height at which the object is released. Typically must set all objects to 110. Only if the instruction specifies that objects should be stacked, the height must starts at 110 for the first object and increases by 20 for each subsequent object (e.g., 110 for the first one, 130 for the second, and so on).',
+            'description': 'The height to release the object. Default is 110. For stacking, increase by 20 for each subsequent object.',
             'first_height':'must be 110',
             'get_from_code': False,
             'required': True
@@ -73,12 +73,12 @@ class MoveTo(BaseTool):
 
 @register_tool('grab_object')
 class GrabObject(BaseTool):
-    description = 'This function detects the position of a specified object and performs a grabbing action to retrieve the object. '
+    description = 'Uses computer vision to detect and grab the specified object from the workspace.'
     parameters = [
         {
             'name': 'object_name',
             'type': 'string',
-            'description': 'The name of the object to be detected and grabbed. ',
+            'description': 'The descriptive name of the object to grab (e.g., "red block", "blue cube").',
             'required': True
         }
     ]
@@ -133,7 +133,7 @@ class GrabObject(BaseTool):
 
 @register_tool('move_around')
 class MoveAround(BaseTool):
-    description = 'This function makes the robotic arm perform a sequence of movements to look around the environment. Useful for scanning an area or demonstrating range of motion.'
+    description = 'Performs a scanning animation to look around the environment.'
     parameters = [
         {
             'name': 'speed',
@@ -174,7 +174,7 @@ class MoveAround(BaseTool):
 
 @register_tool('show_object')
 class ShowObject(BaseTool):
-    description = 'This function shows the object to user after grabbing it, etc. '
+    description = 'Lifts the arm to present the currently grabbed object to the user or camera.'
     parameters = [
         {
             'name': 'object_name',

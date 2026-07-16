@@ -165,11 +165,11 @@ def QwenVLRequest(object_name, image_path):
         image_size = Image.open(image_path).size
 
         prompt = (
-            "Return ONLY a valid JSON object, no markdown and no explanation. "
-            f"Detect {object_name} in the image. "
-            'The required schema is {"coordinates":[{"x1":integer,"y1":integer,"x2":integer,"y2":integer}]}. '
-            "Coordinates must be bounding box values in original image pixels. "
-            'If the object is not found, return {"coordinates":[]}.'
+            "You are an expert computer vision model. Carefully analyze the image and locate all instances of the object: '{object_name}'. "
+            "Return ONLY a valid JSON object without any markdown formatting or explanations. "
+            'The required schema is: {"coordinates":[{"x1":integer,"y1":integer,"x2":integer,"y2":integer}]}. '
+            "Coordinates must be exact bounding box values in original image pixels. "
+            'If the object is not found, return exactly: {"coordinates":[]}.'
         )
 
         response = vl_client.chat.completions.create(
