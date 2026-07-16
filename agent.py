@@ -11,7 +11,7 @@ if os.getenv("OPENAI_API_KEY"):
     os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
 from agents import Agent, Runner
-from agents.models import OpenAIChatCompletionsModel
+from agents.models.openai_chatcompletions import OpenAIChatCompletionsModel
 from tools import agent_tools
 import init
 
