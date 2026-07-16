@@ -1,6 +1,8 @@
 import time
 from tools import mc
+from agents import function_tool
 
+@function_tool
 def show_object(object_name: str) -> str:
     """
     Lifts the arm to present the currently grabbed object to the user or camera.

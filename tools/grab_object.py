@@ -5,7 +5,9 @@ import api
 from tools import mc
 import init
 import eyeonhand
+from agents import function_tool
 
+@function_tool
 def grab_object(object_name: str) -> list:
     """
     Uses computer vision to detect and grab the specified object from the workspace.

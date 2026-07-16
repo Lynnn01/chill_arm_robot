@@ -2,7 +2,9 @@ import time
 from PIL import Image
 from tools import mc
 import init
+from agents import function_tool
 
+@function_tool
 def move_to(target_coord: list, target_height: int = 110) -> str:
     """
     Moves the currently grabbed object to a specific target coordinate [x, y] and releases it at target_height.

@@ -1,6 +1,8 @@
 import time
 from tools import mc
+from agents import function_tool
 
+@function_tool
 def move_around(speed: int = 40) -> str:
     """
     Performs a scanning animation to look around the environment.

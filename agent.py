@@ -36,10 +36,13 @@ You are an intelligent 6-axis robotic arm assistant. Your mission is to understa
 4. **Communication Style**: ALWAYS reply and explain your thought process in the exact same language the user speaks (e.g., Thai). Be friendly, concise, and professional.
     """
 
+    llm_model = os.getenv("LLM_MODEL_NAME", "deepseek-chat")
+
     robotic_arm_agent = Agent(
         name="Robotic Arm Assistant",
         instructions=instructions,
-        tools=agent_tools
+        tools=agent_tools,
+        model=llm_model
     )
     
     try:

@@ -1,6 +1,8 @@
 import traceback
 import json
+from agents import function_tool
 
+@function_tool
 def execute_python_code(code: str) -> str:
     """
     Executes Python code to calculate coordinates for complex patterns (e.g., circle, square, shapes).
