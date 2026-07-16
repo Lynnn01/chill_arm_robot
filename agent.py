@@ -3,7 +3,15 @@ import argparse
 from dotenv import load_dotenv
 load_dotenv()
 
+# Force standard OpenAI client to use the custom base URL and key from .env
+# This must be done before the client is initialized inside openai-agents.
+if os.getenv("LLM_BASE_URL"):
+    os.environ["OPENAI_BASE_URL"] = os.getenv("LLM_BASE_URL")
+if os.getenv("OPENAI_API_KEY"):
+    os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
+
 from agents import Agent, Runner
+from agents.models import OpenAIChatCompletionsModel
 from tools import agent_tools
 import init
 
@@ -36,13 +44,17 @@ You are an intelligent 6-axis robotic arm assistant. Your mission is to understa
 4. **Communication Style**: ALWAYS reply and explain your thought process in the exact same language the user speaks (e.g., Thai). Be friendly, concise, and professional.
     """
 
-    llm_model = os.getenv("LLM_MODEL_NAME", "deepseek-chat")
+    llm_model_name = os.getenv("LLM_MODEL_NAME", "deepseek-chat")
+    
+    # We must use OpenAIChatCompletionsModel instead of the default Responses API
+    # because third-party providers (Deepseek, Ollama) only support Chat Completions.
+    model_config = OpenAIChatCompletionsModel(model=llm_model_name)
 
     robotic_arm_agent = Agent(
         name="Robotic Arm Assistant",
         instructions=instructions,
         tools=agent_tools,
-        model=llm_model
+        model=model_config
     )
     
     try:
