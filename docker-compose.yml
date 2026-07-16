@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11435:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    # --------------------------------------------------------
+    # หมายเหตุ: หากรันบน Jetson/Linux ที่มี NVIDIA GPU 
+    # ให้เอาคอมเมนต์ ( # ) ด้านล่างนี้ออก เพื่อเปิดใช้ GPU Acceleration
+    # --------------------------------------------------------
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  ollama-init:
+    image: ollama/ollama:latest
+    container_name: ollama-init
+    depends_on:
+      - ollama
+    restart: "no"
+    environment:
+      - OLLAMA_HOST=ollama:11434
+    entrypoint: /bin/sh
+    command: >
+      -c "
+      echo 'Waiting for Ollama server to be ready...';
+      sleep 10;
+      echo 'Pulling llama3.2 model...';
+      ollama pull llama3.2;
+      echo 'Pulling qwen2.5-vl:7b model...';
+      ollama pull qwen2.5-vl:7b;
+      echo 'All models pulled successfully!';
+      "
+
+volumes:
+  ollama_data:
