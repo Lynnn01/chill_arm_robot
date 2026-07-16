@@ -32,9 +32,7 @@ def parse_arguments():
                        help='Interactive mode, ignore command line input and wait for user input')
     return parser.parse_args()
 
-async def main():
-    args = parse_arguments()
-    
+def get_agent():
     instructions = """
 You are an intelligent 6-axis robotic arm assistant. Your mission is to understand user commands and control the arm using the provided tools.
 
@@ -59,12 +57,16 @@ You are an intelligent 6-axis robotic arm assistant. Your mission is to understa
         openai_client=client
     )
 
-    robotic_arm_agent = Agent(
+    return Agent(
         name="Robotic Arm Assistant",
         instructions=instructions,
         tools=agent_tools,
         model=model_config
     )
+
+async def main():
+    args = parse_arguments()
+    robotic_arm_agent = get_agent()
     
     try:
         if args.user_input and not args.interactive:
