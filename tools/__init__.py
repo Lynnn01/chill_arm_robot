@@ -1,11 +1,6 @@
-import os
-from pymycobot.mycobot import MyCobot
 import init
 
-mycobot_port = os.getenv("MYCOBOT_PORT", "/dev/ttyUSB0")
-mycobot_baud = int(os.getenv("MYCOBOT_BAUD", "1000000"))
-mc = MyCobot(mycobot_port, mycobot_baud)
-
+mc = init.mc
 init.BotInit(mc)
 
 from .move_to import move_to

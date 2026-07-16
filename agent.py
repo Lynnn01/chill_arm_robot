@@ -10,6 +10,9 @@ if os.getenv("LLM_BASE_URL"):
 if os.getenv("OPENAI_API_KEY"):
     os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
+# Disable background tracing to prevent 401 errors when not using OpenAI
+os.environ["OPENAI_AGENTS_DISABLE_TRACING"] = "1"
+
 from agents import Agent, Runner
 from agents.models.openai_chatcompletions import OpenAIChatCompletionsModel
 from tools import agent_tools
