@@ -1,4 +1,5 @@
 import openai
+import os
 
 class RequestLLM:
 
@@ -7,7 +8,9 @@ class RequestLLM:
         self.messages = []
         self.base_url = base_url
         self.model_name = model_name
-        self.client = openai.OpenAI(api_key="AKjQv_QXHyStkKu5", base_url=self.base_url)
+        
+        api_key = os.getenv("OPENAI_API_KEY", "AKjQv_QXHyStkKu5")
+        self.client = openai.OpenAI(api_key=api_key, base_url=self.base_url)
 
     def chat_nostream(self, prompt, stop=[]):
         self.messages.append(

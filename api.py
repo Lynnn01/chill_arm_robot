@@ -3,11 +3,14 @@ import base64
 import re
 import json
 import openai
+import os
 from PIL import Image
 
-qwen_vl_url="https://prodsvc.educg.net/serve-qwen25-vl-7b-instruct/v1"
-qwen_vl_model="qwen2.5-vl:7b"
-vl_client = openai.OpenAI(api_key="EMPTY", base_url=qwen_vl_url)
+qwen_vl_url = os.getenv("QWEN_VL_URL", "https://prodsvc.educg.net/serve-qwen25-vl-7b-instruct/v1")
+qwen_vl_model = os.getenv("QWEN_VL_MODEL", "qwen2.5-vl:7b")
+qwen_vl_api_key = os.getenv("QWEN_VL_API_KEY", "EMPTY")
+
+vl_client = openai.OpenAI(api_key=qwen_vl_api_key, base_url=qwen_vl_url)
 
 def _extract_json_from_text(text):
     text = text.strip()

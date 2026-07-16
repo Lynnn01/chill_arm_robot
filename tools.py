@@ -9,10 +9,13 @@ from pymycobot.genre import Angle
 import numpy as np
 from pymycobot import PI_PORT, PI_BAUD  # When using the Raspberry Pi version of MyCobot, these two variables can be referenced to initialize MyCobot
 import init
+import os
 import cv2
 import eyeonhand
 
-mc = MyCobot('/dev/ttyUSB0', 1000000)
+mycobot_port = os.getenv("MYCOBOT_PORT", "/dev/ttyUSB0")
+mycobot_baud = int(os.getenv("MYCOBOT_BAUD", "1000000"))
+mc = MyCobot(mycobot_port, mycobot_baud)
 
 init.BotInit(mc)
 #init.GetImage()

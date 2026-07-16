@@ -21,7 +21,9 @@ else:
 #GPIO.setup(20, GPIO.OUT)
 #GPIO.setup(21, GPIO.OUT)
 
-mc = MyCobot('/dev/ttyUSB0', 1000000)
+mycobot_port = os.getenv("MYCOBOT_PORT", "/dev/ttyUSB0")
+mycobot_baud = int(os.getenv("MYCOBOT_BAUD", "1000000"))
+mc = MyCobot(mycobot_port, mycobot_baud)
 
 with open("config.json", "r") as config_file:
     config_data = json.load(config_file)

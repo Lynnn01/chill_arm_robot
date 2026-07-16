@@ -1,3 +1,7 @@
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
 from react_agent.LLM import RequestLLM
 from react_agent.agent import ReactAgent
 from react_agent.tools import tools_registry
@@ -24,7 +28,9 @@ if __name__ == "__main__":
     args = parse_arguments()
     
     # 1. Instantiate agent
-    llm = RequestLLM(base_url="https://prodsvc.educg.net/deepseek/v1/", model_name="deepseek")
+    llm_base_url = os.getenv("LLM_BASE_URL", "https://prodsvc.educg.net/deepseek/v1/")
+    llm_model_name = os.getenv("LLM_MODEL_NAME", "deepseek")
+    llm = RequestLLM(base_url=llm_base_url, model_name=llm_model_name)
     agent = ReactAgent(llm)
     
     # 2. Register tools
