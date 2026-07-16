@@ -4,7 +4,6 @@ import os
 import json
 import numpy as np
 from pymycobot.mycobot import MyCobot
-from utils.jetcobot_config import *
 from pymycobot.genre import Angle
 from pymycobot.genre import Coord
 
@@ -23,12 +22,10 @@ else:
 #GPIO.setup(21, GPIO.OUT)
 
 mc = MyCobot('/dev/ttyUSB0', 1000000)
-speed = 50
 
 with open("config.json", "r") as config_file:
     config_data = json.load(config_file)
 
-calibration=Arm_Calibration()
 # Open gripper
 def open_gripper():
     mc.set_gripper_value(100, 50)
@@ -67,17 +64,7 @@ def BotInit(mc):
     time.sleep(3)
 
     mc.send_angles([17.75, -0.79, 0.35, -75, 1.14, -28.12], 40)
-    #mc.send_coords([-8, -130, 280, 177.06, -0.46, 138.57], 10)
     time.sleep(3)
-
-    #mc.send_angles([-65.39, 14.76, -65.83, -42.36, 2.72, 70.3], 10)
-    #mc.send_angles([-64.86, -3.6, -19.33, -69.25, 2.98, 70], 10)
-    #time.sleep(3)
-
-def adjust_gamma(image, gamma=1.0):
-    inv_gamma = 1.0 / gamma
-    table = np.array([((i / 255.0) ** inv_gamma) * 255 for i in np.arange(0, 256)]).astype("uint8")
-    return cv2.LUT(image, table)
 
 def GetImage():
     capture = cv2.VideoCapture(0, cv2.CAP_V4L2)
@@ -92,9 +79,6 @@ def GetImage():
     else:
         ret, frame = capture.read()
         if ret:
-            #threshold = config_data.get('threshold', 130)
-            #dp, img = calibration.calibration_map(frame,threshold)
-            #img = calibration.Perspective_transform(dp,img)
             # Save image
             filename = "captured_image.jpg"
             cv2.imwrite(filename, frame)

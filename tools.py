@@ -17,11 +17,6 @@ mc = MyCobot('/dev/ttyUSB0', 1000000)
 init.BotInit(mc)
 #init.GetImage()
 
-def adjust_gamma(image, gamma=1.0):
-    inv_gamma = 1.0 / gamma
-    table = np.array([((i / 255.0) ** inv_gamma) * 255 for i in np.arange(0, 256)]).astype("uint8")
-    return cv2.LUT(image, table)
-
 @register_tool('move_to')
 class MoveTo(BaseTool):
     description = 'This f unction arranges multiple objects into a specific pattern within a designated area after calling function grab_object. You should generate the target_coord parameter dynamically using Python code, and ensure the arrangement follows the given constraints.'
@@ -49,21 +44,20 @@ class MoveTo(BaseTool):
         width, height = Image.open("captured_image.jpg").size
 
         # Move the object to the target position
-        target_robot_coord = target_coord
         print("*************")
-        print(target_robot_coord)
+        print(target_coord)
 
         time.sleep(3)
 
-        mc.send_coords([target_robot_coord[0], target_robot_coord[1], 180, -175, 0, -45], 40)
+        mc.send_coords([target_coord[0], target_coord[1], 180, -175, 0, -45], 40)
         time.sleep(3)
 
-        mc.send_coords([target_robot_coord[0], target_robot_coord[1], target_height, -175, 0, -45], 40)
+        mc.send_coords([target_coord[0], target_coord[1], target_height, -175, 0, -45], 40)
         time.sleep(3)
         init.open_gripper()
         time.sleep(1)
 
-        mc.send_coords([target_robot_coord[0], target_robot_coord[1], 200, -175, 0, -45], 40)
+        mc.send_coords([target_coord[0], target_coord[1], 200, -175, 0, -45], 40)
         time.sleep(3)
         mc.send_angles([0, 0, 0, 0, 0, -45], 40)
         time.sleep(1)
@@ -131,8 +125,6 @@ class GrabObject(BaseTool):
         else:
             print("No position data found")
             return None 
-
-        return robot_coord
 
         return robot_coord
 

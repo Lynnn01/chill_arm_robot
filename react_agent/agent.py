@@ -78,23 +78,6 @@ Here, the specified pattern is explicitly requested in the instruction, and it r
             }
         ]
 
-    # Remove special characters
-    def remove_special_tokens(self, text, strip=True):
-        text = text.replace('✿:', '✿')
-        text = text.replace('✿：', '✿')
-        out = ''
-        is_special = False
-        for c in text:
-            if c == '✿':
-                is_special = not is_special
-                continue
-            if is_special:
-                continue
-            out += c
-        if strip:
-            out = out.lstrip('\n').rstrip()
-        return out
-
     def extract_functions_and_args(self,input_str):
         # Initialize result list
         result = []
@@ -212,15 +195,3 @@ Here, the specified pattern is explicitly requested in the instruction, and it r
                         print("#" * 20, "<Function Execution>", "#" * 20)
                         res_func = self.functions[fn_name]['function'](**fn_args)
                         print("#" * 20, "<Function Execution>", "#" * 20, '\n')
-
-                        '''
-                        response = self.model.chat_stream(
-                            prompt="""
-                                ✿FUNCTION✿: {fn_name}
-                                ✿ARGS✿: {fn_args}
-                                ✿RESULT✿: {res_func}
-                                ✿RETURN✿
-                            """.format(fn_name=fn_name, fn_args=fn_args, res_func=res_func),
-                        )
-                        self.stream_output(response)
-'''

@@ -7,34 +7,7 @@ from PIL import Image
 
 qwen_vl_url="https://prodsvc.educg.net/serve-qwen25-vl-7b-instruct/v1"
 qwen_vl_model="qwen2.5-vl:7b"
-qwen_audio_url="https://llm.educg.com/svc/AfW1gQzE-1/audio"
-
 vl_client = openai.OpenAI(api_key="EMPTY", base_url=qwen_vl_url)
-
-def AudioRecognize(flac_file):
-    """
-    Send FLAC file to /audio endpoint for speech recognition, and return the content within %...%
-    """
-    files = {'audio_url': open(flac_file, 'rb')}
-    try:
-        response = requests.post(qwen_audio_url, files=files)
-        if response.status_code == 200:
-            result = response.json()
-            print("Speech recognition result:", result)
-
-            # Use regular expression to extract content within %...%
-            matches = re.findall(r'"(.*?)"', result["response"])
-            print(matches[0])
-            if matches:
-                return matches[0]  # Return matched content
-            else:
-                return None  # Return None if no match found
-        else:
-            print("Request failed, status code:", response.status_code)
-            return None
-    except Exception as e:
-        print("Request failed:", str(e))
-        return None
 
 def _extract_json_from_text(text):
     text = text.strip()
