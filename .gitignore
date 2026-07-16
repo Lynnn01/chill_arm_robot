@@ -1,0 +1,100 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# PyInstaller
+*.spec
+*.manifest
+*.exe
+
+# Models and large files (adjust based on your needs)
+*.pth
+*.pt
+*.ckpt
+*.h5
+*.hdf5
+*.pkl
+*.pickle
+*.bin
+*.safetensors
+*.onnx
+
+# Checkpoints and saved models
+checkpoints/
+ckpt/
+val_save_root_path/
+*_checkpoint_*
+*/checkpoints/*
+
+# Audio files (recordings)
+*.flac
+*.wav
+*.mp3
+*.m4a
+speech_record.*
+
+# Large images and plots
+*.eps
+*_matrix.*
+
+# Logs
+*.log
+logs/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# Test results
+test_results/
+*.npy
+
+# Data files (uncomment if you want to ignore data)
+# data/
+# datasets/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Sensitive configs
+.env
+*.secret
+credentials.json

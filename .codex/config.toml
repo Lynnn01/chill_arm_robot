@@ -1,0 +1,7 @@
+[shell_environment_policy]
+inherit = "all"
+
+[shell_environment_policy.set]
+CONDA_DEFAULT_ENV = "robot"
+CONDA_PREFIX = 'D:\ProgramData\miniconda\envs\robot'
+PATH = 'D:\ProgramData\miniconda\envs\robot;D:\ProgramData\miniconda\envs\robot\Scripts;D:\ProgramData\miniconda\envs\robot\Library\bin;D:\ProgramData\miniconda\condabin;C:\Windows\System32;C:\Windows'
