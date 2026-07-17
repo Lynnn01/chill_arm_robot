@@ -32,8 +32,11 @@ class RightPanel(tk.Frame):
         input_frame.grid(row=2, column=0, sticky="ew")
         input_frame.columnconfigure(1, weight=1)
 
-        self.voice_btn = tk.Button(input_frame, text="🎙️", font=("Tahoma", 14), bg="#ff9900", fg="white", relief=tk.FLAT, cursor="hand2", command=self.record_voice)
-        self.voice_btn.grid(row=0, column=0, sticky="w", padx=(0, 10), ipadx=10, ipady=8)
+        self.voice_btn = tk.Button(input_frame, text="🎙️", font=("Segoe UI Emoji", 18), bg=self.theme["bg"], fg=self.theme["fg"], activebackground=self.theme["bg"], activeforeground=self.theme["fg"], relief=tk.FLAT, bd=0, cursor="hand2", command=self.toggle_mic)
+        self.voice_btn.grid(row=0, column=0, sticky="w", padx=(0, 10))
+        
+        self.mic_active = False
+        self.stop_listening = None
 
         self.input_entry = tk.Entry(input_frame, font=("Tahoma", 14), 
                                     bg=self.theme["frame"], fg=self.theme["fg"], insertbackground=self.theme["fg"],
@@ -52,35 +55,57 @@ class RightPanel(tk.Frame):
 
         self.input_entry.focus()
 
-    def record_voice(self):
-        def _listen():
-            recognizer = sr.Recognizer()
-            with sr.Microphone() as source:
-                def _notify():
-                    self.input_entry.delete(0, tk.END)
-                    self.input_entry.insert(0, "🎙️ กำลังฟังเสียง... พูดได้เลยครับ")
-                    self.voice_btn.config(bg="#cc0000")
-                self.log_queue.put(_notify)
-                
+    def toggle_mic(self):
+        if self.mic_active:
+            # Turn OFF mic
+            if self.stop_listening:
+                self.stop_listening(wait_for_stop=False)
+                self.stop_listening = None
+            self.mic_active = False
+            self.voice_btn.config(text="🎙️", fg=self.theme["fg"])
+            self.input_entry.delete(0, tk.END)
+            self.input_entry.insert(0, "ปิดไมค์แล้ว (Mic Muted)")
+        else:
+            # Turn ON mic
+            self.mic_active = True
+            self.voice_btn.config(text="🔴", fg="#ff3333")
+            self.input_entry.delete(0, tk.END)
+            self.input_entry.insert(0, "🔴 กำลังฟังเสียงอัตโนมัติ... พูดได้เลย")
+            
+            def _listen_worker():
+                recognizer = sr.Recognizer()
                 try:
-                    audio = recognizer.listen(source, timeout=5, phrase_time_limit=10)
-                    text = recognizer.recognize_google(audio, language="th-TH")
-                    def _done():
-                        self.input_entry.delete(0, tk.END)
-                        self.input_entry.insert(0, text)
-                        self.voice_btn.config(bg="#ff9900")
-                        self.send_message_callback(text)
-                    self.log_queue.put(_done)
+                    source = sr.Microphone()
+                    with source:
+                        recognizer.adjust_for_ambient_noise(source)
+                    
+                    def _callback(rec, audio):
+                        if not self.mic_active:
+                            return
+                        try:
+                            text = rec.recognize_google(audio, language="th-TH")
+                            if text:
+                                def _send():
+                                    self.send_message_callback(text)
+                                    if self.mic_active:
+                                        self.input_entry.delete(0, tk.END)
+                                        self.input_entry.insert(0, "🔴 กำลังฟังเสียงอัตโนมัติ... พูดได้เลย")
+                                self.log_queue.put(_send)
+                        except sr.UnknownValueError:
+                            pass
+                        except Exception as e:
+                            print(f"Voice error: {e}")
+                    
+                    self.stop_listening = recognizer.listen_in_background(source, _callback)
                 except Exception as e:
                     def _err():
+                        self.mic_active = False
+                        self.voice_btn.config(text="🎙️", fg=self.theme["fg"])
                         self.input_entry.delete(0, tk.END)
-                        print(f"\n⚠️ <SYSTEM>: Voice recognition error / no speech detected.")
-                        self.voice_btn.config(bg="#ff9900")
-                        self.enable_inputs()
+                        self.input_entry.insert(0, f"Error: {e}")
                     self.log_queue.put(_err)
 
-        self.disable_inputs()
-        threading.Thread(target=_listen, daemon=True).start()
+            threading.Thread(target=_listen_worker, daemon=True).start()
 
     def disable_inputs(self):
         self.send_button.config(state=tk.DISABLED, bg="#666666")
