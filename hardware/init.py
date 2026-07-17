@@ -60,23 +60,50 @@ def BotInit(mc):
     mc.send_angles([17.75, -0.79, 0.35, -75, 1.14, -28.12], 40)
     time.sleep(3)
 
+class CameraManager:
+    def __init__(self):
+        self.cap = None
+        self.frame = None
+        self.lock = threading.Lock()
+        self.running = False
+
+    def start(self):
+        self.cap = cv2.VideoCapture(0) 
+        if not self.cap.isOpened():
+            self.cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
+        
+        if self.cap.isOpened():
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+            self.running = True
+            threading.Thread(target=self._update, daemon=True).start()
+
+    def _update(self):
+        while self.running and self.cap and self.cap.isOpened():
+            ret, frame = self.cap.read()
+            if ret:
+                with self.lock:
+                    self.frame = frame.copy()
+            time.sleep(0.03)
+
+    def get_frame(self):
+        with self.lock:
+            if self.frame is not None:
+                return self.frame.copy()
+        return None
+
+    def stop(self):
+        self.running = False
+        if self.cap:
+            self.cap.release()
+
+cam_manager = CameraManager()
+cam_manager.start()
+
 def GetImage():
-    cap = cv2.VideoCapture(0)
-    if not cap.isOpened():
-        cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
-    
-    if cap.isOpened():
-        # Read a few frames to allow camera to adjust white balance/exposure
-        for _ in range(3):
-            ret, frame = cap.read()
-            time.sleep(0.1)
-            
-        ret, frame = cap.read()
-        if ret:
-            cv2.imwrite("captured_image.jpg", frame)
-            print("Image saved as captured_image.jpg")
-        else:
-            print("Failed to read frame from Camera")
-        cap.release()
+    frame = cam_manager.get_frame()
+    if frame is not None:
+        cv2.imwrite("captured_image.jpg", frame)
+        print("Image saved as captured_image.jpg")
     else:
-        print("Failed to open Camera")
+        print("Failed to capture image from CameraManager")
