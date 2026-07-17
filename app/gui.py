@@ -207,45 +207,11 @@ class OneArmGUI:
                 result = loop.run_until_complete(Runner.run(self.agent, input=contextual_input))
                 ai_reply = result.final_output
                 print(f"\n🤖 <LLM>: {ai_reply}\n")
-                
-                # Speak the reply in the background
-                threading.Thread(target=self.speak, args=(ai_reply,), daemon=True).start()
             except Exception as e:
                 print(f"\n⚠️ <ERROR>: {e}\n")
             finally:
                 self.input_queue.task_done()
                 self.log_queue.put(self.enable_all_inputs)
-                
-    def speak(self, text):
-        if not hasattr(self, 'right_panel') or not self.right_panel.tts_active:
-            return
-            
-        import os
-        import tempfile
-        try:
-            from openai import OpenAI
-            
-            client = OpenAI()
-            response = client.audio.speech.create(
-                model="tts-1",
-                voice="alloy",
-                response_format="wav",
-                input=text
-            )
-            
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as f:
-                temp_path = f.name
-                
-            try:
-                response.write_to_file(temp_path)
-            except AttributeError:
-                response.stream_to_file(temp_path)
-            
-            # Use ALSA aplay directly in a subprocess to avoid Python ALSA segmentation faults on Ubuntu/Jetson
-            os.system(f"aplay -q {temp_path}")
-            os.remove(temp_path)
-        except Exception as e:
-            print(f"TTS Error: {e}")
 
 def start_gui():
     root = tk.Tk()
