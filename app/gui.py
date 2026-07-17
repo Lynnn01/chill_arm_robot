@@ -1,5 +1,4 @@
 import tkinter as tk
-import customtkinter as ctk
 import sys
 import threading
 import asyncio
@@ -32,21 +31,25 @@ class RedirectText:
 class OneArmGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("MyCobot 280 AI Control - Modern Edition")
+        self.root.title("MyCobot 280 AI Control - Modern Flat UI")
         
-        # Maximize window on startup
-        try:
-            self.root.attributes('-zoomed', True)
-        except Exception:
-            try:
-                self.root.state('zoomed')
-            except Exception:
-                self.root.geometry(f"{self.root.winfo_screenwidth()}x{self.root.winfo_screenheight()}+0+0")
+        # Maximize window on startup (safe method for Jetson X11)
+        self.root.geometry("1024x768+0+0")
         
-        # Theming with CustomTkinter
-        ctk.set_appearance_mode("dark")
-        ctk.set_default_color_theme("blue")
-        self.is_dark_mode = True
+        # Modern Flat Theming (Dark Mode Default)
+        self.theme = {
+            "bg": "#121212", 
+            "fg": "#FFFFFF", 
+            "frame": "#1E1E1E", 
+            "border": "#333333", 
+            "btn_bg": "#3B8ED0", 
+            "btn_fg": "#FFFFFF", 
+            "btn_hover": "#2980B9",
+            "dash_bg": "#2A2A2A",
+            "danger": "#E74C3C",
+            "danger_hover": "#C0392B"
+        }
+        self.root.configure(bg=self.theme["bg"])
         
         self.agent = get_agent()
         self.log_queue = queue.Queue()
@@ -60,7 +63,7 @@ class OneArmGUI:
         threading.Thread(target=self.agent_worker, daemon=True).start()
 
         print("========================================")
-        print(" System Initialized. Welcome to ONE ARM (Modern UI)")
+        print(" System Initialized. Welcome to ONE ARM")
         print("========================================\n")
 
     def setup_ui(self):
@@ -70,26 +73,18 @@ class OneArmGUI:
 
         self.left_panel = LeftPanel(
             parent=self.root, 
+            theme=self.theme, 
             log_queue=self.log_queue, 
             run_quick_action_callback=self.run_quick_action
         )
         
         self.right_panel = RightPanel(
             parent=self.root,
+            theme=self.theme,
             log_queue=self.log_queue,
-            toggle_theme_callback=self.toggle_theme,
             reset_robot_callback=self.reset_robot,
             send_message_callback=self.send_message
         )
-
-    def toggle_theme(self):
-        self.is_dark_mode = not self.is_dark_mode
-        if self.is_dark_mode:
-            ctk.set_appearance_mode("dark")
-            self.right_panel.theme_btn.configure(text="☀️ Light Mode")
-        else:
-            ctk.set_appearance_mode("light")
-            self.right_panel.theme_btn.configure(text="🌗 Dark Mode")
 
     def process_log_queue(self):
         try:
@@ -124,9 +119,7 @@ class OneArmGUI:
     def reset_robot(self):
         print("\n🔄 <SYSTEM>: กำลังรีเซ็ตหุ่นยนต์กลับสู่ตำแหน่งเริ่มต้น...")
         self.right_panel.disable_inputs()
-        self.left_panel.qa_frame.config(cursor="wait")
-        for b in self.left_panel.qa_btns:
-            b.config(state=tk.DISABLED, bg="#666666")
+        self.left_panel.disable_buttons()
         threading.Thread(target=self._run_reset, daemon=True).start()
 
     def _run_reset(self):
@@ -142,8 +135,7 @@ class OneArmGUI:
 
     def enable_all_inputs(self):
         self.right_panel.enable_inputs()
-        for b in self.left_panel.qa_btns:
-            b.config(state=tk.NORMAL, bg=self.theme["btn_bg"])
+        self.left_panel.enable_buttons()
 
     def send_message(self, user_input):
         if not user_input:
@@ -154,8 +146,7 @@ class OneArmGUI:
         
         # Disable inputs while AI is processing
         self.right_panel.disable_inputs()
-        for b in self.left_panel.qa_btns:
-            b.config(state=tk.DISABLED, bg="#666666")
+        self.left_panel.disable_buttons()
             
         self.input_queue.put(user_input)
 
@@ -178,7 +169,7 @@ class OneArmGUI:
                 self.log_queue.put(self.enable_all_inputs)
 
 def start_gui():
-    root = ctk.CTk()
+    root = tk.Tk()
     app = OneArmGUI(root)
     
     def on_closing():
