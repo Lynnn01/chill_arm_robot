@@ -189,16 +189,16 @@ class OneArmGUI:
         import tempfile
         try:
             from openai import OpenAI
-            import pygame
             
             client = OpenAI()
             response = client.audio.speech.create(
                 model="tts-1",
                 voice="alloy",
+                response_format="wav",
                 input=text
             )
             
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as f:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as f:
                 temp_path = f.name
                 
             try:
@@ -206,12 +206,8 @@ class OneArmGUI:
             except AttributeError:
                 response.stream_to_file(temp_path)
             
-            pygame.mixer.init()
-            pygame.mixer.music.load(temp_path)
-            pygame.mixer.music.play()
-            while pygame.mixer.music.get_busy():
-                pygame.time.Clock().tick(10)
-            pygame.mixer.quit()
+            # Use ALSA aplay directly in a subprocess to avoid Python ALSA segmentation faults on Ubuntu/Jetson
+            os.system(f"aplay -q {temp_path}")
             os.remove(temp_path)
         except Exception as e:
             print(f"TTS Error: {e}")
