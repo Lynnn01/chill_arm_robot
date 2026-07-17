@@ -74,12 +74,13 @@ You are an intelligent 6-axis robotic arm assistant. Your mission is to understa
 
 def get_contextual_input(raw_input):
     try:
-        from tools import mc
-        coords = mc.get_coords()
+        from hardware import init
+        coords = init.mc.get_coords()
+        holding_status = "HOLDING an object" if init.is_holding_object else "EMPTY (not holding anything)"
         if coords and len(coords) >= 3:
-            return f"[System: Current arm coordinates are X={coords[0]}, Y={coords[1]}, Z={coords[2]}]\nUser: {raw_input}"
-    except Exception:
-        pass
+            return f"[System: Current arm coordinates are X={coords[0]}, Y={coords[1]}, Z={coords[2]}. Gripper state: {holding_status}.]\nUser: {raw_input}"
+    except Exception as e:
+        print(f"Context error: {e}")
     return raw_input
 
 async def main():

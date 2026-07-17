@@ -54,14 +54,21 @@ except Exception as e:
 with open("config.json", "r") as config_file:
     config_data = json.load(config_file)
 
+# Gripper state tracking
+is_holding_object = False
+
 # Open gripper
 def open_gripper():
+    global is_holding_object
     mc.set_gripper_value(100, 50)
+    is_holding_object = False
     time.sleep(1)
 
 # Close gripper
 def close_gripper():
+    global is_holding_object
     mc.set_gripper_value(0, 50)
+    is_holding_object = True
     time.sleep(1)
 
 

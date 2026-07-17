@@ -15,4 +15,5 @@ transforms3d
 python-dotenv
 openai-agents
 SpeechRecognition
-PyAudio
+PyAudiogTTS
+pygame

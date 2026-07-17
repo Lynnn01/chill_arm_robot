@@ -35,10 +35,14 @@ class OneArmGUI:
         
         self.agent = get_agent()
         self.log_queue = queue.Queue()
+        self.input_queue = queue.Queue()
         sys.stdout = RedirectText(self.log_queue)
         
         self.setup_ui()
         self.root.after(100, self.process_log_queue)
+        
+        # Start AI worker thread
+        threading.Thread(target=self.agent_worker, daemon=True).start()
 
         print("========================================")
         print(" System Initialized. Welcome to ONE ARM")
@@ -152,24 +156,51 @@ class OneArmGUI:
         
         self.right_panel.input_entry.delete(0, tk.END)
         print(f"\n👨‍💻 <USER>: {user_input}")
-        self.right_panel.disable_inputs()
-        for b in self.left_panel.qa_btns:
-            b.config(state=tk.DISABLED, bg="#666666")
         
-        threading.Thread(target=self.run_agent_task, args=(user_input,), daemon=True).start()
+        # We no longer disable inputs here. Let the user type while AI is thinking/acting.
+        # Just queue the message to be processed sequentially.
+        self.input_queue.put(user_input)
 
-    def run_agent_task(self, user_input):
+    def agent_worker(self):
+        # Setup loop for this thread
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
+        
+        while True:
+            user_input = self.input_queue.get()
+            try:
+                contextual_input = get_contextual_input(user_input)
+                result = loop.run_until_complete(Runner.run(self.agent, input=contextual_input))
+                ai_reply = result.final_output
+                print(f"\n🤖 <LLM>: {ai_reply}\n")
+                
+                # Speak the reply in the background
+                threading.Thread(target=self.speak, args=(ai_reply,), daemon=True).start()
+            except Exception as e:
+                print(f"\n⚠️ <ERROR>: {e}\n")
+            finally:
+                self.input_queue.task_done()
+                
+    def speak(self, text):
+        import os
+        import tempfile
         try:
-            contextual_input = get_contextual_input(user_input)
-            result = loop.run_until_complete(Runner.run(self.agent, input=contextual_input))
-            print(f"\n🤖 <LLM>: {result.final_output}\n")
+            from gtts import gTTS
+            import pygame
+            tts = gTTS(text=text, lang='th')
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as f:
+                temp_path = f.name
+            tts.save(temp_path)
+            
+            pygame.mixer.init()
+            pygame.mixer.music.load(temp_path)
+            pygame.mixer.music.play()
+            while pygame.mixer.music.get_busy():
+                pygame.time.Clock().tick(10)
+            pygame.mixer.quit()
+            os.remove(temp_path)
         except Exception as e:
-            print(f"\n⚠️ <ERROR>: {e}\n")
-        finally:
-            loop.close()
-            self.log_queue.put(self.enable_all_inputs)
+            print(f"TTS Error: {e}")
 
 def start_gui():
     root = tk.Tk()
