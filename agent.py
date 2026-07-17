@@ -72,6 +72,16 @@ You are an intelligent 6-axis robotic arm assistant. Your mission is to understa
         model=model_config
     )
 
+def get_contextual_input(raw_input):
+    try:
+        from tools import mc
+        coords = mc.get_coords()
+        if coords and len(coords) >= 3:
+            return f"[System: Current arm coordinates are X={coords[0]}, Y={coords[1]}, Z={coords[2]}]\nUser: {raw_input}"
+    except Exception:
+        pass
+    return raw_input
+
 async def main():
     args = parse_arguments()
     robotic_arm_agent = get_agent()
@@ -80,7 +90,8 @@ async def main():
         if args.user_input and not args.interactive:
             user_input = ' '.join(args.user_input)
             print(f"<USER>: {user_input}")
-            result = await Runner.run(robotic_arm_agent, input=user_input)
+            contextual_input = get_contextual_input(user_input)
+            result = await Runner.run(robotic_arm_agent, input=contextual_input)
             print(f"<LLM>: {result.final_output}")
         else:
             print("Entering interactive mode...")
@@ -89,7 +100,8 @@ async def main():
                     user_input = input("<USER>: ")
                     if user_input.lower() in ['exit', 'quit']:
                         break
-                    result = await Runner.run(robotic_arm_agent, input=user_input)
+                    contextual_input = get_contextual_input(user_input)
+                    result = await Runner.run(robotic_arm_agent, input=contextual_input)
                     print(f"<LLM>: {result.final_output}")
                 except EOFError:
                     break

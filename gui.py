@@ -16,7 +16,7 @@ os.environ["OPENAI_AGENTS_DISABLE_TRACING"] = "1"
 
 # Import agent logic
 from agents import Runner
-from agent import get_agent, exit_function
+from agent import get_agent, exit_function, get_contextual_input
 
 class RedirectText:
     """Thread-safe stdout redirection to a Tkinter Text widget"""
@@ -68,13 +68,13 @@ class OneArmGUI:
         main_frame.rowconfigure(1, weight=1) # Log area expands
 
         # Title Label
-        title_label = tk.Label(main_frame, text="🤖 ONE ARM ASSISTANT", font=("Helvetica", 18, "bold"), 
+        title_label = tk.Label(main_frame, text="🤖 ONE ARM ASSISTANT", font=("Tahoma", 18, "bold"), 
                                bg=self.bg_color, fg=self.fg_color)
         title_label.grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 15))
 
         # Log Text Area 
         self.log_text = tk.Text(main_frame, wrap=tk.WORD, bg=self.bg_color, fg=self.fg_color, 
-                                font=("Consolas", 11), highlightbackground=self.fg_color, 
+                                font=("Tahoma", 12), highlightbackground=self.fg_color, 
                                 highlightthickness=2, bd=0, padx=10, pady=10)
         self.log_text.grid(row=1, column=0, columnspan=2, sticky="nsew", pady=(0, 20))
 
@@ -89,20 +89,44 @@ class OneArmGUI:
         input_frame.columnconfigure(0, weight=1)
 
         # Input Entry
-        self.input_entry = tk.Entry(input_frame, font=("Helvetica", 14), 
+        self.input_entry = tk.Entry(input_frame, font=("Tahoma", 14), 
                                     bg=self.bg_color, fg=self.fg_color, insertbackground=self.fg_color,
                                     highlightbackground=self.fg_color, highlightthickness=2, bd=0)
         self.input_entry.grid(row=0, column=0, sticky="ew", padx=(0, 15), ipady=8)
         self.input_entry.bind("<Return>", lambda event: self.send_message())
 
         # Send Button
-        self.send_button = tk.Button(input_frame, text="SEND", font=("Helvetica", 12, "bold"),
+        self.send_button = tk.Button(input_frame, text="SEND", font=("Tahoma", 12, "bold"),
                                      bg=self.fg_color, fg=self.bg_color, activebackground="#333333", 
                                      activeforeground="white", command=self.send_message, bd=0)
         self.send_button.grid(row=0, column=1, sticky="e", ipadx=30, ipady=8)
 
+        # Reset Button
+        self.reset_button = tk.Button(input_frame, text="RESET", font=("Tahoma", 12, "bold"),
+                                      bg="#ff4444", fg="white", activebackground="#cc0000",
+                                      activeforeground="white", command=self.reset_robot, bd=0)
+        self.reset_button.grid(row=0, column=2, sticky="e", padx=(10, 0), ipadx=20, ipady=8)
+
         # Focus input automatically
         self.input_entry.focus()
+
+    def reset_robot(self):
+        print("\n🔄 <SYSTEM>: กำลังรีเซ็ตหุ่นยนต์กลับสู่ตำแหน่งเริ่มต้น...")
+        self.send_button.config(state=tk.DISABLED, bg="#666666")
+        self.reset_button.config(state=tk.DISABLED, bg="#666666")
+        threading.Thread(target=self._run_reset, daemon=True).start()
+
+    def _run_reset(self):
+        try:
+            from tools import mc
+            import time
+            mc.send_angles([0, 0, 0, 0, 0, -45], 50)
+            time.sleep(2)
+            print("✅ <SYSTEM>: รีเซ็ตเสร็จสมบูรณ์!")
+        except Exception as e:
+            print(f"\n⚠️ <ERROR>: ไม่สามารถรีเซ็ตได้ - {e}")
+        finally:
+            self.root.after(0, self.enable_inputs)
 
     def send_message(self):
         user_input = self.input_entry.get().strip()
@@ -114,6 +138,7 @@ class OneArmGUI:
         
         # Disable button/entry while processing
         self.send_button.config(state=tk.DISABLED, bg="#666666")
+        self.reset_button.config(state=tk.DISABLED, bg="#666666")
         self.input_entry.config(state=tk.DISABLED)
         
         # Run agent in background thread to prevent GUI freezing
@@ -125,7 +150,8 @@ class OneArmGUI:
         asyncio.set_event_loop(loop)
         
         try:
-            result = loop.run_until_complete(Runner.run(self.agent, input=user_input))
+            contextual_input = get_contextual_input(user_input)
+            result = loop.run_until_complete(Runner.run(self.agent, input=contextual_input))
             print(f"\n🤖 <LLM>: {result.final_output}\n")
         except Exception as e:
             print(f"\n⚠️ <ERROR>: {e}\n")
@@ -136,6 +162,7 @@ class OneArmGUI:
 
     def enable_inputs(self):
         self.send_button.config(state=tk.NORMAL, bg=self.fg_color)
+        self.reset_button.config(state=tk.NORMAL, bg="#ff4444")
         self.input_entry.config(state=tk.NORMAL)
         self.input_entry.focus()
 
