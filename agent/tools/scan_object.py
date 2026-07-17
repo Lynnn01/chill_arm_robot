@@ -40,6 +40,7 @@ def scan_object(object_name: str) -> str:
         time.sleep(2.5) # Wait for arm to stop and camera to stabilize
         
         init.GetImage()
+        print(f"🤖 <SYSTEM>: ถ่ายภาพมุม {j1} องศาสำเร็จ กำลังส่งให้ Vision AI วิเคราะห์... (รอคำตอบ)")
         
         try:
             width, height = Image.open('captured_image.jpg').size
