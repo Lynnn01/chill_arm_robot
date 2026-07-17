@@ -158,7 +158,7 @@ class LeftPanel(tk.Frame):
 
     def update_camera_feed(self):
         frame = cam_manager.get_frame()
-        if frame is not None:
+        if frame is not None and frame.size > 0:
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             frame = cv2.resize(frame, (480, 360))
             img = ImageTk.PhotoImage(image=Image.fromarray(frame))
@@ -177,5 +177,5 @@ class LeftPanel(tk.Frame):
                     self.log_queue.put(_update_ui)
             except:
                 pass
-            self.after(500, self.update_dashboard)
         threading.Thread(target=_fetch, daemon=True).start()
+        self.after(500, self.update_dashboard)
