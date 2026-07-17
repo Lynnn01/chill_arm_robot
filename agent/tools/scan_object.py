@@ -27,7 +27,7 @@ def scan_object(object_name: str) -> str:
     # 5-step scan angles for J1: Down-center, Left 45, Left 90, Right 45, Right 90
     scan_angles = [0, 45, 90, -45, -90]
     
-    with open("config.json", "r", encoding="utf-8") as config_file:
+    with open(init.CONFIG_PATH, "r", encoding="utf-8") as config_file:
         config_data = json.load(config_file)
         
     x_offset = config_data.get("x", 0)
@@ -43,8 +43,10 @@ def scan_object(object_name: str) -> str:
         print(f"🤖 <SYSTEM>: ถ่ายภาพมุม {j1} องศาสำเร็จ กำลังส่งให้ Vision AI วิเคราะห์... (รอคำตอบ)")
         
         try:
-            width, height = Image.open('captured_image.jpg').size
-            positions = api.QwenVLRequest("a " + object_name, "captured_image.jpg").get("coordinates", [])
+            import os
+            img_path = os.path.join(init.PROJECT_ROOT, "captured_image.jpg")
+            width, height = Image.open(img_path).size
+            positions = api.QwenVLRequest("a " + object_name, img_path).get("coordinates", [])
         except Exception as e:
             print(f"🤖 <SYSTEM>: เกิดข้อผิดพลาดในการประมวลผลภาพ: {e}")
             continue

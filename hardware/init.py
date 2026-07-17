@@ -43,13 +43,21 @@ except Exception as e:
     mc.get_angles.return_value = [0, 0, 0, 0, 0, -45]
     print("\n⚠️ [MOCK MODE] Physical robotic arm not found. Running in simulation mode.")
 
-with open("config.json", "r") as config_file:
-    config_data = json.load(config_file)
+_HERE = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.abspath(os.path.join(_HERE, ".."))
+CONFIG_PATH = os.path.join(PROJECT_ROOT, "config.json")
+
+try:
+    with open(CONFIG_PATH, "r", encoding="utf-8") as config_file:
+        config_data = json.load(config_file)
+except Exception:
+    config_data = {}
 
 # --- State Tracking ---
 is_holding_object = False
 current_held_object = None
 known_objects = {}  # Format: {"red block": [150.0, -50.0]}
+last_coords = [0, 0, 200, -175, 0, -45]
 
 # --- Gripper ---
 def open_gripper():
@@ -79,7 +87,6 @@ class CameraManager:
     def __init__(self):
         self.cap = None
         self.frame = None
-        self._raw_frame = None   # internal swap buffer
         self.lock = threading.Lock()
         self.running = False
         self._started = False
@@ -88,31 +95,30 @@ class CameraManager:
         if self._started:
             return
         self._started = True
-        # Delay camera open until after the main window is ready
-        threading.Thread(target=self._open_and_run, daemon=True).start()
-
-    def _open_and_run(self):
-        # Small delay so Tkinter/X11 is fully initialized before OpenCV touches display
-        time.sleep(1.5)
         
-        # Try V4L2 first (bypasses GStreamer, prevents stack smashing on Jetson)
-        cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
-        if not cap.isOpened():
-            cap = cv2.VideoCapture(0)
-        
-        if not cap.isOpened():
-            print("⚠️ Camera not available. Running without camera feed.")
-            return
-        
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-        
-        self.cap = cap
-        self.running = True
-        
-        print("✅ Camera started.")
-        self._update()
+        # Initialize VideoCapture in the MAIN thread to avoid OpenCV Qt plugin crashes on Jetson
+        try:
+            # Try V4L2 first (bypasses GStreamer)
+            cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
+            if not cap.isOpened():
+                cap = cv2.VideoCapture(0)
+            
+            if not cap.isOpened():
+                print("⚠️ Camera not available. Running without camera feed.")
+                return
+            
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+            cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+            
+            self.cap = cap
+            self.running = True
+            print("✅ Camera started.")
+            
+            # Start only the reading loop in a background thread
+            threading.Thread(target=self._update, daemon=True).start()
+        except Exception as e:
+            print(f"⚠️ Camera init failed: {e}")
 
     def _update(self):
         while self.running and self.cap and self.cap.isOpened():
@@ -123,7 +129,7 @@ class CameraManager:
                         self.frame = frame
             except Exception as e:
                 print(f"⚠️ Camera read error: {e}")
-            time.sleep(0.05)  # ~20 fps
+            time.sleep(0.04)  # ~25 fps
 
     def get_frame(self):
         with self.lock:
@@ -133,7 +139,7 @@ class CameraManager:
 
     def stop(self):
         self.running = False
-        time.sleep(0.2)
+        time.sleep(0.15)
         if self.cap:
             self.cap.release()
         self.cap = None
@@ -144,7 +150,8 @@ cam_manager = CameraManager()
 def GetImage():
     frame = cam_manager.get_frame()
     if frame is not None:
-        cv2.imwrite("captured_image.jpg", frame)
-        print("Image saved as captured_image.jpg")
+        img_path = os.path.join(PROJECT_ROOT, "captured_image.jpg")
+        cv2.imwrite(img_path, frame)
+        print(f"Image saved as {img_path}")
     else:
         print("Failed to capture image from CameraManager")

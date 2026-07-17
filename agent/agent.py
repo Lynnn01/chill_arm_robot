@@ -77,7 +77,7 @@ You are an intelligent 6-axis robotic arm assistant. Your mission is to understa
 def get_contextual_input(raw_input):
     try:
         from hardware import init
-        coords = init.mc.get_coords()
+        coords = init.last_coords
         
         # Format holding status with current held object if any
         if init.is_holding_object:

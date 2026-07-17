@@ -19,7 +19,8 @@ def describe_scene(question: str) -> str:
     
     # 1. Take a picture
     init.GetImage()
-    image_path = "captured_image.jpg"
+    import os
+    image_path = os.path.join(init.PROJECT_ROOT, "captured_image.jpg")
     
     # 2. Call the Vision API
     print("Analyzing image...")

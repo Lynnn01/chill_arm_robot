@@ -109,7 +109,8 @@ class LeftPanel(tk.Frame):
 
         import json
         try:
-            with open("config.json", "r") as f:
+            from hardware.init import CONFIG_PATH
+            with open(CONFIG_PATH, "r") as f:
                 config_data = json.load(f)
         except Exception:
             config_data = {"x": 0, "y": 0, "z": 0}
@@ -206,10 +207,12 @@ class LeftPanel(tk.Frame):
         """One persistent thread fetches coordinates; posts updates via log_queue."""
         def _loop():
             import time
+            import hardware.init as hw
             while True:
                 try:
-                    coords = mc.get_coords()
+                    coords = hw.mc.get_coords()
                     if coords and len(coords) >= 6:
+                        hw.last_coords = coords
                         def _update(c=coords):
                             for ax, val in zip(["X", "Y", "Z", "Rx", "Ry", "Rz"], c):
                                 if ax in self.status_labels:
@@ -253,13 +256,14 @@ class LeftPanel(tk.Frame):
 
     def save_calibration(self):
         import json
+        from hardware.init import CONFIG_PATH
         try:
-            with open("config.json", "r") as f:
+            with open(CONFIG_PATH, "r") as f:
                 data = json.load(f)
         except Exception:
             data = {}
         for axis in ["x", "y", "z"]:
             data[axis] = self.calib_vars[axis].get()
-        with open("config.json", "w") as f:
+        with open(CONFIG_PATH, "w") as f:
             json.dump(data, f, indent=4)
         print("\n✅ <SYSTEM>: Calibration settings saved to config.json")

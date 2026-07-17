@@ -23,7 +23,7 @@ def move_to(target_coord: list, target_height: int = 110) -> str:
     target_coord[1] = max(-280.0, min(280.0, float(target_coord[1])))
     target_height = max(0, min(280, int(target_height)))
 
-    width, height = Image.open("captured_image.jpg").size
+    # Image size is not needed in this tool
 
     # Move the object to the target position
     print(f"🤖 <SYSTEM>: กำลังเคลื่อนย้ายวัตถุไปวางที่เป้าหมายพิกัด {target_coord} ความสูง {target_height}...")

@@ -24,7 +24,7 @@ def grab_object(object_name: str, target_coord: list = None) -> list:
     """
     init.BotInit(mc)
     
-    with open("config.json", "r", encoding="utf-8") as config_file:
+    with open(init.CONFIG_PATH, "r", encoding="utf-8") as config_file:
         config_data = json.load(config_file)
 
     x_offset = config_data.get("x", 0)
@@ -42,8 +42,10 @@ def grab_object(object_name: str, target_coord: list = None) -> list:
     else:
         print(f"🤖 <SYSTEM>: กำลังใช้กล้อง AI ค้นหา '{object_name}'...")
         init.GetImage()
-        width, height = Image.open('captured_image.jpg').size
-        positions = api.QwenVLRequest("a " + object_name, "captured_image.jpg").get("coordinates", [])
+        import os
+        img_path = os.path.join(init.PROJECT_ROOT, "captured_image.jpg")
+        width, height = Image.open(img_path).size
+        positions = api.QwenVLRequest("a " + object_name, img_path).get("coordinates", [])
 
         if positions:
             position = positions[0]
