@@ -98,3 +98,5 @@ Thumbs.db
 .env
 *.secret
 credentials.json
+.env.local
+captured_image.jpg
