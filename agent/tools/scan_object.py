@@ -35,7 +35,8 @@ def scan_object(object_name: str) -> str:
     
     for j1 in scan_angles:
         print(f"🤖 <SYSTEM>: กำลังหันกล้องไปที่มุม {j1} องศา...")
-        mc.send_angles([j1, 20, -30, -30, 0, -45], 40)
+        # Use the same bending angles as grab_object/BotInit, but pan J1 by j1
+        mc.send_angles([17.75 + j1, -0.79, 0.35, -75, 1.14, -28.12], 40)
         time.sleep(2.5) # Wait for arm to stop and camera to stabilize
         
         init.GetImage()
