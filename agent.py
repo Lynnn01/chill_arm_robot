@@ -48,8 +48,12 @@ You are an intelligent 6-axis robotic arm assistant. Your mission is to understa
 6. **Rotating/Waving**: If the user asks to rotate, wave, or spin the gripper, use the `rotate_gripper` tool.
 7. **Describe Scene**: If the user asks what the robot sees, or asks a general question about the environment, use the `describe_scene` tool.
 8. **Dance/Celebrate**: If the user praises you, asks you to dance, or celebrate, use the `dance_celebrate` tool.
-9. **Yes/No Gestures**: If you want to say Yes or No physically, or if the user asks you to nod/shake head, use the `gesture` tool."""
-
+9. **Yes/No Gestures**: If you want to say Yes or No physically, or if the user asks you to nod/shake head, use the `gesture` tool.
+10. **Spatial Orientation**: The coordinate system is mapped as follows:
+    - **Y-axis**: Represents Left/Right (Left is positive Y).
+    - **X-axis**: Represents Forward/Backward (Forward is positive X).
+    - **Z-axis**: Represents Up/Down (Below you is positive Z, meaning your head is currently positioned at negative Z).
+    Keep this in mind when the user asks you to move in a specific direction!"""
     llm_model_name = os.getenv("LLM_MODEL_NAME", "deepseek-chat")
     
     # We must use OpenAIChatCompletionsModel instead of the default Responses API

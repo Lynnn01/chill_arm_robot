@@ -1,0 +1,71 @@
+services:
+  # ----------------------------------------
+  # 1. Ollama for Chat (Qwen 2.5:14b)
+  # ----------------------------------------
+  ollama-chat:
+    image: ollama/ollama:latest
+    container_name: ollama-chat
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  ollama-chat-init:
+    image: ollama/ollama:latest
+    container_name: ollama-chat-init
+    depends_on:
+      - ollama-chat
+    environment:
+      - OLLAMA_HOST=ollama-chat:11434
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      "echo 'Waiting for Ollama Chat...' && 
+      sleep 5 && 
+      echo 'Downloading qwen2.5:14b...' && 
+      ollama pull qwen2.5:14b && 
+      echo 'Chat model downloaded!'"
+
+  # ----------------------------------------
+  # 2. Ollama for Image/Vision (Qwen 2.5-VL)
+  # ----------------------------------------
+  ollama-image:
+    image: ollama/ollama:latest
+    container_name: ollama-image
+    restart: unless-stopped
+    ports:
+      - "11435:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  ollama-image-init:
+    image: ollama/ollama:latest
+    container_name: ollama-image-init
+    depends_on:
+      - ollama-image
+    environment:
+      - OLLAMA_HOST=ollama-image:11434
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      "echo 'Waiting for Ollama Image...' && 
+      sleep 5 && 
+      echo 'Downloading qwen2.5vl:7b...' && 
+      ollama pull qwen2.5vl:7b && 
+      echo 'Image model downloaded!'"
+
+volumes:
+  ollama_data:
