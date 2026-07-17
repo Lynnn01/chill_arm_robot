@@ -22,7 +22,15 @@ class OneArmGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("ONE ARM Command Center")
-        self.root.geometry("1200x800")
+        
+        # Maximize window on startup (cross-platform compatible method)
+        try:
+            self.root.attributes('-zoomed', True)
+        except Exception:
+            try:
+                self.root.state('zoomed')
+            except Exception:
+                self.root.geometry(f"{self.root.winfo_screenwidth()}x{self.root.winfo_screenheight()}+0+0")
         
         # Theming
         self.is_dark_mode = False

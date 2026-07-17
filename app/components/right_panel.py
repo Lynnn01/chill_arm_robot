@@ -30,10 +30,10 @@ class RightPanel(tk.Frame):
         # Input Area
         input_frame = tk.Frame(self, bg=self.theme["bg"])
         input_frame.grid(row=2, column=0, sticky="ew")
-        input_frame.columnconfigure(1, weight=1)
+        input_frame.columnconfigure(2, weight=1)
 
         # Input Area Buttons
-        self.mic_btn = tk.Button(input_frame, text="MIC", font=("Tahoma", 12, "bold"), bg=self.theme["bg"], fg=self.theme["fg"], activebackground=self.theme["bg"], activeforeground=self.theme["fg"], relief=tk.FLAT, bd=0, cursor="hand2", command=self.toggle_mic)
+        self.mic_btn = tk.Button(input_frame, text="MIC", font=("Tahoma", 12, "bold"), bg=self.theme["bg"], fg="#ff3333", activebackground=self.theme["bg"], activeforeground=self.theme["fg"], relief=tk.FLAT, bd=0, cursor="hand2", command=self.toggle_mic)
         self.mic_btn.grid(row=0, column=0, sticky="w", padx=(0, 5))
         
         self.tts_btn = tk.Button(input_frame, text="SPK", font=("Tahoma", 12, "bold"), bg=self.theme["bg"], fg=self.theme["fg"], activebackground=self.theme["bg"], activeforeground=self.theme["fg"], relief=tk.FLAT, bd=0, cursor="hand2", command=self.toggle_tts)
