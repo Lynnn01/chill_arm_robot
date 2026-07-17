@@ -3,6 +3,7 @@ import threading
 import cv2
 from PIL import Image, ImageTk
 from hardware.init import cam_manager, mc
+import hardware.init as hw_init
 
 class LeftPanel(tk.Frame):
     def __init__(self, parent, theme, log_queue, run_quick_action_callback):
@@ -149,7 +150,6 @@ class LeftPanel(tk.Frame):
             cv2.addWeighted(overlay, 0.6, frame, 0.4, 0, frame)
             
             # HUD Text
-            import hardware.init as hw_init
             holding_status = "Holding Object" if hw_init.is_holding_object else "Empty"
             memory_count = f"Memory: {len(hw_init.known_objects)} items"
             cv2.putText(frame, f"STATUS: {holding_status}", (10, 455), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1, cv2.LINE_AA)
