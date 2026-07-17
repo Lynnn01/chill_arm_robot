@@ -16,3 +16,4 @@ python-dotenv
 openai-agents
 SpeechRecognition
 PyAudio
+customtkinter

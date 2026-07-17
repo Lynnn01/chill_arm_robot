@@ -68,11 +68,10 @@ class CameraManager:
         self.running = False
 
     def start(self):
-        # On Jetson/Linux, GStreamer backend on default VideoCapture(0) can cause segmentation faults.
-        # Prioritize V4L2 to ensure stability.
-        self.cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
+        # For Jetson CSI cameras, default VideoCapture(0) (GStreamer) is usually required.
+        self.cap = cv2.VideoCapture(0)
         if not self.cap.isOpened():
-            self.cap = cv2.VideoCapture(0)
+            self.cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
         
         if self.cap.isOpened():
             self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)

@@ -1,4 +1,5 @@
 import tkinter as tk
+import customtkinter as ctk
 import sys
 import threading
 import asyncio
@@ -31,11 +32,9 @@ class RedirectText:
 class OneArmGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("MyCobot 280 AI Control")
+        self.root.title("MyCobot 280 AI Control - Modern Edition")
         
-        self.current_speaker = "sys"
-        
-        # Maximize window on startup (cross-platform compatible method)
+        # Maximize window on startup
         try:
             self.root.attributes('-zoomed', True)
         except Exception:
@@ -44,14 +43,10 @@ class OneArmGUI:
             except Exception:
                 self.root.geometry(f"{self.root.winfo_screenwidth()}x{self.root.winfo_screenheight()}+0+0")
         
-        # Theming
-        self.is_dark_mode = False
-        self.colors = {
-            "light": {"bg": "#FAFAFA", "fg": "#111111", "frame": "#FFFFFF", "border": "#DDDDDD", "btn_bg": "#111111", "btn_fg": "#FFFFFF", "dash_bg": "#F0F0F0"},
-            "dark": {"bg": "#121212", "fg": "#E0E0E0", "frame": "#1E1E1E", "border": "#333333", "btn_bg": "#E0E0E0", "btn_fg": "#121212", "dash_bg": "#2A2A2A"}
-        }
-        self.theme = self.colors["light"]
-        self.root.configure(bg=self.theme["bg"])
+        # Theming with CustomTkinter
+        ctk.set_appearance_mode("dark")
+        ctk.set_default_color_theme("blue")
+        self.is_dark_mode = True
         
         self.agent = get_agent()
         self.log_queue = queue.Queue()
@@ -65,7 +60,7 @@ class OneArmGUI:
         threading.Thread(target=self.agent_worker, daemon=True).start()
 
         print("========================================")
-        print(" System Initialized. Welcome to ONE ARM")
+        print(" System Initialized. Welcome to ONE ARM (Modern UI)")
         print("========================================\n")
 
     def setup_ui(self):
@@ -75,57 +70,26 @@ class OneArmGUI:
 
         self.left_panel = LeftPanel(
             parent=self.root, 
-            theme=self.theme, 
             log_queue=self.log_queue, 
             run_quick_action_callback=self.run_quick_action
         )
         
         self.right_panel = RightPanel(
             parent=self.root,
-            theme=self.theme,
             log_queue=self.log_queue,
             toggle_theme_callback=self.toggle_theme,
             reset_robot_callback=self.reset_robot,
             send_message_callback=self.send_message
         )
 
-    def apply_theme(self):
-        self.root.configure(bg=self.theme["bg"])
-        
-        def update_colors(widget):
-            if isinstance(widget, tk.Frame):
-                widget.configure(bg=self.theme["bg"])
-            elif isinstance(widget, tk.LabelFrame):
-                widget.configure(bg=self.theme["frame"], fg=self.theme["fg"], highlightbackground=self.theme["border"])
-            elif isinstance(widget, tk.Label):
-                if widget != self.left_panel.cam_label and widget not in self.left_panel.status_labels.values():
-                    widget.configure(bg=self.theme["bg"], fg=self.theme["fg"])
-                if widget in self.left_panel.status_labels.values():
-                    widget.configure(bg=self.theme["dash_bg"], fg=self.theme["fg"])
-                if widget.master == self.left_panel.dash_frame and widget not in self.left_panel.status_labels.values():
-                    widget.configure(bg=self.theme["frame"], fg=self.theme["fg"])
-            elif isinstance(widget, tk.Text) or isinstance(widget, tk.Entry):
-                widget.configure(bg=self.theme["frame"], fg=self.theme["fg"], insertbackground=self.theme["fg"], highlightbackground=self.theme["border"], highlightcolor=self.theme["fg"])
-            
-            for child in widget.winfo_children():
-                update_colors(child)
-                
-        update_colors(self.root)
-        
-        # Override specific buttons
-        btn_config = {"bg": self.theme["btn_bg"], "fg": self.theme["btn_fg"]}
-        self.right_panel.send_button.configure(**btn_config)
-        self.right_panel.theme_btn.configure(**btn_config)
-        for b in self.left_panel.qa_btns:
-            b.configure(**btn_config)
-        self.right_panel.reset_button.configure(bg="#FF3333", fg="white")
-        self.right_panel.voice_btn.configure(bg="#ff9900", fg="white")
-
     def toggle_theme(self):
         self.is_dark_mode = not self.is_dark_mode
-        self.theme = self.colors["dark"] if self.is_dark_mode else self.colors["light"]
-        self.apply_theme()
-        self.right_panel.theme_btn.config(text="☀️ Light Mode" if self.is_dark_mode else "🌗 Dark Mode")
+        if self.is_dark_mode:
+            ctk.set_appearance_mode("dark")
+            self.right_panel.theme_btn.configure(text="☀️ Light Mode")
+        else:
+            ctk.set_appearance_mode("light")
+            self.right_panel.theme_btn.configure(text="🌗 Dark Mode")
 
     def process_log_queue(self):
         try:
@@ -214,7 +178,7 @@ class OneArmGUI:
                 self.log_queue.put(self.enable_all_inputs)
 
 def start_gui():
-    root = tk.Tk()
+    root = ctk.CTk()
     app = OneArmGUI(root)
     
     def on_closing():
