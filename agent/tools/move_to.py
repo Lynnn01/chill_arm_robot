@@ -7,7 +7,12 @@ from agents import function_tool
 @function_tool
 def move_to(target_coord: list, target_height: int = 110) -> str:
     """
+    [Tags: Action, Placement, Memory]
     Moves the currently grabbed object to a specific target coordinate [x, y] and releases it at target_height.
+    
+    When to use:
+    - เมื่อผู้ใช้สั่งให้ "วาง", "ย้าย", "นำไปไว้ที่" พิกัดที่ระบุ หรือนำไปซ้อนกัน
+    - ต้องเรียกใช้ **หลังจาก** ใช้ grab_object หยิบของสำเร็จแล้วเท่านั้น ห้ามใช้ถ้ามือเปล่า
     
     Args:
         target_coord: The target coordinate [x, y] to place the object. For complex patterns, calculate this using Python code first.

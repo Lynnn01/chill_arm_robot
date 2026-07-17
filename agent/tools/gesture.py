@@ -5,7 +5,11 @@ from agents import function_tool
 @function_tool
 def gesture(action: str) -> str:
     """
+    [Tags: Entertainment, Action]
     Performs a gesture to communicate non-verbally.
+    
+    When to use:
+    - เมื่อผู้ใช้ถามคำถามที่ตอบใช่/ไม่ใช่ แล้วเราต้องการแสดงท่าทางแทนคำพูด ("พยักหน้า", "ส่ายหน้า") หรือทักทาย ("โบกมือ")
     
     Args:
         action: Must be either "yes" (nodding) or "no" (shaking head).

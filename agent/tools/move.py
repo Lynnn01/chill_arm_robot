@@ -5,8 +5,11 @@ from agents import function_tool
 @function_tool
 def move(x: float, y: float, z: float, speed: int = 40) -> str:
     """
-    Moves the robotic arm freely to the specified (x, y, z) coordinates.
-    The AI can use this to explore or position the arm dynamically.
+    [Tags: Action, Movement]
+    Moves the robotic arm freely to the specified (x, y, z) coordinates without interacting with objects.
+    
+    When to use:
+    - เมื่อผู้ใช้สั่งให้หุ่นยนต์ขยับมือไปยังพิกัด X, Y, Z หรือทิศทางต่างๆ โดย "ไม่ได้ต้องการให้หยิบหรือวางอะไร" (เช่น เลื่อนมือไปทางซ้าย ขยับไปดูใกล้ๆ)
     
     Args:
         x: The target X coordinate (Forward). Safe range is -280 to 280.

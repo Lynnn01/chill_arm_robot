@@ -5,8 +5,11 @@ from agents import function_tool
 @function_tool
 def dance_celebrate() -> str:
     """
+    [Tags: Entertainment, Action]
     Performs a fun dancing or celebrating sequence with the robotic arm.
-    Use this when the user praises you, asks you to dance, or when celebrating a success.
+    
+    When to use:
+    - เมื่อผู้ใช้สั่งให้ "เต้น", "ดีใจ", "ฉลอง" หรือเมื่อผู้ใช้ชมเชยว่าเก่งมาก
     """
     print("Dancing and celebrating! 💃🕺")
     speed = 60

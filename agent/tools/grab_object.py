@@ -10,8 +10,13 @@ from agents import function_tool
 @function_tool
 def grab_object(object_name: str, target_coord: list = None) -> list:
     """
+    [Tags: Action, Vision, Memory]
     Uses computer vision to detect and grab the specified object from the workspace.
     If target_coord is provided, it skips vision and grabs directly from that location.
+    
+    When to use:
+    - เมื่อผู้ใช้สั่งให้ "หยิบ", "จับ", "เอา" วัตถุที่ระบุ
+    - ระบบจะตรวจสอบ Memory อัตโนมัติ หากเจอพิกัดจะหยิบเลย หากไม่เจอจะใช้กล้องสแกนก่อน
     
     Args:
         object_name: The descriptive name of the object to grab (e.g., "red block", "blue cube").

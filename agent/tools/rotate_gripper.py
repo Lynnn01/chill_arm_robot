@@ -5,8 +5,11 @@ from agents import function_tool
 @function_tool
 def rotate_gripper(angle_range: int = 45, speed: int = 40) -> str:
     """
+    [Tags: Action, Orientation]
     Rotates the gripper back and forth by a specified angle range, then returns to its original position.
-    Can be used when the user asks the robot to show off, wave the gripper, or rotate the gripper.
+    
+    When to use:
+    - เมื่อผู้ใช้สั่งให้ "หมุนข้อมือ", "หมุนหัวจับ", "บิด" เพื่อเปลี่ยนมุมหรือโชว์ลูกเล่น
     
     Args:
         angle_range: The angle in degrees to rotate left and right. Default is 45.

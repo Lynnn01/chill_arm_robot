@@ -5,8 +5,13 @@ from agents import function_tool
 @function_tool
 def execute_python_code(code: str) -> str:
     """
+    [Tags: Utility, Logic]
     Executes Python code to calculate coordinates for complex patterns (e.g., circle, square, shapes).
     The code must store the final calculated coordinates array in a global variable named 'Result'.
+    
+    When to use:
+    - เมื่อต้องการคำนวณคณิตศาสตร์ซับซ้อน, จัดเรียงข้อมูล (เช่น เรียงสี, คำนวณตารางกริด 3x3, วาดรูป)
+    - นำผลลัพธ์พิกัดที่ได้ไปใช้กับ move_to ในขั้นตอนต่อไป
     
     Args:
         code: The Python code to execute.
