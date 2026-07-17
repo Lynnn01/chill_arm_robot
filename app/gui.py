@@ -165,8 +165,11 @@ class OneArmGUI:
         self.right_panel.input_entry.delete(0, tk.END)
         print(f"\n👨‍💻 <USER>: {user_input}")
         
-        # We no longer disable inputs here. Let the user type while AI is thinking/acting.
-        # Just queue the message to be processed sequentially.
+        # Disable inputs while AI is processing
+        self.right_panel.disable_inputs()
+        for b in self.left_panel.qa_btns:
+            b.config(state=tk.DISABLED, bg="#666666")
+            
         self.input_queue.put(user_input)
 
     def agent_worker(self):
@@ -188,6 +191,7 @@ class OneArmGUI:
                 print(f"\n⚠️ <ERROR>: {e}\n")
             finally:
                 self.input_queue.task_done()
+                self.log_queue.put(self.enable_all_inputs)
                 
     def speak(self, text):
         if not hasattr(self, 'right_panel') or not self.right_panel.tts_active:
