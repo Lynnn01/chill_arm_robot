@@ -9,11 +9,16 @@ def move(x: float, y: float, z: float, speed: int = 40) -> str:
     The AI can use this to explore or position the arm dynamically.
     
     Args:
-        x: The target X coordinate. Must be between -70 and 140.
-        y: The target Y coordinate. Must be between 150 and 280.
-        z: The target Z coordinate (height). Safe heights are usually above 100.
+        x: The target X coordinate (Forward). Safe range is 140 to 280.
+        y: The target Y coordinate (Left/Right). Safe range is -100 to 100.
+        z: The target Z coordinate (Height). Z=200 is hover, Z=110 is table level. Safe range is 100 to 250.
         speed: Movement speed (1-100). Default is 40.
     """
+    # Safety clamps
+    x = max(140.0, min(280.0, float(x)))
+    y = max(-100.0, min(100.0, float(y)))
+    z = max(100.0, min(250.0, float(z)))
+
     print(f"Moving arm to (X:{x}, Y:{y}, Z:{z}) with speed {speed}...")
     
     # Send coordinates: [x, y, z, rx, ry, rz]. 

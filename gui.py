@@ -18,17 +18,15 @@ os.environ["OPENAI_AGENTS_DISABLE_TRACING"] = "1"
 from agents import Runner
 from agent import get_agent, exit_function, get_contextual_input
 
+import queue
+
 class RedirectText:
-    """Thread-safe stdout redirection to a Tkinter Text widget"""
-    def __init__(self, text_widget):
-        self.output = text_widget
+    """Thread-safe stdout redirection using a Queue"""
+    def __init__(self, q):
+        self.q = q
 
     def write(self, string):
-        self.output.after(0, self._insert, string)
-
-    def _insert(self, string):
-        self.output.insert(tk.END, string)
-        self.output.see(tk.END)
+        self.q.put(string)
 
     def flush(self):
         pass
@@ -50,12 +48,27 @@ class OneArmGUI:
         # Setup the User Interface
         self.setup_ui()
         
-        # Redirect standard output to the text area
-        sys.stdout = RedirectText(self.log_text)
+        # Thread-safe logging queue
+        self.log_queue = queue.Queue()
+        sys.stdout = RedirectText(self.log_queue)
+        
+        # Start the queue polling loop
+        self.root.after(100, self.process_log_queue)
 
         print("========================================")
         print(" System Initialized. Welcome to ONE ARM")
         print("========================================\n")
+
+    def process_log_queue(self):
+        try:
+            while True:
+                msg = self.log_queue.get_nowait()
+                self.log_text.insert(tk.END, msg)
+                self.log_text.see(tk.END)
+        except queue.Empty:
+            pass
+        finally:
+            self.root.after(100, self.process_log_queue)
 
     def setup_ui(self):
         self.root.columnconfigure(0, weight=1)
