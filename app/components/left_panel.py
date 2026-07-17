@@ -183,10 +183,12 @@ class LeftPanel(tk.Frame):
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             frame = cv2.resize(frame, (480, 360))
             
-            # Using standard ImageTk for stability on Jetson
-            img = ImageTk.PhotoImage(image=Image.fromarray(frame))
-            self.cam_label.config(image=img, text="")
-            self.cam_label.image = img
+            pil_image = Image.fromarray(frame)
+            if not hasattr(self, 'tk_image'):
+                self.tk_image = ImageTk.PhotoImage(image=pil_image)
+                self.cam_label.config(image=self.tk_image, text="")
+            else:
+                self.tk_image.paste(pil_image)
             
         self.after(50, self.update_camera_feed)
 

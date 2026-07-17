@@ -3,6 +3,7 @@ import sys
 import threading
 import asyncio
 import queue
+import multiprocessing
 
 from app.components.left_panel import LeftPanel
 from app.components.right_panel import RightPanel
@@ -51,16 +52,34 @@ class OneArmGUI:
         }
         self.root.configure(bg=self.theme["bg"])
         
-        self.agent = get_agent()
-        self.log_queue = queue.Queue()
-        self.input_queue = queue.Queue()
-        sys.stdout = RedirectText(self.log_queue)
+        # Local Queue for GUI internal thread safety (closures)
+        self.gui_queue = queue.Queue()
+        
+        # Multiprocessing Queues for AI Process Isolation
+        self.mp_manager = multiprocessing.Manager()
+        self.log_queue = self.mp_manager.Queue()
+        self.input_queue = self.mp_manager.Queue()
+        self.cmd_queue = self.mp_manager.Queue()
+        self.res_queue = self.mp_manager.Queue()
+        
+        # Redirect stdout in main process to local GUI queue
+        sys.stdout = RedirectText(self.gui_queue)
         
         self.setup_ui()
-        self.root.after(100, self.process_log_queue)
+        self.root.after(100, self.process_queues)
         
-        # Start AI worker thread
-        threading.Thread(target=self.agent_worker, daemon=True).start()
+        # Start Hardware RPC Server in background thread (Main Process)
+        from hardware.rpc import run_rpc_server
+        threading.Thread(target=run_rpc_server, args=(self.cmd_queue, self.res_queue), daemon=True).start()
+        
+        # Start Isolated AI Process
+        from agent.worker import isolated_agent_worker
+        self.ai_process = multiprocessing.Process(
+            target=isolated_agent_worker,
+            args=(self.input_queue, self.log_queue, self.cmd_queue, self.res_queue),
+            daemon=True
+        )
+        self.ai_process.start()
 
         print("========================================")
         print(" System Initialized. Welcome to ONE ARM")
@@ -74,42 +93,63 @@ class OneArmGUI:
         self.left_panel = LeftPanel(
             parent=self.root, 
             theme=self.theme, 
-            log_queue=self.log_queue, 
+            log_queue=self.gui_queue,  # Internal GUI threads use local queue
             run_quick_action_callback=self.run_quick_action
         )
         
         self.right_panel = RightPanel(
             parent=self.root,
             theme=self.theme,
-            log_queue=self.log_queue,
+            log_queue=self.gui_queue,
             reset_robot_callback=self.reset_robot,
             send_message_callback=self.send_message
         )
 
-    def process_log_queue(self):
+    def process_queues(self):
+        # Process internal GUI updates
         try:
             while True:
-                msg = self.log_queue.get_nowait()
+                msg = self.gui_queue.get_nowait()
                 if callable(msg):
                     msg()
                 else:
-                    self.right_panel.log_text.config(state=tk.NORMAL)
-                    text = msg.strip()
-                    if text:
-                        if text.startswith("<USER>:"):
-                            tag = "user"
-                        elif text.startswith("🤖 <LLM>:"):
-                            tag = "llm"
-                        else:
-                            tag = "sys"
-                            
-                        self.right_panel.log_text.insert(tk.END, text + "\n\n", tag)
-                    self.right_panel.log_text.config(state=tk.DISABLED)
-                    self.right_panel.log_text.see(tk.END)
+                    self._append_log(msg)
         except queue.Empty:
             pass
-        finally:
-            self.root.after(100, self.process_log_queue)
+            
+        # Process AI Process logs
+        try:
+            while True:
+                msg = self.log_queue.get_nowait()
+                if isinstance(msg, tuple) and msg[0] == "ENABLE_INPUTS":
+                    self.enable_all_inputs()
+                else:
+                    self._append_log(msg)
+        except queue.Empty:
+            pass
+            
+        self.root.after(100, self.process_queues)
+
+    def _append_log(self, text):
+        self.right_panel.log_text.config(state=tk.NORMAL)
+        text = text.strip()
+        if text:
+            if text.startswith("<USER>:"):
+                tag = "user"
+            elif text.startswith("🤖 <LLM>:"):
+                tag = "llm"
+            else:
+                tag = "sys"
+                
+            self.right_panel.log_text.insert(tk.END, text + "\n\n", tag)
+            
+            # Auto-truncate log if it exceeds 1000 lines to prevent memory leaks
+            line_count = int(self.right_panel.log_text.index('end-1c').split('.')[0])
+            if line_count > 1000:
+                self.right_panel.log_text.delete('1.0', '500.0')
+                
+        self.right_panel.log_text.config(state=tk.DISABLED)
+        self.right_panel.log_text.see(tk.END)
 
     def run_quick_action(self, cmd):
         self.right_panel.input_entry.delete(0, tk.END)
@@ -125,13 +165,14 @@ class OneArmGUI:
     def _run_reset(self):
         try:
             import time
+            from hardware.init import mc
             mc.send_angles([0, 0, 0, 0, 0, -45], 50)
             time.sleep(2)
             print("✅ <SYSTEM>: รีเซ็ตเสร็จสมบูรณ์!")
         except Exception as e:
             print(f"\n⚠️ <ERROR>: ไม่สามารถรีเซ็ตได้ - {e}")
         finally:
-            self.log_queue.put(self.enable_all_inputs)
+            self.gui_queue.put(self.enable_all_inputs)
 
     def enable_all_inputs(self):
         self.right_panel.enable_inputs()
@@ -150,31 +191,21 @@ class OneArmGUI:
             
         self.input_queue.put(user_input)
 
-    def agent_worker(self):
-        # Setup loop for this thread
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        while True:
-            user_input = self.input_queue.get()
-            try:
-                contextual_input = get_contextual_input(user_input)
-                result = loop.run_until_complete(Runner.run(self.agent, input=contextual_input))
-                ai_reply = result.final_output
-                print(f"\n🤖 <LLM>: {ai_reply}\n")
-            except Exception as e:
-                print(f"\n⚠️ <ERROR>: {e}\n")
-            finally:
-                self.input_queue.task_done()
-                self.log_queue.put(self.enable_all_inputs)
-
 def start_gui():
+    multiprocessing.set_start_method('spawn', force=True)
     root = tk.Tk()
     app = OneArmGUI(root)
     
     def on_closing():
         try:
+            from hardware.init import cam_manager
             cam_manager.stop()
+            
+            if hasattr(app, 'ai_process') and app.ai_process.is_alive():
+                app.ai_process.terminate()
+                app.ai_process.join()
+                
+            from agent.agent import exit_function
             exit_function()
         except Exception as e:
             print(f"Error during cleanup: {e}")

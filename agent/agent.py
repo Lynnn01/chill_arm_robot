@@ -60,7 +60,8 @@ You are an intelligent 6-axis robotic arm assistant. Your mission is to understa
     # We must use OpenAIChatCompletionsModel instead of the default Responses API
     # because third-party providers (Deepseek, Ollama) only support Chat Completions.
     # It requires an explicit openai_client.
-    client = AsyncOpenAI()
+    # Set explicit timeout to prevent AI requests from hanging indefinitely
+    client = AsyncOpenAI(timeout=15.0)
     model_config = OpenAIChatCompletionsModel(
         model=llm_model_name, 
         openai_client=client
