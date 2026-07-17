@@ -28,8 +28,7 @@ class RedirectText:
 class OneArmGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("MyCobot 280 AI Control - Modern Flat UI")
-        
+        self.root.title("MyCobot 280 AI Control")
         self.root.geometry("1024x768+0+0")
         
         self.theme = {
@@ -46,7 +45,6 @@ class OneArmGUI:
         }
         self.root.configure(bg=self.theme["bg"])
         
-        # Single queue for all updates
         self.log_queue = queue.Queue()
         self.input_queue = queue.Queue()
         sys.stdout = RedirectText(self.log_queue)
@@ -54,7 +52,7 @@ class OneArmGUI:
         self.setup_ui()
         self.root.after(100, self.process_queue)
         
-        # Start AI worker thread (single thread, persistent event loop)
+        # Single persistent AI worker thread
         threading.Thread(target=self._agent_loop, daemon=True).start()
 
         print("========================================")
@@ -106,7 +104,6 @@ class OneArmGUI:
                 tag = "sys"
             self.right_panel.log_text.insert(tk.END, text + "\n\n", tag)
             
-            # Auto-truncate to prevent memory growth
             line_count = int(self.right_panel.log_text.index('end-1c').split('.')[0])
             if line_count > 1000:
                 self.right_panel.log_text.delete('1.0', '500.0')
@@ -151,7 +148,7 @@ class OneArmGUI:
         self.input_queue.put(user_input)
 
     def _agent_loop(self):
-        """Persistent background thread with its own asyncio event loop for the AI agent."""
+        """Single persistent background thread with its own asyncio event loop."""
         from agent.agent import get_agent, get_contextual_input
         from agents import Runner
         
@@ -171,17 +168,19 @@ class OneArmGUI:
                 self.log_queue.put(self.enable_all_inputs)
 
 def start_gui():
-    from hardware.init import mc, BotInit
+    from hardware.init import mc, BotInit, cam_manager
     
-    # Initialize robot position in background
+    # Init robot position in background (non-blocking)
     threading.Thread(target=BotInit, args=(mc,), daemon=True).start()
     
     root = tk.Tk()
     app = OneArmGUI(root)
+
+    # Start camera AFTER tkinter window is created to avoid X11/GStreamer conflict
+    cam_manager.start()
     
     def on_closing():
         try:
-            from hardware.init import cam_manager
             cam_manager.stop()
         except Exception:
             pass

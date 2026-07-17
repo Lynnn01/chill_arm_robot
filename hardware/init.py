@@ -2,7 +2,6 @@ import time
 import cv2
 import os
 import json
-import numpy as np
 import threading
 import unittest.mock
 
@@ -12,8 +11,31 @@ mycobot_port = os.getenv("MYCOBOT_PORT", "/dev/ttyUSB0")
 mycobot_baud = int(os.getenv("MYCOBOT_BAUD", "1000000"))
 
 # --- Robot Arm ---
+# Single global lock for all serial communication to prevent race conditions
+_mc_lock = threading.Lock()
+
+class LockedMyCobot:
+    """Wraps MyCobot with a global lock to prevent concurrent Serial access."""
+    def __init__(self, port, baud):
+        self._mc = MyCobot(port, baud)
+
+    def _call(self, method, *args, **kwargs):
+        with _mc_lock:
+            return getattr(self._mc, method)(*args, **kwargs)
+
+    def send_angles(self, angles, speed): return self._call("send_angles", angles, speed)
+    def send_angle(self, id, degree, speed): return self._call("send_angle", id, degree, speed)
+    def send_coords(self, coords, speed, mode=0): return self._call("send_coords", coords, speed, mode)
+    def get_coords(self): return self._call("get_coords")
+    def get_angles(self): return self._call("get_angles")
+    def set_gripper_value(self, value, speed): return self._call("set_gripper_value", value, speed)
+    def set_fresh_mode(self, mode): return self._call("set_fresh_mode", mode)
+    def set_color(self, r, g, b): return self._call("set_color", r, g, b)
+    def release_all_servos(self): return self._call("release_all_servos")
+
 try:
-    mc = MyCobot(mycobot_port, mycobot_baud)
+    mc = LockedMyCobot(mycobot_port, mycobot_baud)
+    print(f"✅ Connected to MyCobot on {mycobot_port}")
 except Exception as e:
     print(f"\n⚠️ <SYSTEM>: Could not connect to MyCobot on {mycobot_port}. Error: {e}")
     mc = unittest.mock.MagicMock()
@@ -43,41 +65,65 @@ def close_gripper():
     time.sleep(1)
 
 def BotInit(mc):
-    mc.set_fresh_mode(0)
-    mc.send_angles([0, 0, 0, 0, 0, -45], 40)
-    time.sleep(3)
-    mc.send_angles([17.75, -0.79, 0.35, -75, 1.14, -28.12], 40)
-    time.sleep(3)
+    try:
+        mc.set_fresh_mode(0)
+        mc.send_angles([0, 0, 0, 0, 0, -45], 40)
+        time.sleep(3)
+        mc.send_angles([17.75, -0.79, 0.35, -75, 1.14, -28.12], 40)
+        time.sleep(3)
+    except Exception as e:
+        print(f"⚠️ BotInit error (non-fatal): {e}")
 
 # --- Camera ---
 class CameraManager:
     def __init__(self):
         self.cap = None
         self.frame = None
+        self._raw_frame = None   # internal swap buffer
         self.lock = threading.Lock()
         self.running = False
+        self._started = False
 
     def start(self):
-        # Use V4L2 explicitly to bypass GStreamer and prevent stack smashing on Jetson
-        self.cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
-        if not self.cap.isOpened():
-            self.cap = cv2.VideoCapture(0)
+        if self._started:
+            return
+        self._started = True
+        # Delay camera open until after the main window is ready
+        threading.Thread(target=self._open_and_run, daemon=True).start()
+
+    def _open_and_run(self):
+        # Small delay so Tkinter/X11 is fully initialized before OpenCV touches display
+        time.sleep(1.5)
         
-        if self.cap.isOpened():
-            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-            # Minimal buffer to prevent memory buildup
-            self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-            self.running = True
-            threading.Thread(target=self._update, daemon=True).start()
+        # Try V4L2 first (bypasses GStreamer, prevents stack smashing on Jetson)
+        cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
+        if not cap.isOpened():
+            cap = cv2.VideoCapture(0)
+        
+        if not cap.isOpened():
+            print("⚠️ Camera not available. Running without camera feed.")
+            return
+        
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        
+        self.cap = cap
+        self.running = True
+        
+        print("✅ Camera started.")
+        self._update()
 
     def _update(self):
         while self.running and self.cap and self.cap.isOpened():
-            ret, frame = self.cap.read()
-            if ret and frame is not None and frame.size > 0:
-                with self.lock:
-                    self.frame = frame.copy()
-            time.sleep(0.05)  # ~20fps is enough
+            try:
+                ret, frame = self.cap.read()
+                if ret and frame is not None and frame.size > 0:
+                    with self.lock:
+                        self.frame = frame
+            except Exception as e:
+                print(f"⚠️ Camera read error: {e}")
+            time.sleep(0.05)  # ~20 fps
 
     def get_frame(self):
         with self.lock:
@@ -87,12 +133,13 @@ class CameraManager:
 
     def stop(self):
         self.running = False
+        time.sleep(0.2)
         if self.cap:
             self.cap.release()
         self.cap = None
 
 cam_manager = CameraManager()
-cam_manager.start()
+# NOTE: cam_manager.start() is called from start_gui() AFTER tkinter is ready
 
 def GetImage():
     frame = cam_manager.get_frame()
