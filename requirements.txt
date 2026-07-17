@@ -16,5 +16,3 @@ python-dotenv
 openai-agents
 SpeechRecognition
 PyAudio
-gTTS
-pygame

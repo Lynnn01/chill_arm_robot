@@ -6,7 +6,7 @@ import queue
 
 from app.components.left_panel import LeftPanel
 from app.components.right_panel import RightPanel
-from hardware.init import cam_manager, mc
+from hardware.init import mc
 from agent.agent import get_agent, exit_function, get_contextual_input
 from agents import Runner
 
@@ -230,7 +230,6 @@ def start_gui():
     
     def on_closing():
         try:
-            cam_manager.stop()
             exit_function()
         except Exception as e:
             print(f"Error during cleanup: {e}")
