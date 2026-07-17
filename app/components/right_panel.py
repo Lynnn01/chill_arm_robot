@@ -32,28 +32,41 @@ class RightPanel(tk.Frame):
         input_frame.grid(row=2, column=0, sticky="ew")
         input_frame.columnconfigure(1, weight=1)
 
-        self.voice_btn = tk.Button(input_frame, text="🎙️", font=("Segoe UI Emoji", 18), bg=self.theme["bg"], fg=self.theme["fg"], activebackground=self.theme["bg"], activeforeground=self.theme["fg"], relief=tk.FLAT, bd=0, cursor="hand2", command=self.toggle_mic)
-        self.voice_btn.grid(row=0, column=0, sticky="w", padx=(0, 10))
+        # Input Area Buttons
+        self.mic_btn = tk.Button(input_frame, text="MIC", font=("Tahoma", 12, "bold"), bg=self.theme["bg"], fg=self.theme["fg"], activebackground=self.theme["bg"], activeforeground=self.theme["fg"], relief=tk.FLAT, bd=0, cursor="hand2", command=self.toggle_mic)
+        self.mic_btn.grid(row=0, column=0, sticky="w", padx=(0, 5))
         
+        self.tts_btn = tk.Button(input_frame, text="SPK", font=("Tahoma", 12, "bold"), bg=self.theme["bg"], fg=self.theme["fg"], activebackground=self.theme["bg"], activeforeground=self.theme["fg"], relief=tk.FLAT, bd=0, cursor="hand2", command=self.toggle_tts)
+        self.tts_btn.grid(row=0, column=1, sticky="w", padx=(0, 10))
+
         self.mic_active = False
+        self.tts_active = True
         self.stop_listening = None
 
         self.input_entry = tk.Entry(input_frame, font=("Tahoma", 14), 
                                     bg=self.theme["frame"], fg=self.theme["fg"], insertbackground=self.theme["fg"],
                                     highlightbackground=self.theme["border"], highlightcolor=self.theme["fg"], 
                                     highlightthickness=2, relief=tk.FLAT, bd=0)
-        self.input_entry.grid(row=0, column=1, sticky="ew", padx=(0, 10), ipady=12)
+        self.input_entry.grid(row=0, column=2, sticky="ew", padx=(0, 10), ipady=12)
         self.input_entry.bind("<Return>", lambda event: self.send_message_callback(self.input_entry.get().strip()))
 
         self.send_button = tk.Button(input_frame, text="SEND", font=("Tahoma", 12, "bold"),
                                      bg=self.theme["btn_bg"], fg=self.theme["btn_fg"], relief=tk.FLAT, bd=0, cursor="hand2", command=lambda: self.send_message_callback(self.input_entry.get().strip()))
-        self.send_button.grid(row=0, column=2, sticky="e", ipadx=20, ipady=10)
+        self.send_button.grid(row=0, column=3, sticky="e", ipadx=20, ipady=10)
 
         self.reset_button = tk.Button(input_frame, text="RESET", font=("Tahoma", 12, "bold"),
                                       bg="#FF3333", fg="white", activebackground="#CC0000", activeforeground="white", relief=tk.FLAT, bd=0, cursor="hand2", command=self.reset_robot_callback)
-        self.reset_button.grid(row=0, column=3, sticky="e", padx=(10, 0), ipadx=15, ipady=10)
+        self.reset_button.grid(row=0, column=4, sticky="e", padx=(10, 0), ipadx=15, ipady=10)
 
         self.input_entry.focus()
+
+    def toggle_tts(self):
+        if self.tts_active:
+            self.tts_active = False
+            self.tts_btn.config(fg="#ff3333") # Red when muted
+        else:
+            self.tts_active = True
+            self.tts_btn.config(fg=self.theme["fg"]) # Normal when active
 
     def toggle_mic(self):
         if self.mic_active:
@@ -62,15 +75,11 @@ class RightPanel(tk.Frame):
                 self.stop_listening(wait_for_stop=False)
                 self.stop_listening = None
             self.mic_active = False
-            self.voice_btn.config(text="🎙️", fg=self.theme["fg"])
-            self.input_entry.delete(0, tk.END)
-            self.input_entry.insert(0, "ปิดไมค์แล้ว (Mic Muted)")
+            self.mic_btn.config(fg="#ff3333") # Red when muted
         else:
             # Turn ON mic
             self.mic_active = True
-            self.voice_btn.config(text="🔴", fg="#ff3333")
-            self.input_entry.delete(0, tk.END)
-            self.input_entry.insert(0, "🔴 กำลังฟังเสียงอัตโนมัติ... พูดได้เลย")
+            self.mic_btn.config(fg=self.theme["fg"]) # Normal when active
             
             def _listen_worker():
                 recognizer = sr.Recognizer()
@@ -87,9 +96,6 @@ class RightPanel(tk.Frame):
                             if text:
                                 def _send():
                                     self.send_message_callback(text)
-                                    if self.mic_active:
-                                        self.input_entry.delete(0, tk.END)
-                                        self.input_entry.insert(0, "🔴 กำลังฟังเสียงอัตโนมัติ... พูดได้เลย")
                                 self.log_queue.put(_send)
                         except sr.UnknownValueError:
                             pass
@@ -100,9 +106,8 @@ class RightPanel(tk.Frame):
                 except Exception as e:
                     def _err():
                         self.mic_active = False
-                        self.voice_btn.config(text="🎙️", fg=self.theme["fg"])
-                        self.input_entry.delete(0, tk.END)
-                        self.input_entry.insert(0, f"Error: {e}")
+                        self.mic_btn.config(fg="#ff3333")
+                        print(f"Mic error: {e}")
                     self.log_queue.put(_err)
 
             threading.Thread(target=_listen_worker, daemon=True).start()
@@ -110,12 +115,14 @@ class RightPanel(tk.Frame):
     def disable_inputs(self):
         self.send_button.config(state=tk.DISABLED, bg="#666666")
         self.reset_button.config(state=tk.DISABLED, bg="#666666")
-        self.voice_btn.config(state=tk.DISABLED, bg="#666666")
+        self.mic_btn.config(state=tk.DISABLED)
+        self.tts_btn.config(state=tk.DISABLED)
         self.input_entry.config(state=tk.DISABLED)
 
     def enable_inputs(self):
         self.send_button.config(state=tk.NORMAL, bg=self.theme["btn_bg"])
         self.reset_button.config(state=tk.NORMAL, bg="#FF3333")
-        self.voice_btn.config(state=tk.NORMAL, bg="#ff9900")
+        self.mic_btn.config(state=tk.NORMAL)
+        self.tts_btn.config(state=tk.NORMAL)
         self.input_entry.config(state=tk.NORMAL)
         self.input_entry.focus()

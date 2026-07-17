@@ -182,15 +182,29 @@ class OneArmGUI:
                 self.input_queue.task_done()
                 
     def speak(self, text):
+        if not hasattr(self, 'right_panel') or not self.right_panel.tts_active:
+            return
+            
         import os
         import tempfile
         try:
-            from gtts import gTTS
+            from openai import OpenAI
             import pygame
-            tts = gTTS(text=text, lang='th')
+            
+            client = OpenAI()
+            response = client.audio.speech.create(
+                model="tts-1",
+                voice="alloy",
+                input=text
+            )
+            
             with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as f:
                 temp_path = f.name
-            tts.save(temp_path)
+                
+            try:
+                response.write_to_file(temp_path)
+            except AttributeError:
+                response.stream_to_file(temp_path)
             
             pygame.mixer.init()
             pygame.mixer.music.load(temp_path)
