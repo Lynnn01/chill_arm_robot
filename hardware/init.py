@@ -29,6 +29,11 @@ with open("config.json", "r") as config_file:
 
 # Gripper state tracking
 is_holding_object = False
+current_held_object = None
+
+# Object memory tracking
+# Format: {"red block": [150.0, -50.0], "blue block": "in gripper"}
+known_objects = {}
 
 # Open gripper
 def open_gripper():

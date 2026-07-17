@@ -30,6 +30,10 @@ def grab_object(object_name: str, target_coord: list = None) -> list:
     if target_coord and len(target_coord) >= 2:
         print(f"🤖 <SYSTEM>: กำลังขยับแขนกลไปหยิบของที่พิกัด {target_coord}...")
         robot_coord = [float(target_coord[0]), float(target_coord[1])]
+    elif object_name in init.known_objects and isinstance(init.known_objects[object_name], list):
+        saved_coord = init.known_objects[object_name]
+        print(f"🤖 <SYSTEM>: ดึงพิกัด '{object_name}' จากความจำ {saved_coord} (ข้ามการสแกน)...")
+        robot_coord = [float(saved_coord[0]), float(saved_coord[1])]
     else:
         print(f"🤖 <SYSTEM>: กำลังใช้กล้อง AI ค้นหา '{object_name}'...")
         init.GetImage()
@@ -62,6 +66,10 @@ def grab_object(object_name: str, target_coord: list = None) -> list:
     mc.send_coords([robot_coord[0], robot_coord[1], z, -173, 0, -45], 40)
     time.sleep(2)
     init.close_gripper()
+    
+    # Update Memory
+    init.current_held_object = object_name
+    init.known_objects[object_name] = "in gripper"
 
     mc.send_coords([robot_coord[0], robot_coord[1], 200, -173, 0, -45], 20)
     time.sleep(3)

@@ -53,7 +53,8 @@ You are an intelligent 6-axis robotic arm assistant. Your mission is to understa
     - **Y-axis**: Represents Left/Right (Left is positive Y, Right is negative Y). Safe range: [-280, 280].
     - **X-axis**: Represents Forward/Backward (Forward is positive X). Safe range: [-280, 280].
     - **Z-axis**: Represents Up/Down (Up is positive Z). Z=200 is hovering high, Z=110 is table level (lowest safe point). Safe range: [0, 280].
-    Keep this in mind when the user asks you to move in a specific direction!"""
+    Keep this in mind when the user asks you to move in a specific direction!
+11. **Object Memory**: You can use the `scan_object` tool to search the environment and remember an object's location. If the system context shows an object is already in "Known objects", you can use `grab_object` directly without needing to provide `target_coord` (it will pull from memory automatically)."""
     llm_model_name = os.getenv("LLM_MODEL_NAME", "deepseek-chat")
     
     # We must use OpenAIChatCompletionsModel instead of the default Responses API
@@ -76,9 +77,18 @@ def get_contextual_input(raw_input):
     try:
         from hardware import init
         coords = init.mc.get_coords()
-        holding_status = "HOLDING an object" if init.is_holding_object else "EMPTY (not holding anything)"
+        
+        # Format holding status with current held object if any
+        if init.is_holding_object:
+            held_str = f"'{init.current_held_object}'" if init.current_held_object else "an unknown object"
+            holding_status = f"HOLDING {held_str}"
+        else:
+            holding_status = "EMPTY (not holding anything)"
+            
+        memory_str = f"{init.known_objects}" if init.known_objects else "{}"
+        
         if coords and len(coords) >= 3:
-            return f"[System: Current arm coordinates are X={coords[0]}, Y={coords[1]}, Z={coords[2]}. Gripper state: {holding_status}.]\nUser: {raw_input}"
+            return f"[System: Current arm coordinates are X={coords[0]}, Y={coords[1]}, Z={coords[2]}. Gripper state: {holding_status}. Known objects in memory: {memory_str}]\nUser: {raw_input}"
     except Exception as e:
         print(f"Context error: {e}")
     return raw_input

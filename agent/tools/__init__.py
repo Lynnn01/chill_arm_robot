@@ -13,5 +13,6 @@ from .rotate_gripper import rotate_gripper
 from .describe_scene import describe_scene
 from .dance import dance_celebrate
 from .gesture import gesture
+from .scan_object import scan_object
 
-agent_tools = [move_to, grab_object, move_around, show_object, execute_python_code, move, rotate_gripper, describe_scene, dance_celebrate, gesture]
+agent_tools = [move_to, grab_object, move_around, show_object, execute_python_code, move, rotate_gripper, describe_scene, dance_celebrate, gesture, scan_object]

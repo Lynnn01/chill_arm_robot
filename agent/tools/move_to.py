@@ -36,7 +36,12 @@ def move_to(target_coord: list, target_height: int = 110) -> str:
     mc.send_angles([0, 0, 0, 0, 0, -45], 40)
     time.sleep(1)
 
-    print("🤖 <SYSTEM>: วางวัตถุสำเร็จ")
+    # Update Memory
+    if init.current_held_object:
+        init.known_objects[init.current_held_object] = [round(target_coord[0], 2), round(target_coord[1], 2)]
+        init.current_held_object = None
+
+    print("🤖 <SYSTEM>: วางวัตถุสำเร็จ (อัปเดตความจำแล้ว)")
     actual_coords = mc.get_coords()
     if actual_coords and len(actual_coords) >= 3:
         return f"Objects arranged successfully. Current arm position: X:{actual_coords[0]}, Y:{actual_coords[1]}, Z:{actual_coords[2]}."
