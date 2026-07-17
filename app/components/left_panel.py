@@ -3,7 +3,6 @@ import threading
 import cv2
 from PIL import Image, ImageTk
 from hardware.init import cam_manager, mc
-import hardware.init as hw_init
 
 class LeftPanel(tk.Frame):
     def __init__(self, parent, theme, log_queue, run_quick_action_callback):
@@ -93,12 +92,11 @@ class LeftPanel(tk.Frame):
             
             var = tk.DoubleVar(value=config_data.get(axis, 0))
             ent = tk.Entry(calib_frame, textvariable=var, font=("Tahoma", 12), bg=self.theme["dash_bg"], fg=self.theme["fg"], width=10, insertbackground=self.theme["fg"])
-            ent.grid(row=i, column=1, sticky="w")
+            ent.grid(row=i, column=1, sticky="w", pady=10)
             self.calib_vars[axis] = var
-
-        save_btn = tk.Button(calib_frame, text="💾 Save Calibration", command=self.save_calibration, font=("Tahoma", 11, "bold"), bg="#4CAF50", fg="white", relief=tk.FLAT, cursor="hand2")
-        save_btn.grid(row=3, column=0, columnspan=2, pady=15, ipadx=20, ipady=5)
-
+            
+        tk.Button(calib_frame, text="Save Calibration", font=("Tahoma", 12, "bold"), bg="#0078D7", fg="white", relief=tk.FLAT, cursor="hand2", command=self.save_calibration).grid(row=3, column=0, columnspan=2, pady=15, ipadx=10, ipady=5)
+        
         # Tab 3: Memory
         self.tab_memory = tk.Frame(self.notebook, bg=self.theme["bg"])
         self.notebook.add(self.tab_memory, text='Memory')
@@ -114,55 +112,7 @@ class LeftPanel(tk.Frame):
         self.update_dashboard()
         self.update_memory_dashboard()
 
-    def save_calibration(self):
-        import json
-        try:
-            with open("config.json", "r") as f:
-                config_data = json.load(f)
-        except Exception:
-            config_data = {}
-            
-        for axis in ["x", "y", "z"]:
-            config_data[axis] = self.calib_vars[axis].get()
-            
-        with open("config.json", "w") as f:
-            json.dump(config_data, f, indent=4)
-            
-        def _notify():
-            print("\n✅ <SYSTEM>: Calibration settings saved to config.json")
-        self.log_queue.put(_notify)
-
-    def update_camera_feed(self):
-        frame = cam_manager.get_frame()
-        if frame is not None:
-            # Resize
-            frame = cv2.resize(frame, (640, 480))
-            
-            # Draw Crosshair
-            cx, cy = 320, 240
-            cv2.line(frame, (cx - 20, cy), (cx + 20, cy), (0, 255, 0), 1)
-            cv2.line(frame, (cx, cy - 20), (cx, cy + 20), (0, 255, 0), 1)
-            cv2.circle(frame, (cx, cy), 15, (0, 255, 0), 1)
-            
-            # Draw HUD Background overlay
-            overlay = frame.copy()
-            cv2.rectangle(overlay, (0, 430), (640, 480), (0, 0, 0), -1)
-            cv2.addWeighted(overlay, 0.6, frame, 0.4, 0, frame)
-            
-            # HUD Text
-            holding_status = "Holding Object" if hw_init.is_holding_object else "Empty"
-            memory_count = f"Memory: {len(hw_init.known_objects)} items"
-            cv2.putText(frame, f"STATUS: {holding_status}", (10, 455), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1, cv2.LINE_AA)
-            cv2.putText(frame, memory_count, (10, 475), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 200, 255), 1, cv2.LINE_AA)
-            
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            img = ImageTk.PhotoImage(image=Image.fromarray(frame))
-            self.cam_label.config(image=img, text="")
-            self.cam_label.image = img
-        self.after(50, self.update_camera_feed)
-
     def update_memory_dashboard(self):
-        import hardware.init as hw_init
         self.memory_text.config(state=tk.NORMAL)
         self.memory_text.delete(1.0, tk.END)
         
@@ -186,6 +136,34 @@ class LeftPanel(tk.Frame):
         self.memory_text.config(state=tk.DISABLED)
         
         self.after(1000, self.update_memory_dashboard)
+
+    def save_calibration(self):
+        import json
+        try:
+            with open("config.json", "r") as f:
+                config_data = json.load(f)
+        except Exception:
+            config_data = {}
+            
+        for axis in ["x", "y", "z"]:
+            config_data[axis] = self.calib_vars[axis].get()
+            
+        with open("config.json", "w") as f:
+            json.dump(config_data, f, indent=4)
+            
+        def _notify():
+            print("\n✅ <SYSTEM>: Calibration settings saved to config.json")
+        self.log_queue.put(_notify)
+
+    def update_camera_feed(self):
+        frame = cam_manager.get_frame()
+        if frame is not None:
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frame = cv2.resize(frame, (480, 360))
+            img = ImageTk.PhotoImage(image=Image.fromarray(frame))
+            self.cam_label.config(image=img, text="")
+            self.cam_label.image = img
+        self.after(50, self.update_camera_feed)
 
     def update_dashboard(self):
         def _fetch():
