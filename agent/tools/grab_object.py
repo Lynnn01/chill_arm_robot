@@ -53,8 +53,8 @@ def grab_object(object_name: str, target_coord: list = None) -> list:
             return []
 
     # Safety clamps for grasping
-    robot_coord[0] = max(140.0, min(280.0, float(robot_coord[0])))
-    robot_coord[1] = max(-100.0, min(100.0, float(robot_coord[1])))
+    robot_coord[0] = max(-280.0, min(280.0, float(robot_coord[0])))
+    robot_coord[1] = max(-280.0, min(280.0, float(robot_coord[1])))
 
     init.open_gripper()
     mc.send_coords([robot_coord[0], robot_coord[1], 200, -173, 0, -45], 40)

@@ -14,9 +14,9 @@ def move_to(target_coord: list, target_height: int = 110) -> str:
         target_height: The height to release the object. Default is 110. For stacking, increase by 20 for each subsequent object.
     """
     # Safety clamps
-    target_coord[0] = max(140.0, min(280.0, float(target_coord[0])))
-    target_coord[1] = max(-100.0, min(100.0, float(target_coord[1])))
-    target_height = max(100, min(250, int(target_height)))
+    target_coord[0] = max(-280.0, min(280.0, float(target_coord[0])))
+    target_coord[1] = max(-280.0, min(280.0, float(target_coord[1])))
+    target_height = max(0, min(280, int(target_height)))
 
     width, height = Image.open("captured_image.jpg").size
 
