@@ -135,25 +135,25 @@ class LeftPanel(tk.Frame):
         frame = cam_manager.get_frame()
         if frame is not None:
             # Resize
-            frame = cv2.resize(frame, (480, 360))
+            frame = cv2.resize(frame, (640, 480))
             
             # Draw Crosshair
-            cx, cy = 240, 180
+            cx, cy = 320, 240
             cv2.line(frame, (cx - 20, cy), (cx + 20, cy), (0, 255, 0), 1)
             cv2.line(frame, (cx, cy - 20), (cx, cy + 20), (0, 255, 0), 1)
             cv2.circle(frame, (cx, cy), 15, (0, 255, 0), 1)
             
             # Draw HUD Background overlay
             overlay = frame.copy()
-            cv2.rectangle(overlay, (0, 310), (480, 360), (0, 0, 0), -1)
+            cv2.rectangle(overlay, (0, 430), (640, 480), (0, 0, 0), -1)
             cv2.addWeighted(overlay, 0.6, frame, 0.4, 0, frame)
             
             # HUD Text
             import hardware.init as hw_init
             holding_status = "Holding Object" if hw_init.is_holding_object else "Empty"
             memory_count = f"Memory: {len(hw_init.known_objects)} items"
-            cv2.putText(frame, f"STATUS: {holding_status}", (10, 335), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1, cv2.LINE_AA)
-            cv2.putText(frame, memory_count, (10, 355), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 200, 255), 1, cv2.LINE_AA)
+            cv2.putText(frame, f"STATUS: {holding_status}", (10, 455), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1, cv2.LINE_AA)
+            cv2.putText(frame, memory_count, (10, 475), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 200, 255), 1, cv2.LINE_AA)
             
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             img = ImageTk.PhotoImage(image=Image.fromarray(frame))

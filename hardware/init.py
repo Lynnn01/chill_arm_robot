@@ -63,37 +63,24 @@ def BotInit(mc):
 class CameraManager:
     def __init__(self):
         self.cap = None
-        self.frame = None
-        self.lock = threading.Lock()
-        self.running = False
 
     def start(self):
-        self.cap = cv2.VideoCapture(0) 
-        if not self.cap.isOpened():
-            self.cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
+        # Force V4L2 backend to prevent GStreamer segmentation faults on Jetson
+        self.cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
         
         if self.cap.isOpened():
             self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
             self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-            self.running = True
-            threading.Thread(target=self._update, daemon=True).start()
-
-    def _update(self):
-        while self.running and self.cap and self.cap.isOpened():
-            ret, frame = self.cap.read()
-            if ret:
-                with self.lock:
-                    self.frame = frame.copy()
-            time.sleep(0.03)
+            self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1) # Prevent frame lag without needing a background thread
 
     def get_frame(self):
-        with self.lock:
-            if self.frame is not None:
-                return self.frame.copy()
+        if self.cap and self.cap.isOpened():
+            ret, frame = self.cap.read()
+            if ret:
+                return frame.copy()
         return None
 
     def stop(self):
-        self.running = False
         if self.cap:
             self.cap.release()
 

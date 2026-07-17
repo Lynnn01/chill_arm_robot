@@ -31,7 +31,9 @@ class RedirectText:
 class OneArmGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("ONE ARM Command Center")
+        self.root.title("MyCobot 280 AI Control")
+        
+        self.current_speaker = "sys"
         
         # Maximize window on startup (cross-platform compatible method)
         try:
@@ -136,13 +138,21 @@ class OneArmGUI:
                     text = msg.strip()
                     if text:
                         if text.startswith("<USER>:"):
-                            self.right_panel.log_text.insert(tk.END, " " + text.replace("<USER>:", "").strip() + " \n", "user")
+                            self.current_speaker = "user"
+                            text = text.replace("<USER>:", "").strip()
                         elif text.startswith("🤖 <LLM>:"):
-                            self.right_panel.log_text.insert(tk.END, " " + text.replace("🤖 <LLM>:", "🤖").strip() + " \n", "llm")
+                            self.current_speaker = "llm"
+                            text = text.replace("🤖 <LLM>:", "🤖").strip()
                         elif "<SYSTEM>:" in text or "<ERROR>:" in text or "[MOCK]" in text or text.startswith("✅") or text.startswith("⚠️"):
-                            self.right_panel.log_text.insert(tk.END, text + "\n", "sys")
+                            self.current_speaker = "sys"
+                        
+                        # Add space padding for user/llm to simulate bubble margins
+                        if self.current_speaker in ["user", "llm"]:
+                            display_text = " " + text + " \n"
                         else:
-                            self.right_panel.log_text.insert(tk.END, text + "\n", "sys")
+                            display_text = text + "\n"
+                            
+                        self.right_panel.log_text.insert(tk.END, display_text, self.current_speaker)
                     self.right_panel.log_text.config(state=tk.DISABLED)
                     self.right_panel.log_text.see(tk.END)
         except queue.Empty:
