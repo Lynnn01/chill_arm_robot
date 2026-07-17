@@ -1,7 +1,6 @@
 from hardware import init
 
 mc = init.mc
-init.BotInit(mc)
 
 from .move_to import move_to
 from .grab_object import grab_object
