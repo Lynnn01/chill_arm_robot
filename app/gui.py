@@ -138,21 +138,13 @@ class OneArmGUI:
                     text = msg.strip()
                     if text:
                         if text.startswith("<USER>:"):
-                            self.current_speaker = "user"
-                            text = text.replace("<USER>:", "").strip()
+                            tag = "user"
                         elif text.startswith("🤖 <LLM>:"):
-                            self.current_speaker = "llm"
-                            text = text.replace("🤖 <LLM>:", "🤖").strip()
-                        elif "<SYSTEM>:" in text or "<ERROR>:" in text or "[MOCK]" in text or text.startswith("✅") or text.startswith("⚠️"):
-                            self.current_speaker = "sys"
-                        
-                        # Add space padding for user/llm to simulate bubble margins
-                        if self.current_speaker in ["user", "llm"]:
-                            display_text = " " + text + " \n"
+                            tag = "llm"
                         else:
-                            display_text = text + "\n"
+                            tag = "sys"
                             
-                        self.right_panel.log_text.insert(tk.END, display_text, self.current_speaker)
+                        self.right_panel.log_text.insert(tk.END, text + "\n\n", tag)
                     self.right_panel.log_text.config(state=tk.DISABLED)
                     self.right_panel.log_text.see(tk.END)
         except queue.Empty:

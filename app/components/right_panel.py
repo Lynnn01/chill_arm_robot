@@ -27,11 +27,10 @@ class RightPanel(tk.Frame):
                                 highlightthickness=2, relief=tk.FLAT, bd=0, padx=15, pady=15)
         self.log_text.grid(row=1, column=0, sticky="nsew", pady=(0, 20))
         
-        # Configure Chat Bubble Tags
-        llm_bg = "#333333" if self.theme["bg"] == "#1e1e1e" else "#E5E5EA"
-        self.log_text.tag_configure("user", justify="right", background="#0078D7", foreground="white", font=("Tahoma", 14, "bold"), spacing1=8, spacing3=8, rmargin=5, lmargin1=50, lmargin2=50)
-        self.log_text.tag_configure("llm", justify="left", background=llm_bg, foreground=self.theme["fg"], font=("Tahoma", 14), spacing1=8, spacing3=8, lmargin1=5, rmargin=50)
-        self.log_text.tag_configure("sys", justify="center", foreground="#888888", font=("Tahoma", 12, "italic"), spacing1=5, spacing3=5)
+        # Configure Basic Log Tags
+        self.log_text.tag_configure("user", justify="right", foreground="#0078D7", font=("Tahoma", 12, "bold"))
+        self.log_text.tag_configure("llm", justify="left", foreground=self.theme["fg"], font=("Tahoma", 12))
+        self.log_text.tag_configure("sys", justify="left", foreground="#888888", font=("Tahoma", 10, "italic"))
 
         # Input Area
         input_frame = tk.Frame(self, bg=self.theme["bg"])
