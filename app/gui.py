@@ -13,10 +13,20 @@ from agents import Runner
 class RedirectText:
     def __init__(self, q):
         self.q = q
+        self.buffer = ""
+        
     def write(self, string):
-        self.q.put(string)
+        self.buffer += string
+        if '\n' in self.buffer:
+            lines = self.buffer.split('\n')
+            for line in lines[:-1]:
+                self.q.put(line + '\n')
+            self.buffer = lines[-1]
+
     def flush(self):
-        pass
+        if self.buffer:
+            self.q.put(self.buffer + '\n')
+            self.buffer = ""
 
 class OneArmGUI:
     def __init__(self, root):
@@ -122,7 +132,18 @@ class OneArmGUI:
                 if callable(msg):
                     msg()
                 else:
-                    self.right_panel.log_text.insert(tk.END, msg)
+                    self.right_panel.log_text.config(state=tk.NORMAL)
+                    text = msg.strip()
+                    if text:
+                        if text.startswith("<USER>:"):
+                            self.right_panel.log_text.insert(tk.END, " " + text.replace("<USER>:", "").strip() + " \n", "user")
+                        elif text.startswith("🤖 <LLM>:"):
+                            self.right_panel.log_text.insert(tk.END, " " + text.replace("🤖 <LLM>:", "🤖").strip() + " \n", "llm")
+                        elif "<SYSTEM>:" in text or "<ERROR>:" in text or "[MOCK]" in text or text.startswith("✅") or text.startswith("⚠️"):
+                            self.right_panel.log_text.insert(tk.END, text + "\n", "sys")
+                        else:
+                            self.right_panel.log_text.insert(tk.END, text + "\n", "sys")
+                    self.right_panel.log_text.config(state=tk.DISABLED)
                     self.right_panel.log_text.see(tk.END)
         except queue.Empty:
             pass

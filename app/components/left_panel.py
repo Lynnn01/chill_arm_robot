@@ -98,8 +98,20 @@ class LeftPanel(tk.Frame):
         save_btn = tk.Button(calib_frame, text="💾 Save Calibration", command=self.save_calibration, font=("Tahoma", 11, "bold"), bg="#4CAF50", fg="white", relief=tk.FLAT, cursor="hand2")
         save_btn.grid(row=3, column=0, columnspan=2, pady=15, ipadx=20, ipady=5)
 
+        # Tab 3: Memory
+        self.tab_memory = tk.Frame(self.notebook, bg=self.theme["bg"])
+        self.notebook.add(self.tab_memory, text='Memory')
+        
+        mem_frame = tk.LabelFrame(self.tab_memory, text=" AI Object Memory ", font=("Tahoma", 12, "bold"), bg=self.theme["frame"], fg=self.theme["fg"], bd=2, relief=tk.FLAT, highlightbackground=self.theme["border"], highlightthickness=1)
+        mem_frame.pack(fill=tk.BOTH, expand=True, pady=(10, 20), ipadx=10, ipady=10)
+        
+        self.memory_text = tk.Text(mem_frame, wrap=tk.WORD, bg=self.theme["dash_bg"], fg=self.theme["fg"], font=("Tahoma", 11), bd=0, relief=tk.FLAT)
+        self.memory_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        self.memory_text.config(state=tk.DISABLED)
+
         self.update_camera_feed()
         self.update_dashboard()
+        self.update_memory_dashboard()
 
     def save_calibration(self):
         import json
@@ -122,12 +134,58 @@ class LeftPanel(tk.Frame):
     def update_camera_feed(self):
         frame = cam_manager.get_frame()
         if frame is not None:
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            # Resize
             frame = cv2.resize(frame, (480, 360))
+            
+            # Draw Crosshair
+            cx, cy = 240, 180
+            cv2.line(frame, (cx - 20, cy), (cx + 20, cy), (0, 255, 0), 1)
+            cv2.line(frame, (cx, cy - 20), (cx, cy + 20), (0, 255, 0), 1)
+            cv2.circle(frame, (cx, cy), 15, (0, 255, 0), 1)
+            
+            # Draw HUD Background overlay
+            overlay = frame.copy()
+            cv2.rectangle(overlay, (0, 310), (480, 360), (0, 0, 0), -1)
+            cv2.addWeighted(overlay, 0.6, frame, 0.4, 0, frame)
+            
+            # HUD Text
+            import hardware.init as hw_init
+            holding_status = "Holding Object" if hw_init.is_holding_object else "Empty"
+            memory_count = f"Memory: {len(hw_init.known_objects)} items"
+            cv2.putText(frame, f"STATUS: {holding_status}", (10, 335), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1, cv2.LINE_AA)
+            cv2.putText(frame, memory_count, (10, 355), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 200, 255), 1, cv2.LINE_AA)
+            
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             img = ImageTk.PhotoImage(image=Image.fromarray(frame))
             self.cam_label.config(image=img, text="")
             self.cam_label.image = img
         self.after(50, self.update_camera_feed)
+
+    def update_memory_dashboard(self):
+        import hardware.init as hw_init
+        self.memory_text.config(state=tk.NORMAL)
+        self.memory_text.delete(1.0, tk.END)
+        
+        text_content = "🧠 Known Objects:\n\n"
+        if not hw_init.known_objects:
+            text_content += "   (Empty)\n"
+        else:
+            for obj, coords in hw_init.known_objects.items():
+                if isinstance(coords, list):
+                    text_content += f" 🔹 {obj}: [X: {coords[0]:.1f}, Y: {coords[1]:.1f}]\n"
+                else:
+                    text_content += f" 🔹 {obj}: {coords}\n"
+                
+        text_content += f"\n🖐️ Gripper Status:\n\n"
+        if hw_init.is_holding_object:
+            text_content += f" 🔸 Holding: {hw_init.current_held_object}\n"
+        else:
+            text_content += " 🔸 Empty\n"
+            
+        self.memory_text.insert(tk.END, text_content)
+        self.memory_text.config(state=tk.DISABLED)
+        
+        self.after(1000, self.update_memory_dashboard)
 
     def update_dashboard(self):
         def _fetch():
