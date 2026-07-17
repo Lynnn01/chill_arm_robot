@@ -21,9 +21,34 @@ else:
 #GPIO.setup(20, GPIO.OUT)
 #GPIO.setup(21, GPIO.OUT)
 
+class MockMyCobot:
+    def __init__(self):
+        print("\n⚠️ [MOCK MODE] Physical robotic arm not found. Running in simulation mode.")
+        self.coords = [0, 0, 200, -175, 0, -45]
+        self.angles = [0, 0, 0, 0, 0, -45]
+    def send_coords(self, coords, speed, mode=0):
+        self.coords = coords
+        print(f"🤖 [MOCK] -> Moving to coords: {coords} (speed {speed})")
+    def send_angles(self, angles, speed):
+        self.angles = angles
+        print(f"🤖 [MOCK] -> Moving to angles: {angles} (speed {speed})")
+    def get_coords(self):
+        return self.coords
+    def get_angles(self):
+        return self.angles
+    def set_gripper_value(self, value, speed):
+        print(f"🤖 [MOCK] -> Setting gripper value: {value} (speed {speed})")
+    def set_fresh_mode(self, mode):
+        print(f"🤖 [MOCK] -> Set fresh mode: {mode}")
+
 mycobot_port = os.getenv("MYCOBOT_PORT", "/dev/ttyUSB0")
 mycobot_baud = int(os.getenv("MYCOBOT_BAUD", "1000000"))
-mc = MyCobot(mycobot_port, mycobot_baud)
+
+try:
+    mc = MyCobot(mycobot_port, mycobot_baud)
+except Exception as e:
+    print(f"\n⚠️ <SYSTEM>: Could not connect to MyCobot on {mycobot_port}. Error: {e}")
+    mc = MockMyCobot()
 
 with open("config.json", "r") as config_file:
     config_data = json.load(config_file)

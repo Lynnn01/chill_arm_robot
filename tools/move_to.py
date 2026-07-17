@@ -39,4 +39,7 @@ def move_to(target_coord: list, target_height: int = 110) -> str:
     time.sleep(1)
 
     print("Objects arranged successfully")
+    actual_coords = mc.get_coords()
+    if actual_coords and len(actual_coords) >= 3:
+        return f"Objects arranged successfully. Current arm position: X:{actual_coords[0]}, Y:{actual_coords[1]}, Z:{actual_coords[2]}."
     return "Objects arranged successfully."

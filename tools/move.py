@@ -26,4 +26,7 @@ def move(x: float, y: float, z: float, speed: int = 40) -> str:
     mc.send_coords([x, y, z, -175, 0, -45], speed)
     time.sleep(3) # Wait for movement to complete
     
-    return f"Moved successfully to X:{x}, Y:{y}, Z:{z}."
+    actual_coords = mc.get_coords()
+    if actual_coords and len(actual_coords) >= 3:
+        return f"Moved successfully. Verified current coordinates are: X:{actual_coords[0]}, Y:{actual_coords[1]}, Z:{actual_coords[2]}."
+    return f"Moved successfully to target X:{x}, Y:{y}, Z:{z}."

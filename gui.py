@@ -63,8 +63,11 @@ class OneArmGUI:
         try:
             while True:
                 msg = self.log_queue.get_nowait()
-                self.log_text.insert(tk.END, msg)
-                self.log_text.see(tk.END)
+                if callable(msg):
+                    msg()
+                else:
+                    self.log_text.insert(tk.END, msg)
+                    self.log_text.see(tk.END)
         except queue.Empty:
             pass
         finally:
@@ -75,20 +78,21 @@ class OneArmGUI:
         self.root.rowconfigure(0, weight=1)
 
         # Main frame (Padding around the app)
-        main_frame = tk.Frame(self.root, bg=self.bg_color)
-        main_frame.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
+        main_frame = tk.Frame(self.root, bg=self.bg_color, bd=0)
+        main_frame.grid(row=0, column=0, sticky="nsew", padx=30, pady=30)
         main_frame.columnconfigure(0, weight=1)
         main_frame.rowconfigure(1, weight=1) # Log area expands
 
         # Title Label
-        title_label = tk.Label(main_frame, text="🤖 ONE ARM ASSISTANT", font=("Tahoma", 18, "bold"), 
-                               bg=self.bg_color, fg=self.fg_color)
-        title_label.grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 15))
+        title_frame = tk.Frame(main_frame, bg=self.bg_color)
+        title_frame.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 20))
+        tk.Label(title_frame, text="ONE ARM", font=("Tahoma", 28, "bold"), bg=self.bg_color, fg=self.fg_color).pack(side=tk.LEFT)
+        tk.Label(title_frame, text="INTELLIGENT ROBOTIC ASSISTANT", font=("Tahoma", 10, "bold"), bg=self.fg_color, fg=self.bg_color, padx=10, pady=5).pack(side=tk.LEFT, padx=15)
 
         # Log Text Area 
-        self.log_text = tk.Text(main_frame, wrap=tk.WORD, bg=self.bg_color, fg=self.fg_color, 
-                                font=("Tahoma", 12), highlightbackground=self.fg_color, 
-                                highlightthickness=2, bd=0, padx=10, pady=10)
+        self.log_text = tk.Text(main_frame, wrap=tk.WORD, bg="#FAFAFA", fg=self.fg_color, 
+                                font=("Tahoma", 12), highlightbackground="#DDDDDD", highlightcolor=self.fg_color, 
+                                highlightthickness=2, relief=tk.FLAT, bd=0, padx=15, pady=15)
         self.log_text.grid(row=1, column=0, columnspan=2, sticky="nsew", pady=(0, 20))
 
         # Scrollbar for Text
@@ -103,22 +107,23 @@ class OneArmGUI:
 
         # Input Entry
         self.input_entry = tk.Entry(input_frame, font=("Tahoma", 14), 
-                                    bg=self.bg_color, fg=self.fg_color, insertbackground=self.fg_color,
-                                    highlightbackground=self.fg_color, highlightthickness=2, bd=0)
-        self.input_entry.grid(row=0, column=0, sticky="ew", padx=(0, 15), ipady=8)
+                                    bg="#FAFAFA", fg=self.fg_color, insertbackground=self.fg_color,
+                                    highlightbackground="#DDDDDD", highlightcolor=self.fg_color, 
+                                    highlightthickness=2, relief=tk.FLAT, bd=0)
+        self.input_entry.grid(row=0, column=0, sticky="ew", padx=(0, 15), ipady=12)
         self.input_entry.bind("<Return>", lambda event: self.send_message())
 
         # Send Button
         self.send_button = tk.Button(input_frame, text="SEND", font=("Tahoma", 12, "bold"),
                                      bg=self.fg_color, fg=self.bg_color, activebackground="#333333", 
-                                     activeforeground="white", command=self.send_message, bd=0)
-        self.send_button.grid(row=0, column=1, sticky="e", ipadx=30, ipady=8)
+                                     activeforeground="white", relief=tk.FLAT, bd=0, command=self.send_message)
+        self.send_button.grid(row=0, column=1, sticky="e", ipadx=30, ipady=10)
 
         # Reset Button
         self.reset_button = tk.Button(input_frame, text="RESET", font=("Tahoma", 12, "bold"),
-                                      bg="#ff4444", fg="white", activebackground="#cc0000",
-                                      activeforeground="white", command=self.reset_robot, bd=0)
-        self.reset_button.grid(row=0, column=2, sticky="e", padx=(10, 0), ipadx=20, ipady=8)
+                                      bg="#FF3333", fg="white", activebackground="#CC0000",
+                                      activeforeground="white", relief=tk.FLAT, bd=0, command=self.reset_robot)
+        self.reset_button.grid(row=0, column=2, sticky="e", padx=(10, 0), ipadx=20, ipady=10)
 
         # Focus input automatically
         self.input_entry.focus()
@@ -139,7 +144,7 @@ class OneArmGUI:
         except Exception as e:
             print(f"\n⚠️ <ERROR>: ไม่สามารถรีเซ็ตได้ - {e}")
         finally:
-            self.root.after(0, self.enable_inputs)
+            self.log_queue.put(self.enable_inputs)
 
     def send_message(self):
         user_input = self.input_entry.get().strip()
@@ -170,8 +175,7 @@ class OneArmGUI:
             print(f"\n⚠️ <ERROR>: {e}\n")
         finally:
             loop.close()
-            # Re-enable inputs via main thread safely
-            self.root.after(0, self.enable_inputs)
+            self.log_queue.put(self.enable_inputs)
 
     def enable_inputs(self):
         self.send_button.config(state=tk.NORMAL, bg=self.fg_color)
