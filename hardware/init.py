@@ -1,13 +1,35 @@
 import time
 import cv2
 import os
+import sys
 import json
 import threading
 import unittest.mock
 
-from pymycobot.mycobot import MyCobot
+# ---------------------------------------------------------------------------
+# Platform-aware robot arm import
+# ---------------------------------------------------------------------------
+# ลำดับการตัดสินใจเลือก platform:
+#   1. MYCOBOT_PLATFORM=windows  → ใช้ MyCobot280 (COM port)
+#   2. MYCOBOT_PLATFORM=linux    → ใช้ MyCobot (ttyUSB0)
+#   3. ไม่กำหนด                 → auto-detect จาก sys.platform
+# ---------------------------------------------------------------------------
+_platform_override = os.getenv("MYCOBOT_PLATFORM", "").lower()
+_is_windows = (
+    _platform_override == "windows"
+    or (_platform_override == "" and sys.platform == "win32")
+)
 
-mycobot_port = os.getenv("MYCOBOT_PORT", "/dev/ttyUSB0")
+if _is_windows:
+    from pymycobot.mycobot280 import MyCobot280 as _MyCobotClass
+    _default_port = "COM10"
+    print("[init] Platform: Windows → using MyCobot280")
+else:
+    from pymycobot.mycobot import MyCobot as _MyCobotClass
+    _default_port = "/dev/ttyUSB0"
+    print("[init] Platform: Linux/Jetson → using MyCobot")
+
+mycobot_port = os.getenv("MYCOBOT_PORT", _default_port)
 mycobot_baud = int(os.getenv("MYCOBOT_BAUD", "1000000"))
 
 # --- Robot Arm ---
@@ -15,9 +37,9 @@ mycobot_baud = int(os.getenv("MYCOBOT_BAUD", "1000000"))
 _mc_lock = threading.Lock()
 
 class LockedMyCobot:
-    """Wraps MyCobot with a global lock to prevent concurrent Serial access."""
+    """Wraps MyCobot/MyCobot280 with a global lock to prevent concurrent Serial access."""
     def __init__(self, port, baud):
-        self._mc = MyCobot(port, baud)
+        self._mc = _MyCobotClass(port, baud)
 
     def _call(self, method, *args, **kwargs):
         with _mc_lock:
@@ -30,14 +52,15 @@ class LockedMyCobot:
     def get_angles(self): return self._call("get_angles")
     def set_gripper_value(self, value, speed): return self._call("set_gripper_value", value, speed)
     def set_fresh_mode(self, mode): return self._call("set_fresh_mode", mode)
+    def power_on(self): return self._call("power_on")
     def set_color(self, r, g, b): return self._call("set_color", r, g, b)
     def release_all_servos(self): return self._call("release_all_servos")
 
 try:
     mc = LockedMyCobot(mycobot_port, mycobot_baud)
-    print(f"✅ Connected to MyCobot on {mycobot_port}")
+    print(f"✅ Connected to {'MyCobot280' if _is_windows else 'MyCobot'} on {mycobot_port}")
 except Exception as e:
-    print(f"\n⚠️ <SYSTEM>: Could not connect to MyCobot on {mycobot_port}. Error: {e}")
+    print(f"\n⚠️ <SYSTEM>: Could not connect on {mycobot_port}. Error: {e}")
     mc = unittest.mock.MagicMock()
     mc.get_coords.return_value = [0, 0, 200, -175, 0, -45]
     mc.get_angles.return_value = [0, 0, 0, 0, 0, -45]
@@ -74,9 +97,19 @@ def close_gripper():
 
 def BotInit(mc):
     try:
-        mc.set_fresh_mode(0)
+        # Windows (MyCobot280) ใช้ fresh_mode(1) + power_on ก่อน
+        if _is_windows:
+            mc.set_fresh_mode(1)
+            time.sleep(0.2)
+            mc.power_on()
+            time.sleep(0.5)
+        else:
+            mc.set_fresh_mode(0)
+
+        print("Moving to Home position...")
         mc.send_angles([0, 0, 0, 0, 0, -45], 40)
         time.sleep(3)
+        print("Moving to Ready position...")
         mc.send_angles([17.75, -0.79, 0.35, -75, 1.14, -28.12], 40)
         time.sleep(3)
     except Exception as e:
@@ -99,9 +132,9 @@ class CameraManager:
         # Initialize VideoCapture in the MAIN thread to avoid OpenCV Qt plugin crashes on Jetson
         try:
             # Try V4L2 first (bypasses GStreamer)
-            cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
+            cap = cv2.VideoCapture(1, cv2.CAP_V4L2)
             if not cap.isOpened():
-                cap = cv2.VideoCapture(0)
+                cap = cv2.VideoCapture(1)
             
             if not cap.isOpened():
                 print("⚠️ Camera not available. Running without camera feed.")
