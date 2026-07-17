@@ -202,3 +202,38 @@ def QwenVLRequest(object_name, image_path):
 
     except Exception as e:
         return {"coordinates": [], "error": str(e)}
+
+def QwenVLDescribe(question, image_path):
+    """
+    Use OpenAI-compatible vision model to answer a general question about an image.
+    
+    :param question: The question to ask about the image
+    :param image_path: Local image file path
+    :return: Returns text description from the model
+    """
+    try:
+        with open(image_path, "rb") as image_file:
+            image_base64 = base64.b64encode(image_file.read()).decode('utf-8')
+
+        response = vl_client.chat.completions.create(
+            model=qwen_vl_model,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": question},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": "data:image/jpeg;base64," + image_base64
+                            },
+                        },
+                    ],
+                }
+            ],
+            temperature=0.4,
+            max_tokens=300,
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"Error analyzing image: {str(e)}"
