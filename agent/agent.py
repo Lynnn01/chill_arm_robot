@@ -15,8 +15,8 @@ os.environ["OPENAI_AGENTS_DISABLE_TRACING"] = "1"
 
 from agents import Agent, Runner
 from agents.models.openai_chatcompletions import OpenAIChatCompletionsModel
-from tools import agent_tools
-import init
+from agent.tools import agent_tools
+from hardware import init
 from openai import AsyncOpenAI
 
 def exit_function():

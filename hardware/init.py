@@ -3,6 +3,7 @@ import cv2
 import os
 import json
 import numpy as np
+import threading
 from pymycobot.mycobot import MyCobot
 from pymycobot.genre import Angle
 from pymycobot.genre import Coord
@@ -93,26 +94,51 @@ def BotInit(mc):
     mc.send_angles([17.75, -0.79, 0.35, -75, 1.14, -28.12], 40)
     time.sleep(3)
 
+class CameraManager:
+    def __init__(self):
+        self.cap = None
+        self.frame = None
+        self.lock = threading.Lock()
+        self.running = False
+
+    def start(self):
+        # On Windows, try cv2.CAP_DSHOW, on Linux CAP_V4L2. Try default first.
+        self.cap = cv2.VideoCapture(0) 
+        if not self.cap.isOpened():
+            self.cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
+        
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        self.running = True
+        threading.Thread(target=self._update, daemon=True).start()
+
+    def _update(self):
+        while self.running and self.cap and self.cap.isOpened():
+            ret, frame = self.cap.read()
+            if ret:
+                with self.lock:
+                    self.frame = frame.copy()
+            time.sleep(0.03)
+
+    def get_frame(self):
+        with self.lock:
+            if self.frame is not None:
+                return self.frame.copy()
+        return None
+
+    def stop(self):
+        self.running = False
+        if self.cap:
+            self.cap.release()
+
+cam_manager = CameraManager()
+cam_manager.start()
+
 def GetImage():
-    capture = cv2.VideoCapture(0, cv2.CAP_V4L2)
-
-    capture.set(cv2.CAP_PROP_FRAME_WIDTH, 640)  # Set image width
-    capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)  # Set image height
-    #capture.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter.fourcc('M', 'J', 'P', 'G'))
-    index=1
-
-    if not capture.isOpened():
-        print("Cannot open camera")
+    frame = cam_manager.get_frame()
+    if frame is not None:
+        filename = "captured_image.jpg"
+        cv2.imwrite(filename, frame)
+        print(f"Image saved as {filename}")
     else:
-        ret, frame = capture.read()
-        if ret:
-            # Save image
-            filename = "captured_image.jpg"
-            cv2.imwrite(filename, frame)
-            print(f"Image saved as {filename}")
-        else:
-            print("Failed to capture image")
-
-    # Release camera
-    capture.release()
-    cv2.destroyAllWindows()
+        print("Failed to capture image from CameraManager")
