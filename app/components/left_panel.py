@@ -113,6 +113,7 @@ class LeftPanel(tk.Frame):
         self.update_memory_dashboard()
 
     def update_memory_dashboard(self):
+        import hardware.init as hw_init
         self.memory_text.config(state=tk.NORMAL)
         self.memory_text.delete(1.0, tk.END)
         
