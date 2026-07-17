@@ -21,24 +21,22 @@ def move_to(target_coord: list, target_height: int = 110) -> str:
     width, height = Image.open("captured_image.jpg").size
 
     # Move the object to the target position
-    print("*************")
-    print(target_coord)
+    print(f"🤖 <SYSTEM>: กำลังเคลื่อนย้ายวัตถุไปวางที่เป้าหมายพิกัด {target_coord} ความสูง {target_height}...")
 
-    time.sleep(3)
     mc.send_coords([target_coord[0], target_coord[1], 180, -175, 0, -45], 40)
-    time.sleep(3)
+    time.sleep(2.5)
 
     mc.send_coords([target_coord[0], target_coord[1], target_height, -175, 0, -45], 40)
-    time.sleep(3)
+    time.sleep(2)
     init.open_gripper()
     time.sleep(1)
 
     mc.send_coords([target_coord[0], target_coord[1], 200, -175, 0, -45], 40)
-    time.sleep(3)
+    time.sleep(2)
     mc.send_angles([0, 0, 0, 0, 0, -45], 40)
     time.sleep(1)
 
-    print("Objects arranged successfully")
+    print("🤖 <SYSTEM>: วางวัตถุสำเร็จ")
     actual_coords = mc.get_coords()
     if actual_coords and len(actual_coords) >= 3:
         return f"Objects arranged successfully. Current arm position: X:{actual_coords[0]}, Y:{actual_coords[1]}, Z:{actual_coords[2]}."

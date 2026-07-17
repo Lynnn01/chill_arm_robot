@@ -28,13 +28,13 @@ def grab_object(object_name: str, target_coord: list = None) -> list:
     z = 120 + z_offset
 
     if target_coord and len(target_coord) >= 2:
-        print(f"Skipping vision, using provided coordinates: {target_coord}")
+        print(f"🤖 <SYSTEM>: กำลังขยับแขนกลไปหยิบของที่พิกัด {target_coord}...")
         robot_coord = [float(target_coord[0]), float(target_coord[1])]
     else:
+        print(f"🤖 <SYSTEM>: กำลังใช้กล้อง AI ค้นหา '{object_name}'...")
         init.GetImage()
         width, height = Image.open('captured_image.jpg').size
         positions = api.QwenVLRequest("a " + object_name, "captured_image.jpg").get("coordinates", [])
-        print(positions)
 
         if positions:
             position = positions[0]
@@ -43,13 +43,13 @@ def grab_object(object_name: str, target_coord: list = None) -> list:
             center_y = (position['y1'] + position['y2']) / 2
             target_pixel = (center_x / 1000 * width, center_y / 1000 * height)
             robot_coord = eyeonhand.pixel_to_arm(target_pixel)
-            print("Pixel coordinates {} correspond to robot arm coordinates {}".format(target_pixel, robot_coord))
+            print(f"🤖 <SYSTEM>: เจอแล้ว! กำลังเคลื่อนที่ไปพิกัด {robot_coord}")
             robot_coord[0] = robot_coord[0] + x_offset
             robot_coord[1] = robot_coord[1] + y_offset
             if robot_coord[0] > 210:
                 robot_coord[0] = robot_coord[0] - 5
         else:
-            print("No position data found")
+            print(f"🤖 <SYSTEM>: ไม่พบ {object_name} ในภาพ")
             return []
 
     # Safety clamps for grasping
@@ -58,9 +58,9 @@ def grab_object(object_name: str, target_coord: list = None) -> list:
 
     init.open_gripper()
     mc.send_coords([robot_coord[0], robot_coord[1], 200, -173, 0, -45], 40)
-    time.sleep(5)
+    time.sleep(3)
     mc.send_coords([robot_coord[0], robot_coord[1], z, -173, 0, -45], 40)
-    time.sleep(5)
+    time.sleep(2)
     init.close_gripper()
 
     mc.send_coords([robot_coord[0], robot_coord[1], 200, -173, 0, -45], 20)

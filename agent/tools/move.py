@@ -19,7 +19,7 @@ def move(x: float, y: float, z: float, speed: int = 40) -> str:
     y = max(-100.0, min(100.0, float(y)))
     z = max(100.0, min(250.0, float(z)))
 
-    print(f"Moving arm to (X:{x}, Y:{y}, Z:{z}) with speed {speed}...")
+    print(f"🤖 <SYSTEM>: กำลังขยับแขนกลไปที่พิกัด (X:{x}, Y:{y}, Z:{z}) ด้วยความเร็ว {speed}...")
     
     # Send coordinates: [x, y, z, rx, ry, rz]. 
     # rx, ry, rz are kept at [-175, 0, -45] to keep the gripper facing downwards securely.
