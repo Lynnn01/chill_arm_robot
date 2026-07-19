@@ -6,6 +6,7 @@ from hardware.init import mc
 from hardware import init
 from vision import eyeonhand
 from agents import function_tool
+from vision import yolo_detector
 
 @function_tool
 def grab_object(object_name: str, target_coord: list = None) -> list:
@@ -40,28 +41,35 @@ def grab_object(object_name: str, target_coord: list = None) -> list:
         print(f"🤖 <SYSTEM>: ดึงพิกัด '{object_name}' จากความจำ {saved_coord} (ข้ามการสแกน)...")
         robot_coord = [float(saved_coord[0]), float(saved_coord[1])]
     else:
-        print(f"🤖 <SYSTEM>: กำลังใช้กล้อง AI ค้นหา '{object_name}'...")
-        init.GetImage()
-        import os
-        img_path = os.path.join(init.PROJECT_ROOT, "captured_image.jpg")
-        width, height = Image.open(img_path).size
-        positions = api.QwenVLRequest("a " + object_name, img_path).get("coordinates", [])
-
-        if positions:
-            position = positions[0]
-            # Calculate center point coordinates
-            center_x = (position['x1'] + position['x2']) / 2
-            center_y = (position['y1'] + position['y2']) / 2
-            target_pixel = (center_x / 1000 * width, center_y / 1000 * height)
-            robot_coord = eyeonhand.pixel_to_arm(target_pixel)
-            print(f"🤖 <SYSTEM>: เจอแล้ว! กำลังเคลื่อนที่ไปพิกัด {robot_coord}")
-            robot_coord[0] = robot_coord[0] + x_offset
-            robot_coord[1] = robot_coord[1] + y_offset
-            if robot_coord[0] > 210:
-                robot_coord[0] = robot_coord[0] - 5
+        # 1. Fast Scan with YOLO
+        yolo_coord = yolo_detector.scan_with_yolo(object_name)
+        if yolo_coord:
+            robot_coord = yolo_coord
+            print(f"🤖 <SYSTEM>: YOLO เจอแล้ว! กำลังเคลื่อนที่ไปพิกัด {robot_coord}")
         else:
-            print(f"🤖 <SYSTEM>: ไม่พบ {object_name} ในภาพ")
-            return []
+            # 2. Fallback to Vision AI (Qwen) single photo check
+            print(f"🤖 <SYSTEM>: กำลังใช้กล้อง Vision AI ค้นหา '{object_name}'...")
+            init.GetImage()
+            import os
+            img_path = os.path.join(init.PROJECT_ROOT, "captured_image.jpg")
+            width, height = Image.open(img_path).size
+            positions = api.QwenVLRequest("a " + object_name, img_path).get("coordinates", [])
+
+            if positions:
+                position = positions[0]
+                # Calculate center point coordinates
+                center_x = (position['x1'] + position['x2']) / 2
+                center_y = (position['y1'] + position['y2']) / 2
+                target_pixel = (center_x / 1000 * width, center_y / 1000 * height)
+                robot_coord = eyeonhand.pixel_to_arm(target_pixel)
+                print(f"🤖 <SYSTEM>: เจอแล้ว! กำลังเคลื่อนที่ไปพิกัด {robot_coord}")
+                robot_coord[0] = robot_coord[0] + x_offset
+                robot_coord[1] = robot_coord[1] + y_offset
+                if robot_coord[0] > 210:
+                    robot_coord[0] = robot_coord[0] - 5
+            else:
+                print(f"🤖 <SYSTEM>: ไม่พบ {object_name} ในภาพ")
+                return []
 
     # Safety clamps for grasping
     robot_coord[0] = max(-280.0, min(280.0, float(robot_coord[0])))

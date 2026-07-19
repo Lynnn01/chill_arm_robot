@@ -16,13 +16,14 @@ class CameraView(tk.Canvas):
     Rounded camera card. Draws a rounded rect background then composites the
     camera frame on top as a canvas image — so the rounded corners are visible.
     """
-    W, H = 480, 360
+    W, H = 250,250
     RADIUS = Theme.RADIUS_LG
 
     def __init__(self, parent, **kwargs):
         kwargs.setdefault("highlightthickness", 0)
         kwargs.setdefault("bd", 0)
-        super().__init__(parent, bg=parent.cget("bg"), width=self.W, height=self.H + 40, **kwargs)
+        super().__init__(parent, bg=parent.cget("bg"), width=self.W, height=self.H, **kwargs)
+        print(f"[DEBUG] CameraView Initialized! W={self.W}, H={self.H}")
 
         self._photo = None
         self.bind("<Configure>", self._draw_base)
@@ -31,15 +32,12 @@ class CameraView(tk.Canvas):
     # ------------------------------------------------------------------
     def _draw_base(self, _event=None):
         self.delete("bg_card")
-        w = self.winfo_width() or (self.W + 4)
-        h = self.winfo_height() or (self.H + 40)
+        w = self.winfo_width() or self.W
+        h = self.winfo_height() or self.H
         self._rounded_rect(2, 2, w - 2, h - 2, self.RADIUS,
                             fill=Theme.SURFACE, outline=Theme.BORDER, tags="bg_card")
         self.tag_lower("bg_card")
-        # label
-        self.delete("cam_label")
-        self.create_text(w // 2, h - 14, text="Camera Feed",
-                         font=Theme.FONT_CAPTION, fill=Theme.CAPTION_FG, tags="cam_label")
+
 
     def _poll_frame(self):
         frame = None
@@ -49,14 +47,27 @@ class CameraView(tk.Canvas):
             except Exception:
                 pass
         if frame is not None:
-            img = Image.fromarray(frame).resize((self.W, self.H))
+            import cv2
+            # Convert BGR to RGB
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            
+            # Crop to square (center crop)
+            fh, fw = frame_rgb.shape[:2]
+            size = min(fh, fw)
+            y1 = (fh - size) // 2
+            x1 = (fw - size) // 2
+            square_frame = frame_rgb[y1:y1+size, x1:x1+size]
+            
+            # Leave space for the label (image size 380x380)
+            img = Image.fromarray(square_frame).resize((self.W - 20, self.H - 30))
         else:
-            img = Image.new("RGB", (self.W, self.H), "#E2E8F0")
+            img = Image.new("RGB", (self.W - 20, self.H - 30), "#E2E8F0")
         photo = ImageTk.PhotoImage(img)
         self._photo = photo
         self.delete("cam_img")
-        w = self.winfo_width() or (self.W + 4)
-        self.create_image(w // 2, 8 + self.H // 2, image=photo, anchor="center", tags="cam_img")
+        w = self.winfo_width() or self.W
+        # Center image slightly higher to leave room for text
+        self.create_image(w // 2, (self.H - 14) // 2 - 5, image=photo, anchor="center", tags="cam_img")
         self.after(50, self._poll_frame)
 
     # ------------------------------------------------------------------

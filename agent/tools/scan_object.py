@@ -7,6 +7,7 @@ from hardware import init
 from vision import eyeonhand
 from hardware.init import mc
 from agents import function_tool
+from vision import yolo_detector
 
 @function_tool
 def scan_object(object_name: str) -> str:
@@ -22,7 +23,14 @@ def scan_object(object_name: str) -> str:
     Args:
         object_name: The descriptive name of the object to search for (e.g., "red block").
     """
-    print(f"🤖 <SYSTEM>: กำลังใช้กล้องสแกนหา '{object_name}' (ทั้งหมด 5 มุม)...")
+    # 1. Fast Scan with YOLO
+    yolo_coord = yolo_detector.scan_with_yolo(object_name)
+    if yolo_coord:
+        init.known_objects[object_name] = yolo_coord
+        return f"Found '{object_name}' at {yolo_coord}. Memory updated."
+
+    # 2. Fallback to Vision AI (Qwen)
+    print(f"🤖 <SYSTEM>: กำลังใช้กล้องสแกนหา '{object_name}' ด้วย Vision AI (ทั้งหมด 5 มุม)...")
     
     # 5-step scan angles for J1: Down-center, Left 45, Left 90, Right 45, Right 90
     scan_angles = [0, 45, 90, -45, -90]

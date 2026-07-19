@@ -120,9 +120,16 @@ class CameraManager:
     def __init__(self):
         self.cap = None
         self.frame = None
+        self.overlay_frame = None
+        self.overlay_expiry = 0
         self.lock = threading.Lock()
         self.running = False
         self._started = False
+
+    def set_overlay(self, frame, duration=2.0):
+        with self.lock:
+            self.overlay_frame = frame
+            self.overlay_expiry = time.time() + duration
 
     def start(self):
         if self._started:
@@ -165,7 +172,10 @@ class CameraManager:
             time.sleep(0.04)  # ~25 fps
 
     def get_frame(self):
+        import time
         with self.lock:
+            if self.overlay_frame is not None and time.time() < self.overlay_expiry:
+                return self.overlay_frame.copy()
             if self.frame is not None:
                 return self.frame.copy()
         return None

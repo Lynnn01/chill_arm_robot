@@ -22,7 +22,6 @@ class LeftPanel(tk.Frame):
         self.grid(row=0, column=0, sticky="nsew",
                   padx=(Theme.SP_XL, 0), pady=Theme.SP_XL)
         self.columnconfigure(0, weight=1)
-        self.rowconfigure(2, weight=1)
 
         # ── Brand ──────────────────────────────────────────────────────
         brand = tk.Frame(self, bg=Theme.SIDEBAR_BG)
@@ -42,7 +41,7 @@ class LeftPanel(tk.Frame):
         cam_wrapper.grid(row=2, column=0, sticky="ew", padx=Theme.SP_MD, pady=(0, Theme.SP_SM))
         cam_wrapper.columnconfigure(0, weight=1)
         self.camera_view = CameraView(cam_wrapper)
-        self.camera_view.pack(fill=tk.X)
+        self.camera_view.pack(pady=Theme.SP_SM)
 
         # ── Notebook ───────────────────────────────────────────────────
         style = ttk.Style()
