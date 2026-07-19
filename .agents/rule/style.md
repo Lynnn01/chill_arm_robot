@@ -2,7 +2,7 @@
 
 When developing or modifying the UI (e.g. `app/gui.py`), please refer to the following resources:
 
-- **Unified Design Rules**: Read [docs/design_rules/INDEX.md](../../docs/design_rules/INDEX.md) for all design rules (merged from Magic UI + Awesome Design Systems)
+- **Unified Design Rules**: Read [../docs/design_rules/INDEX.md](../docs/design_rules/INDEX.md) for all design rules (merged from Magic UI + Awesome Design Systems)
 
 ## Core Principles
 - High contrast, minimalistic UI (White 80%, Black 10%, Accents 10%).

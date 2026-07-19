@@ -7,6 +7,7 @@ This file is intended to help subsequent collaborators quickly and safely take o
 
 ## 📚 Rule Index
 - [UI and Styling Rules](rule/style.md)
+- [Design Documentation & Principles](docs/design_rules/INDEX.md)
 
 ## Project Overview
 
