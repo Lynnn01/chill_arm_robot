@@ -22,7 +22,7 @@ _is_windows = (
 
 if _is_windows:
     from pymycobot.mycobot280 import MyCobot280 as _MyCobotClass
-    _default_port = os.getenv("MYCOBOT_PORT", "COM8") 
+    _default_port = os.getenv("MYCOBOT_PORT", "COM7") 
     print("[init] Platform: Windows → using MyCobot280")
 else:
     from pymycobot.mycobot import MyCobot as _MyCobotClass
