@@ -36,16 +36,16 @@ class Theme:
     WARNING = "#F59E0B"
 
     # --- Fonts ---
-    FONT_BRAND = ("Tahoma", 20, "bold")     # "ONE ARM" branding
-    FONT_TITLE = ("Tahoma", 24, "bold")
-    FONT_H1 = ("Tahoma", 16, "bold")
-    FONT_H2 = ("Tahoma", 13, "bold")
+    FONT_BRAND = ("Tahoma", 18, "bold")     # "ONE ARM" branding
+    FONT_TITLE = ("Tahoma", 18, "bold")
+    FONT_H1 = ("Tahoma", 14, "bold")
+    FONT_H2 = ("Tahoma", 12, "bold")
     FONT_BODY = ("Tahoma", 12)
     FONT_BODY_BOLD = ("Tahoma", 12, "bold")
     FONT_SMALL = ("Tahoma", 10)
-    FONT_CAPTION = ("Tahoma", 9)
-    FONT_LOG = ("Tahoma", 16)
-    FONT_LOG_BOLD = ("Tahoma", 16, "bold")
+    FONT_CAPTION = ("Tahoma", 8)
+    FONT_LOG = ("Tahoma", 12)
+    FONT_LOG_BOLD = ("Tahoma", 12, "bold")
 
     # --- Spacing (8-pt grid) ---
     SP_XS = 4

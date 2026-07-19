@@ -202,6 +202,7 @@ def QwenVLRequest(object_name, image_path):
             return _normalize_vl_text_result(content, image_size)
 
     except Exception as e:
+        print(f"⚠️ <ERROR>: Qwen API Error: {str(e)}")
         return {"coordinates": [], "error": str(e)}
 
 def QwenVLDescribe(question, image_path):
