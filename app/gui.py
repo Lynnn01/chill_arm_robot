@@ -38,6 +38,7 @@ class OneArmGUI:
         self.log_queue = queue.Queue()
         self.input_queue = queue.Queue()
         sys.stdout = RedirectText(self.log_queue)
+        self.current_speaker = "sys"
         
         self.setup_ui()
         self.root.after(100, self.process_queue)
@@ -83,17 +84,33 @@ class OneArmGUI:
     def _append_log(self, text):
         self.right_panel.log_text.config(state=tk.NORMAL)
         text = str(text).strip()
-        if text:
-            if "👨" in text or text.startswith("<USER>:"):
-                tag = "user"
-            elif "🤖" in text or text.startswith("<LLM>:"):
-                tag = "llm"
-            else:
-                tag = "sys"
-            self.right_panel.log_text.insert(tk.END, text + "\n\n", tag)
-            line_count = int(self.right_panel.log_text.index('end-1c').split('.')[0])
-            if line_count > 1000:
-                self.right_panel.log_text.delete('1.0', '500.0')
+        if not text:
+            self.right_panel.log_text.config(state=tk.DISABLED)
+            return
+
+        # Detect speaker change
+        if "👨‍💻 <USER>:" in text or text.startswith("<USER>:"):
+            self.current_speaker = "user"
+            text = text.replace("👨‍💻 <USER>:", "👨 You:").strip()
+            # Add an extra newline before new speaker if not first message
+            if self.right_panel.log_text.index('end-1c') != '1.0':
+                self.right_panel.log_text.insert(tk.END, "\n", "sys")
+        elif "🤖 <LLM>:" in text or text.startswith("<LLM>:"):
+            self.current_speaker = "llm"
+            text = text.replace("🤖 <LLM>:", "🤖 ONE ARM:").strip()
+            if self.right_panel.log_text.index('end-1c') != '1.0':
+                self.right_panel.log_text.insert(tk.END, "\n", "sys")
+        elif "<SYSTEM>:" in text or text.startswith("✅") or text.startswith("⚠️") or text.startswith("🔄") or "Image saved" in text or "Moving to" in text:
+            self.current_speaker = "sys"
+            text = text.replace("<SYSTEM>:", "").strip()
+
+        # Insert the text with current speaker's tag
+        self.right_panel.log_text.insert(tk.END, text + "\n", self.current_speaker)
+        
+        line_count = int(self.right_panel.log_text.index('end-1c').split('.')[0])
+        if line_count > 1000:
+            self.right_panel.log_text.delete('1.0', '500.0')
+            
         self.right_panel.log_text.config(state=tk.DISABLED)
         self.right_panel.log_text.see(tk.END)
 

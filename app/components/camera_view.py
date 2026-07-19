@@ -6,7 +6,7 @@ from PIL import Image, ImageTk
 from app.theme import Theme
 
 try:
-    from hardware.cam_manager import cam_manager as _cam
+    from hardware.init import cam_manager as _cam
 except Exception:
     _cam = None
 
