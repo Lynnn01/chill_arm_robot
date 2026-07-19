@@ -7,17 +7,30 @@ class DashboardTab(tk.Frame):
         super().__init__(parent, bg=Theme.BG)
         self.log_queue = log_queue
         
-        # Wrap in a card-like frame
-        self.card = tk.Frame(self, bg=Theme.SURFACE, relief=tk.SOLID, bd=1, highlightbackground=Theme.BORDER, highlightthickness=1)
-        self.card.pack(fill=tk.X, pady=10)
+        # Main container with 16px padding
+        self.container = tk.Frame(self, bg=Theme.BG)
+        self.container.pack(fill=tk.BOTH, expand=True, padx=16, pady=16)
         
-        tk.Label(self.card, text="Live Robot Status", font=Theme.FONT_H2, bg=Theme.SURFACE, fg=Theme.FG).grid(row=0, column=0, columnspan=6, pady=(15, 10))
+        tk.Label(self.container, text="Live Robot Status", font=Theme.FONT_H2, bg=Theme.BG, fg=Theme.FG).pack(anchor="w", pady=(0, 16))
+        
+        # Bento Grid Frame
+        self.bento_frame = tk.Frame(self.container, bg=Theme.BG)
+        self.bento_frame.pack(fill=tk.X)
+        self.bento_frame.columnconfigure(0, weight=1)
+        self.bento_frame.columnconfigure(1, weight=1)
+        self.bento_frame.columnconfigure(2, weight=1)
         
         self.status_labels = {}
         for i, axis in enumerate(["X", "Y", "Z", "Rx", "Ry", "Rz"]):
-            tk.Label(self.card, text=f"{axis}:", font=Theme.FONT_BODY_BOLD, bg=Theme.SURFACE, fg=Theme.FG).grid(row=(i//3)+1, column=(i%3)*2, sticky="e", padx=(20, 5), pady=15)
-            lbl_val = tk.Label(self.card, text="---", font=Theme.FONT_BODY, bg=Theme.SURFACE_MUTED, fg=Theme.FG, width=8, relief=tk.SOLID, bd=1, highlightbackground=Theme.BORDER, highlightthickness=1)
-            lbl_val.grid(row=(i//3)+1, column=(i%3)*2+1, sticky="w")
+            # Individual Bento Card
+            card = tk.Frame(self.bento_frame, bg=Theme.SURFACE, relief=tk.SOLID, bd=1, highlightbackground=Theme.BORDER, highlightthickness=1)
+            card.grid(row=i//3, column=i%3, sticky="nsew", padx=8, pady=8)
+            card.columnconfigure(0, weight=1)
+            
+            tk.Label(card, text=f"{axis} Axis", font=Theme.FONT_SMALL, bg=Theme.SURFACE, fg=Theme.MUTED_FG).pack(anchor="center", pady=(16, 4))
+            
+            lbl_val = tk.Label(card, text="---", font=Theme.FONT_H2, bg=Theme.SURFACE, fg=Theme.FG)
+            lbl_val.pack(anchor="center", pady=(0, 16))
             self.status_labels[axis] = lbl_val
             
         self._start_dashboard_loop()

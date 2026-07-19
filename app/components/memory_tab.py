@@ -5,10 +5,10 @@ class MemoryTab(tk.Frame):
     def __init__(self, parent):
         super().__init__(parent, bg=Theme.BG)
         self.card = tk.Frame(self, bg=Theme.SURFACE, relief=tk.SOLID, bd=1, highlightbackground=Theme.BORDER, highlightthickness=1)
-        self.card.pack(fill=tk.BOTH, expand=True, pady=10)
+        self.card.pack(fill=tk.BOTH, expand=True, pady=16)
         
-        self.memory_text = tk.Text(self.card, wrap=tk.WORD, bg=Theme.SURFACE, fg=Theme.FG, font=Theme.FONT_BODY, bd=0, relief=tk.FLAT, padx=15, pady=15)
-        self.memory_text.pack(fill=tk.BOTH, expand=True, pady=10)
+        self.memory_text = tk.Text(self.card, wrap=tk.WORD, bg=Theme.SURFACE, fg=Theme.FG, font=Theme.FONT_BODY, bd=0, relief=tk.FLAT, padx=16, pady=16)
+        self.memory_text.pack(fill=tk.BOTH, expand=True, pady=16)
         self.memory_text.config(state=tk.DISABLED)
         
         self._update_memory_ui()

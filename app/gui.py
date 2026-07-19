@@ -100,7 +100,7 @@ class OneArmGUI:
 
     def reset_robot(self):
         print("\n🔄 <SYSTEM>: กำลังรีเซ็ตหุ่นยนต์กลับสู่ตำแหน่งเริ่มต้น...")
-        self.right_panel.disable_inputs()
+        self.right_panel.disable_inputs(reset_text="Resetting...")
         threading.Thread(target=self._run_reset, daemon=True).start()
 
     def _run_reset(self):
@@ -123,7 +123,7 @@ class OneArmGUI:
             return
         self.right_panel.input_entry.delete(0, tk.END)
         print(f"\n👨‍💻 <USER>: {user_input}")
-        self.right_panel.disable_inputs()
+        self.right_panel.disable_inputs(send_text="Processing...")
         self.input_queue.put(user_input)
 
     def _agent_loop(self):

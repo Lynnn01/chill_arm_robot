@@ -11,25 +11,25 @@ class LeftPanel(tk.Frame):
         super().__init__(parent, bg=Theme.BG)
         self.log_queue = log_queue
         
-        self.grid(row=0, column=0, sticky="nsew", padx=(30,15), pady=30)
+        self.grid(row=0, column=0, sticky="nsew", padx=(32,16), pady=32)
         self.columnconfigure(0, weight=1)
 
         # Title
-        tk.Label(self, text="ONE ARM", font=Theme.FONT_TITLE, bg=Theme.BG, fg=Theme.PRIMARY).grid(row=0, column=0, sticky="w", pady=(0, 20))
+        tk.Label(self, text="ONE ARM", font=Theme.FONT_TITLE, bg=Theme.BG, fg=Theme.PRIMARY).grid(row=0, column=0, sticky="w", pady=(0, 24))
         
         # Camera Feed Component
         self.camera_view = CameraView(self)
-        self.camera_view.grid(row=1, column=0, sticky="ew", pady=(0, 20))
+        self.camera_view.grid(row=1, column=0, sticky="ew", pady=(0, 24))
         
         # Tabs
         style = ttk.Style()
         style.theme_use('default')
         style.configure('TNotebook', background=Theme.BG, borderwidth=0)
-        style.configure('TNotebook.Tab', background=Theme.SURFACE_MUTED, foreground=Theme.MUTED_FG, font=Theme.FONT_BODY_BOLD, padding=[20, 10], borderwidth=1, relief="solid")
+        style.configure('TNotebook.Tab', background=Theme.SURFACE_MUTED, foreground=Theme.MUTED_FG, font=Theme.FONT_BODY_BOLD, padding=[24, 8], borderwidth=1, relief="solid")
         style.map('TNotebook.Tab', background=[('selected', Theme.SURFACE)], foreground=[('selected', Theme.FG)])
 
         self.notebook = ttk.Notebook(self)
-        self.notebook.grid(row=2, column=0, sticky="nsew", pady=(0, 20))
+        self.notebook.grid(row=2, column=0, sticky="nsew", pady=(0, 24))
         self.rowconfigure(2, weight=1)
 
         # Control Tab
