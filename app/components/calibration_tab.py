@@ -1,16 +1,31 @@
+"""
+app/components/calibration_tab.py — Camera-to-robot offset calibration panel
+"""
 import tkinter as tk
 import json
 from app.theme import Theme
+from app.widgets import RoundedButton
+
 
 class CalibrationTab(tk.Frame):
     def __init__(self, parent):
-        super().__init__(parent, bg=Theme.BG)
-        
-        self.card = tk.Frame(self, bg=Theme.SURFACE, relief=tk.SOLID, bd=1, highlightbackground=Theme.BORDER, highlightthickness=1)
-        self.card.pack(fill=tk.X, pady=16)
-        
-        tk.Label(self.card, text="Camera to Robot Offsets", font=Theme.FONT_H2, bg=Theme.SURFACE, fg=Theme.FG).grid(row=0, column=0, columnspan=2, pady=(16, 8))
-        
+        super().__init__(parent, bg=Theme.SIDEBAR_BG)
+        self.calib_vars = {}
+
+        # Header
+        hdr = tk.Frame(self, bg=Theme.SIDEBAR_BG)
+        hdr.pack(fill=tk.X, padx=Theme.SP_MD, pady=(Theme.SP_MD, Theme.SP_SM))
+        tk.Label(hdr, text="Camera → Robot Offsets", font=Theme.FONT_H1,
+                 bg=Theme.SIDEBAR_BG, fg=Theme.FG).pack(side=tk.LEFT)
+
+        # Card
+        card = tk.Frame(self, bg=Theme.SURFACE,
+                        highlightbackground=Theme.BORDER, highlightthickness=1)
+        card.pack(fill=tk.X, padx=Theme.SP_MD, pady=(0, Theme.SP_MD))
+        card_inner = tk.Frame(card, bg=Theme.SURFACE)
+        card_inner.pack(fill=tk.X, padx=Theme.SP_MD, pady=Theme.SP_MD)
+
+        # Load config
         try:
             from hardware.init import CONFIG_PATH
             with open(CONFIG_PATH, "r") as f:
@@ -18,21 +33,34 @@ class CalibrationTab(tk.Frame):
         except Exception:
             config_data = {"x": 0, "y": 0, "z": 0}
 
-        self.calib_vars = {}
         for i, axis in enumerate(["x", "y", "z"]):
-            tk.Label(self.card, text=f"Offset {axis.upper()}:", font=Theme.FONT_BODY_BOLD, bg=Theme.SURFACE, fg=Theme.FG).grid(row=i+1, column=0, sticky="e", padx=(24, 8), pady=16)
+            row = tk.Frame(card_inner, bg=Theme.SURFACE)
+            row.pack(fill=tk.X, pady=Theme.SP_SM)
+            tk.Label(row, text=f"Offset {axis.upper()}", font=Theme.FONT_BODY_BOLD,
+                     bg=Theme.SURFACE, fg=Theme.FG, width=12, anchor="w").pack(side=tk.LEFT)
             var = tk.DoubleVar(value=config_data.get(axis, 0))
-            tk.Entry(self.card, textvariable=var, font=Theme.FONT_BODY, bg=Theme.SURFACE_MUTED, fg=Theme.FG, width=15, relief=tk.SOLID, bd=1, highlightbackground=Theme.BORDER, highlightthickness=1, insertbackground=Theme.FG).grid(row=i+1, column=1, sticky="w", pady=16)
+            entry = tk.Entry(row, textvariable=var, font=Theme.FONT_BODY,
+                             bg=Theme.SURFACE_MUTED, fg=Theme.FG, width=12,
+                             relief=tk.FLAT, bd=0, insertbackground=Theme.FG,
+                             highlightbackground=Theme.BORDER, highlightthickness=1)
+            entry.pack(side=tk.LEFT, ipady=6)
             self.calib_vars[axis] = var
-            
-        btn_save = tk.Button(self.card, text="Save Calibration", font=Theme.FONT_BODY_BOLD, bg=Theme.PRIMARY, fg=Theme.PRIMARY_FG, relief=tk.FLAT, cursor="hand2", command=self.save_calibration)
-        btn_save.grid(row=4, column=0, columnspan=2, pady=24, ipadx=16, ipady=8)
-        btn_save.bind("<Enter>", lambda e: e.widget.config(background=Theme.PRIMARY_HOVER) if e.widget['state'] != tk.DISABLED else None)
-        btn_save.bind("<Leave>", lambda e: e.widget.config(background=Theme.PRIMARY) if e.widget['state'] != tk.DISABLED else None)
+
+        # Save button
+        btn_frame = tk.Frame(card_inner, bg=Theme.SURFACE)
+        btn_frame.pack(fill=tk.X, pady=(Theme.SP_MD, 0))
+
+        save_btn = RoundedButton(btn_frame, text="Save Calibration",
+                                 radius=Theme.RADIUS_SM,
+                                 bg=Theme.PRIMARY, fg=Theme.PRIMARY_FG,
+                                 hover_bg=Theme.PRIMARY_HOVER,
+                                 font=Theme.FONT_BODY_BOLD,
+                                 command=self.save_calibration,
+                                 height=40)
+        save_btn.pack(fill=tk.X)
 
     def save_calibration(self):
         from hardware.init import CONFIG_PATH
-        import json
         try:
             with open(CONFIG_PATH, "r") as f:
                 data = json.load(f)

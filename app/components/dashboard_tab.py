@@ -1,51 +1,68 @@
+"""
+app/components/dashboard_tab.py — Bento Grid robot status cards
+"""
 import tkinter as tk
 import threading
 from app.theme import Theme
+from app.widgets import RoundedFrame
+
 
 class DashboardTab(tk.Frame):
-    def __init__(self, parent, log_queue):
-        super().__init__(parent, bg=Theme.BG)
-        self.log_queue = log_queue
-        
-        # Main container with 16px padding
-        self.container = tk.Frame(self, bg=Theme.BG)
-        self.container.pack(fill=tk.BOTH, expand=True, padx=16, pady=16)
-        
-        tk.Label(self.container, text="Live Robot Status", font=Theme.FONT_H2, bg=Theme.BG, fg=Theme.FG).pack(anchor="w", pady=(0, 16))
-        
-        # Bento Grid Frame
-        self.bento_frame = tk.Frame(self.container, bg=Theme.BG)
-        self.bento_frame.pack(fill=tk.X)
-        self.bento_frame.columnconfigure(0, weight=1)
-        self.bento_frame.columnconfigure(1, weight=1)
-        self.bento_frame.columnconfigure(2, weight=1)
-        
-        self.status_labels = {}
-        for i, axis in enumerate(["X", "Y", "Z", "Rx", "Ry", "Rz"]):
-            # Individual Bento Card
-            card = tk.Frame(self.bento_frame, bg=Theme.SURFACE, relief=tk.SOLID, bd=1, highlightbackground=Theme.BORDER, highlightthickness=1)
-            card.grid(row=i//3, column=i%3, sticky="nsew", padx=8, pady=8)
-            card.columnconfigure(0, weight=1)
-            
-            tk.Label(card, text=f"{axis} Axis", font=Theme.FONT_SMALL, bg=Theme.SURFACE, fg=Theme.MUTED_FG).pack(anchor="center", pady=(16, 4))
-            
-            lbl_val = tk.Label(card, text="---", font=Theme.FONT_H2, bg=Theme.SURFACE, fg=Theme.FG)
-            lbl_val.pack(anchor="center", pady=(0, 16))
-            self.status_labels[axis] = lbl_val
-            
-        self._start_dashboard_loop()
+    AXES = ["X", "Y", "Z", "Rx", "Ry", "Rz"]
 
-    def _start_dashboard_loop(self):
+    def __init__(self, parent, log_queue):
+        super().__init__(parent, bg=Theme.SIDEBAR_BG)
+        self.log_queue = log_queue
+        self.status_labels = {}
+
+        # Section header
+        hdr = tk.Frame(self, bg=Theme.SIDEBAR_BG)
+        hdr.pack(fill=tk.X, padx=Theme.SP_MD, pady=(Theme.SP_MD, Theme.SP_SM))
+        tk.Label(hdr, text="Live Robot Status", font=Theme.FONT_H1,
+                 bg=Theme.SIDEBAR_BG, fg=Theme.FG).pack(side=tk.LEFT)
+
+        # Bento grid — 3 columns
+        grid = tk.Frame(self, bg=Theme.SIDEBAR_BG)
+        grid.pack(fill=tk.X, padx=Theme.SP_SM)
+        for col in range(3):
+            grid.columnconfigure(col, weight=1)
+
+        for i, axis in enumerate(self.AXES):
+            card = self._make_bento_card(grid, axis)
+            card.grid(row=i // 3, column=i % 3,
+                      padx=Theme.SP_SM, pady=Theme.SP_SM, sticky="nsew")
+
+        self._start_poll()
+
+    # ------------------------------------------------------------------
+    def _make_bento_card(self, parent, axis):
+        outer = tk.Frame(parent, bg=Theme.SURFACE,
+                         highlightbackground=Theme.BORDER, highlightthickness=1)
+        inner = tk.Frame(outer, bg=Theme.SURFACE)
+        inner.pack(padx=Theme.SP_MD, pady=Theme.SP_MD)
+
+        tk.Label(inner, text=f"{axis} Axis", font=Theme.FONT_CAPTION,
+                 bg=Theme.SURFACE, fg=Theme.CAPTION_FG).pack()
+        val = tk.Label(inner, text="---", font=Theme.FONT_H1,
+                       bg=Theme.SURFACE, fg=Theme.FG, width=7)
+        val.pack(pady=(Theme.SP_XS, 0))
+        self.status_labels[axis] = val
+        return outer
+
+    def _start_poll(self):
         def _loop():
             import time
-            import hardware.init as hw
+            try:
+                import hardware.init as hw
+            except Exception:
+                return
             while True:
                 try:
                     coords = hw.mc.get_coords()
                     if coords and len(coords) >= 6:
                         hw.last_coords = coords
                         def _update(c=coords):
-                            for ax, val in zip(["X", "Y", "Z", "Rx", "Ry", "Rz"], c):
+                            for ax, val in zip(self.AXES, c):
                                 if ax in self.status_labels:
                                     self.status_labels[ax].config(text=f"{val:.1f}")
                         self.log_queue.put(_update)

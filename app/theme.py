@@ -1,30 +1,63 @@
 class Theme:
     """
-    Shadcn-UI inspired minimalist theme configuration.
-    80% White, 10% Black, 10% Subtle Accents.
+    Unified Design Rules — White-First approach.
+    80% White, 10% Black/Dark, 10% Accent/Semantic.
+    All UI constants live here. Never hardcode in components.
     """
-    BG = "#FFFFFF"            # Main white background
-    FG = "#0F172A"            # Near black for primary text
-    MUTED_FG = "#64748B"      # Slate 500 for secondary text
-    BORDER = "#E2E8F0"        # Slate 200 for borders
-    SURFACE = "#FFFFFF"       # White for cards/panels (relies on borders)
-    SURFACE_MUTED = "#F8FAFC" # Slate 50 for subtle active states/inputs
-    PRIMARY = "#0F172A"       # Black for primary buttons/accents
-    PRIMARY_FG = "#FFFFFF"    # White text on primary buttons
-    PRIMARY_HOVER = "#334155" # Slate 700 for hover state
-    DANGER = "#EF4444"        # Red for danger actions
+    # --- Background Layers ---
+    BG = "#F8FAFC"            # App window — slightly off-white (Slate 50)
+    SURFACE = "#FFFFFF"       # Cards, panels
+    SURFACE_MUTED = "#F1F5F9" # Input fields, inactive tabs (Slate 100)
+    SIDEBAR_BG = "#FFFFFF"    # Left panel sidebar
+
+    # --- Text ---
+    FG = "#0F172A"            # Primary text — near-black (Slate 900)
+    MUTED_FG = "#94A3B8"      # Secondary / placeholder text (Slate 400)
+    CAPTION_FG = "#64748B"    # Captions / axis labels (Slate 500)
+
+    # --- Borders ---
+    BORDER = "#E2E8F0"        # Card & input borders (Slate 200)
+    BORDER_FOCUS = "#94A3B8"  # Border on focus (Slate 400)
+
+    # --- Primary Action (SEND) ---
+    PRIMARY = "#1E293B"       # Dark slate
+    PRIMARY_FG = "#FFFFFF"
+    PRIMARY_HOVER = "#334155" # Slate 700
+
+    # --- Danger Action (RESET) ---
+    DANGER = "#EF4444"
     DANGER_HOVER = "#DC2626"
-    
-    # Fonts
+    DANGER_FG = "#FFFFFF"
+
+    # --- Semantic ---
+    SUCCESS = "#22C55E"
+    WARNING = "#F59E0B"
+
+    # --- Fonts ---
+    FONT_BRAND = ("Tahoma", 20, "bold")     # "ONE ARM" branding
     FONT_TITLE = ("Tahoma", 24, "bold")
     FONT_H1 = ("Tahoma", 16, "bold")
-    FONT_H2 = ("Tahoma", 14, "bold")
+    FONT_H2 = ("Tahoma", 13, "bold")
     FONT_BODY = ("Tahoma", 12)
     FONT_BODY_BOLD = ("Tahoma", 12, "bold")
     FONT_SMALL = ("Tahoma", 10)
+    FONT_CAPTION = ("Tahoma", 9)
     FONT_LOG = ("Tahoma", 16)
     FONT_LOG_BOLD = ("Tahoma", 16, "bold")
-    
+
+    # --- Spacing (8-pt grid) ---
+    SP_XS = 4
+    SP_SM = 8
+    SP_MD = 16
+    SP_LG = 24
+    SP_XL = 32
+
+    # --- Radius ---
+    RADIUS_SM = 8
+    RADIUS_MD = 12
+    RADIUS_LG = 16
+    RADIUS_PILL = 24
+
     @classmethod
     def apply_window_style(cls, root):
         root.configure(bg=cls.BG)

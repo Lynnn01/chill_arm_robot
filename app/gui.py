@@ -30,7 +30,8 @@ class OneArmGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("MyCobot 280 AI Control")
-        self.root.geometry("1024x768+0+0")
+        self.root.geometry("1200x800+0+0")
+        self.root.minsize(900, 600)
         
         Theme.apply_window_style(self.root)
         
@@ -50,7 +51,7 @@ class OneArmGUI:
 
     def setup_ui(self):
         self.root.columnconfigure(0, weight=4)
-        self.root.columnconfigure(1, weight=5)
+        self.root.columnconfigure(1, weight=6)
         self.root.rowconfigure(0, weight=1)
 
         self.left_panel = LeftPanel(
@@ -89,11 +90,9 @@ class OneArmGUI:
             else:
                 tag = "sys"
             self.right_panel.log_text.insert(tk.END, text + "\n\n", tag)
-            
             line_count = int(self.right_panel.log_text.index('end-1c').split('.')[0])
             if line_count > 1000:
                 self.right_panel.log_text.delete('1.0', '500.0')
-                
         self.right_panel.log_text.config(state=tk.DISABLED)
         self.right_panel.log_text.see(tk.END)
 
