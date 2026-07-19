@@ -1,9 +1,9 @@
 import tkinter as tk
+from app.theme import Theme
 
 class RightPanel(tk.Frame):
-    def __init__(self, parent, theme, log_queue, reset_robot_callback, send_message_callback):
-        super().__init__(parent, bg=theme["bg"])
-        self.theme = theme
+    def __init__(self, parent, log_queue, reset_robot_callback, send_message_callback):
+        super().__init__(parent, bg=Theme.BG)
         self.log_queue = log_queue
         self.reset_robot_callback = reset_robot_callback
         self.send_message_callback = send_message_callback
@@ -12,69 +12,59 @@ class RightPanel(tk.Frame):
         self.columnconfigure(0, weight=1)
         self.rowconfigure(1, weight=1)
 
-        def on_enter_btn(e):
-            if e.widget['state'] != tk.DISABLED:
-                e.widget['background'] = self.theme["btn_hover"]
-        def on_leave_btn(e):
-            if e.widget['state'] != tk.DISABLED:
-                e.widget['background'] = self.theme["btn_bg"]
-                
-        def on_enter_danger(e):
-            if e.widget['state'] != tk.DISABLED:
-                e.widget['background'] = self.theme["danger_hover"]
-        def on_leave_danger(e):
-            if e.widget['state'] != tk.DISABLED:
-                e.widget['background'] = self.theme["danger"]
-
         # Top Bar
-        top_bar = tk.Frame(self, bg=self.theme["bg"])
+        top_bar = tk.Frame(self, bg=Theme.BG)
         top_bar.grid(row=0, column=0, sticky="ew", pady=(0, 20))
-        tk.Label(top_bar, text="AI Interaction Log", font=("Tahoma", 16, "bold"), bg=self.theme["bg"], fg=self.theme["fg"]).pack(side=tk.LEFT)
+        tk.Label(top_bar, text="AI Interaction Log", font=Theme.FONT_H1, bg=Theme.BG, fg=Theme.FG).pack(side=tk.LEFT)
 
-        # Log Area
-        self.log_text = tk.Text(self, wrap=tk.WORD, bg=self.theme["frame"], fg=self.theme["fg"], 
-                                font=("Tahoma", 14), highlightthickness=0, relief=tk.FLAT, bd=0, padx=20, pady=20)
-        self.log_text.grid(row=1, column=0, sticky="nsew", pady=(0, 20))
+        # Log Area - enclosed in a card with solid border
+        log_card = tk.Frame(self, bg=Theme.SURFACE, relief=tk.SOLID, bd=1, highlightbackground=Theme.BORDER, highlightthickness=1)
+        log_card.grid(row=1, column=0, sticky="nsew", pady=(0, 20))
+        log_card.rowconfigure(0, weight=1)
+        log_card.columnconfigure(0, weight=1)
+
+        self.log_text = tk.Text(log_card, wrap=tk.WORD, bg=Theme.SURFACE, fg=Theme.FG, 
+                                font=Theme.FONT_LOG, highlightthickness=0, relief=tk.FLAT, bd=0, padx=20, pady=20)
+        self.log_text.grid(row=0, column=0, sticky="nsew")
         
         # Configure Basic Log Tags
-        self.log_text.tag_configure("user", justify="right", foreground="#3B8ED0", font=("Tahoma", 14, "bold"))
-        self.log_text.tag_configure("llm", justify="left", foreground=self.theme["fg"], font=("Tahoma", 14))
-        self.log_text.tag_configure("sys", justify="left", foreground="#888888", font=("Tahoma", 12, "italic"))
+        self.log_text.tag_configure("user", justify="right", foreground=Theme.FG, font=Theme.FONT_LOG_BOLD)
+        self.log_text.tag_configure("llm", justify="left", foreground=Theme.FG, font=Theme.FONT_LOG)
+        self.log_text.tag_configure("sys", justify="left", foreground=Theme.MUTED_FG, font=Theme.FONT_BODY)
 
         # Input Area
-        input_frame = tk.Frame(self, bg=self.theme["bg"])
+        input_frame = tk.Frame(self, bg=Theme.BG)
         input_frame.grid(row=2, column=0, sticky="ew")
         input_frame.columnconfigure(0, weight=1)
 
-        # Input Area Buttons
-        self.input_entry = tk.Entry(input_frame, font=("Tahoma", 16), 
-                                    bg=self.theme["frame"], fg=self.theme["fg"], insertbackground=self.theme["fg"],
-                                    highlightthickness=0, relief=tk.FLAT, bd=0)
-        self.input_entry.grid(row=0, column=0, sticky="ew", padx=(0, 15), ipady=15)
-        # Internal padding for entry using a small hack
+        # Input Entry wrapped in a solid border to look like Shadcn input
+        self.input_entry = tk.Entry(input_frame, font=Theme.FONT_LOG, 
+                                    bg=Theme.SURFACE, fg=Theme.FG, insertbackground=Theme.FG,
+                                    highlightbackground=Theme.BORDER, highlightthickness=1, relief=tk.SOLID, bd=1)
+        self.input_entry.grid(row=0, column=0, sticky="ew", padx=(0, 15), ipady=12)
         self.input_entry.bind("<Return>", lambda event: self.send_message_callback(self.input_entry.get().strip()))
 
-        self.send_button = tk.Button(input_frame, text="SEND", font=("Tahoma", 14, "bold"),
-                                     bg=self.theme["btn_bg"], fg=self.theme["btn_fg"], relief=tk.FLAT, bd=0, cursor="hand2", command=lambda: self.send_message_callback(self.input_entry.get().strip()))
-        self.send_button.grid(row=0, column=1, sticky="e", ipadx=25, ipady=12)
-        self.send_button.bind("<Enter>", on_enter_btn)
-        self.send_button.bind("<Leave>", on_leave_btn)
+        self.send_button = tk.Button(input_frame, text="SEND", font=Theme.FONT_BODY_BOLD,
+                                     bg=Theme.PRIMARY, fg=Theme.PRIMARY_FG, relief=tk.FLAT, bd=0, cursor="hand2", command=lambda: self.send_message_callback(self.input_entry.get().strip()))
+        self.send_button.grid(row=0, column=1, sticky="e", ipadx=20, ipady=10)
+        self.send_button.bind("<Enter>", lambda e: e.widget.config(background=Theme.PRIMARY_HOVER) if e.widget['state'] != tk.DISABLED else None)
+        self.send_button.bind("<Leave>", lambda e: e.widget.config(background=Theme.PRIMARY) if e.widget['state'] != tk.DISABLED else None)
 
-        self.reset_button = tk.Button(input_frame, text="RESET", font=("Tahoma", 14, "bold"),
-                                      bg=self.theme["danger"], fg="white", activebackground=self.theme["danger_hover"], activeforeground="white", relief=tk.FLAT, bd=0, cursor="hand2", command=self.reset_robot_callback)
-        self.reset_button.grid(row=0, column=2, sticky="e", padx=(15, 0), ipadx=20, ipady=12)
-        self.reset_button.bind("<Enter>", on_enter_danger)
-        self.reset_button.bind("<Leave>", on_leave_danger)
+        self.reset_button = tk.Button(input_frame, text="RESET", font=Theme.FONT_BODY_BOLD,
+                                      bg=Theme.DANGER, fg="white", activebackground=Theme.DANGER_HOVER, activeforeground="white", relief=tk.FLAT, bd=0, cursor="hand2", command=self.reset_robot_callback)
+        self.reset_button.grid(row=0, column=2, sticky="e", padx=(15, 0), ipadx=15, ipady=10)
+        self.reset_button.bind("<Enter>", lambda e: e.widget.config(background=Theme.DANGER_HOVER) if e.widget['state'] != tk.DISABLED else None)
+        self.reset_button.bind("<Leave>", lambda e: e.widget.config(background=Theme.DANGER) if e.widget['state'] != tk.DISABLED else None)
 
         self.input_entry.focus()
 
     def disable_inputs(self):
-        self.send_button.config(state=tk.DISABLED, bg="#555555")
-        self.reset_button.config(state=tk.DISABLED, bg="#555555")
+        self.send_button.config(state=tk.DISABLED, bg=Theme.MUTED_FG)
+        self.reset_button.config(state=tk.DISABLED, bg=Theme.MUTED_FG)
         self.input_entry.config(state=tk.DISABLED)
 
     def enable_inputs(self):
-        self.send_button.config(state=tk.NORMAL, bg=self.theme["btn_bg"])
-        self.reset_button.config(state=tk.NORMAL, bg=self.theme["danger"])
+        self.send_button.config(state=tk.NORMAL, bg=Theme.PRIMARY)
+        self.reset_button.config(state=tk.NORMAL, bg=Theme.DANGER)
         self.input_entry.config(state=tk.NORMAL)
         self.input_entry.focus()

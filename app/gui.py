@@ -6,6 +6,7 @@ import queue
 
 from app.components.left_panel import LeftPanel
 from app.components.right_panel import RightPanel
+from app.theme import Theme
 
 class RedirectText:
     def __init__(self, q):
@@ -31,19 +32,7 @@ class OneArmGUI:
         self.root.title("MyCobot 280 AI Control")
         self.root.geometry("1024x768+0+0")
         
-        self.theme = {
-            "bg": "#121212", 
-            "fg": "#FFFFFF", 
-            "frame": "#1E1E1E", 
-            "border": "#333333", 
-            "btn_bg": "#3B8ED0", 
-            "btn_fg": "#FFFFFF", 
-            "btn_hover": "#2980B9",
-            "dash_bg": "#2A2A2A",
-            "danger": "#E74C3C",
-            "danger_hover": "#C0392B"
-        }
-        self.root.configure(bg=self.theme["bg"])
+        Theme.apply_window_style(self.root)
         
         self.log_queue = queue.Queue()
         self.input_queue = queue.Queue()
@@ -66,14 +55,11 @@ class OneArmGUI:
 
         self.left_panel = LeftPanel(
             parent=self.root, 
-            theme=self.theme, 
-            log_queue=self.log_queue,
-            run_quick_action_callback=self.run_quick_action
+            log_queue=self.log_queue
         )
         
         self.right_panel = RightPanel(
             parent=self.root,
-            theme=self.theme,
             log_queue=self.log_queue,
             reset_robot_callback=self.reset_robot,
             send_message_callback=self.send_message
@@ -111,15 +97,10 @@ class OneArmGUI:
         self.right_panel.log_text.config(state=tk.DISABLED)
         self.right_panel.log_text.see(tk.END)
 
-    def run_quick_action(self, cmd):
-        self.right_panel.input_entry.delete(0, tk.END)
-        self.right_panel.input_entry.insert(0, cmd)
-        self.send_message(cmd)
 
     def reset_robot(self):
         print("\n🔄 <SYSTEM>: กำลังรีเซ็ตหุ่นยนต์กลับสู่ตำแหน่งเริ่มต้น...")
         self.right_panel.disable_inputs()
-        self.left_panel.disable_buttons()
         threading.Thread(target=self._run_reset, daemon=True).start()
 
     def _run_reset(self):
@@ -136,7 +117,6 @@ class OneArmGUI:
 
     def enable_all_inputs(self):
         self.right_panel.enable_inputs()
-        self.left_panel.enable_buttons()
 
     def send_message(self, user_input):
         if not user_input:
@@ -144,7 +124,6 @@ class OneArmGUI:
         self.right_panel.input_entry.delete(0, tk.END)
         print(f"\n👨‍💻 <USER>: {user_input}")
         self.right_panel.disable_inputs()
-        self.left_panel.disable_buttons()
         self.input_queue.put(user_input)
 
     def _agent_loop(self):
