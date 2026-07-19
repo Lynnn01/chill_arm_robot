@@ -1,11 +1,11 @@
 # UI/UX Style Rules
 
-When developing or modifying the UI (e.g. `app/gui.py`), please refer to the following resources as primary guidelines for UI/UX patterns and aesthetics:
+When developing or modifying the UI (e.g. `app/gui.py`), please refer to the following resources:
 
-- **Awesome Design Systems**: [awesome-design-systems](https://github.com/alexpate/awesome-design-systems) (Available locally at `docs/awesome-design-systems`)
-- **shadcn-ui**: [shadcn/ui](https://github.com/shadcn-ui/ui) (Available locally at `docs/shadcn-ui`)
+- **Unified Design Rules**: Read [docs/design_rules/INDEX.md](../../docs/design_rules/INDEX.md) for all design rules (merged from Magic UI + Awesome Design Systems)
 
 ## Core Principles
-- High contrast, minimalistic UI.
-- Use a predefined theme configuration.
+- High contrast, minimalistic UI (White 80%, Black 10%, Accents 10%).
+- All colors and fonts must come from `app/theme.py` only.
 - Implement clear interactive hover states for all buttons.
+- 1 file = 1 component = 1 responsibility.
