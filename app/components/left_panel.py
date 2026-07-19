@@ -31,7 +31,7 @@ class LeftPanel(tk.Frame):
         tk.Label(brand, text="ONE ARM",
                  font=Theme.FONT_BRAND, bg=Theme.SIDEBAR_BG, fg=Theme.FG).pack(side=tk.LEFT)
         tk.Label(brand, text="AI Control",
-                 font=Theme.FONT_SMALL, bg=Theme.SIDEBAR_BG, fg=Theme.CAPTION_FG).pack(side=tk.LEFT, padx=(Theme.SP_SM, 0), pady=(4, 0))
+                 font=Theme.FONT_SMALL, bg=Theme.SIDEBAR_BG, fg=Theme.ACCENT).pack(side=tk.LEFT, padx=(Theme.SP_SM, 0), pady=(4, 0))
 
         # thin divider
         tk.Frame(self, height=1, bg=Theme.BORDER).grid(

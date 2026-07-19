@@ -27,13 +27,13 @@ class RightPanel(tk.Frame):
                  font=Theme.FONT_SMALL, bg=Theme.BG, fg=Theme.SUCCESS).pack(side=tk.RIGHT)
 
         # ── Log card ───────────────────────────────────────────────────
-        log_card = tk.Frame(self, bg=Theme.SURFACE,
-                            highlightbackground=Theme.BORDER, highlightthickness=1)
-        log_card.grid(row=1, column=0, sticky="nsew", pady=(0, Theme.SP_MD))
-        log_card.rowconfigure(0, weight=1)
-        log_card.columnconfigure(0, weight=1)
+        self.log_card = RoundedFrame(self, radius=Theme.RADIUS_LG,
+                                     bg=Theme.SURFACE, border_color=Theme.BORDER)
+        self.log_card.grid(row=1, column=0, sticky="nsew", pady=(0, Theme.SP_MD))
+        self.log_card.inner.rowconfigure(0, weight=1)
+        self.log_card.inner.columnconfigure(0, weight=1)
 
-        self.log_text = tk.Text(log_card, wrap=tk.WORD,
+        self.log_text = tk.Text(self.log_card.inner, wrap=tk.WORD,
                                 bg=Theme.SURFACE, fg=Theme.FG,
                                 font=Theme.FONT_LOG,
                                 highlightthickness=0, relief=tk.FLAT, bd=0,
@@ -41,7 +41,7 @@ class RightPanel(tk.Frame):
                                 state=tk.DISABLED)
         self.log_text.grid(row=0, column=0, sticky="nsew")
 
-        scroll = tk.Scrollbar(log_card, orient=tk.VERTICAL,
+        scroll = tk.Scrollbar(self.log_card.inner, orient=tk.VERTICAL,
                               command=self.log_text.yview, width=6)
         scroll.grid(row=0, column=1, sticky="ns")
         self.log_text.config(yscrollcommand=scroll.set)
@@ -49,7 +49,7 @@ class RightPanel(tk.Frame):
         # text tags
         self.log_text.tag_configure("user",
                                     justify="right",
-                                    foreground=Theme.FG,
+                                    foreground=Theme.ACCENT,
                                     font=Theme.FONT_LOG_BOLD)
         self.log_text.tag_configure("llm",
                                     justify="left",
@@ -66,18 +66,20 @@ class RightPanel(tk.Frame):
         bar.columnconfigure(0, weight=1)
 
         # Entry wrapped in a RoundedFrame for perfect height matching
-        self.input_wrap = RoundedFrame(bar, radius=Theme.RADIUS_SM,
-                                       bg=Theme.SURFACE, border_color=Theme.BORDER)
+        # Use SURFACE_MUTED for a modern "filled" input look
+        self.input_wrap = RoundedFrame(bar, radius=Theme.RADIUS_MD,
+                                       bg=Theme.SURFACE_MUTED, border_color=Theme.SURFACE_MUTED)
         self.input_wrap.grid(row=0, column=0, sticky="ew",
                              padx=(0, Theme.SP_SM))
         self.input_wrap.config(height=48)
         self.input_wrap.grid_propagate(False)
         self.input_wrap.inner.columnconfigure(0, weight=1)
         self.input_wrap.inner.rowconfigure(0, weight=1)
+        self.input_wrap.inner.config(bg=Theme.SURFACE_MUTED)
 
         self.input_entry = tk.Entry(self.input_wrap.inner,
                                     font=Theme.FONT_LOG,
-                                    bg=Theme.SURFACE, fg=Theme.FG,
+                                    bg=Theme.SURFACE_MUTED, fg=Theme.FG,
                                     insertbackground=Theme.FG,
                                     relief=tk.FLAT, bd=0,
                                     highlightthickness=0)
@@ -88,7 +90,7 @@ class RightPanel(tk.Frame):
         self.input_entry.bind("<FocusIn>",
                               lambda e: self.input_wrap.configure_colors(border_color=Theme.BORDER_FOCUS))
         self.input_entry.bind("<FocusOut>",
-                              lambda e: self.input_wrap.configure_colors(border_color=Theme.BORDER))
+                              lambda e: self.input_wrap.configure_colors(border_color=Theme.SURFACE_MUTED))
 
         # SEND button
         self.send_btn = RoundedButton(bar, text="SEND",

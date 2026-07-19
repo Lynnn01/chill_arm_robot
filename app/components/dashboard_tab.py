@@ -36,16 +36,21 @@ class DashboardTab(tk.Frame):
 
     # ------------------------------------------------------------------
     def _make_bento_card(self, parent, axis):
-        outer = tk.Frame(parent, bg=Theme.SURFACE,
-                         highlightbackground=Theme.BORDER, highlightthickness=1)
-        inner = tk.Frame(outer, bg=Theme.SURFACE)
-        inner.pack(padx=Theme.SP_MD, pady=Theme.SP_MD)
+        outer = RoundedFrame(parent, radius=Theme.RADIUS_MD,
+                             bg=Theme.BG, border_color=Theme.BORDER)
+        # Give fixed height for cards
+        outer.config(height=90)
+        outer.grid_propagate(False)
+        outer.inner.columnconfigure(0, weight=1)
+        outer.inner.rowconfigure(0, weight=1)
+        outer.inner.rowconfigure(1, weight=1)
+        outer.inner.config(bg=Theme.BG)
 
-        tk.Label(inner, text=f"{axis} Axis", font=Theme.FONT_CAPTION,
-                 bg=Theme.SURFACE, fg=Theme.CAPTION_FG).pack()
-        val = tk.Label(inner, text="---", font=Theme.FONT_H1,
-                       bg=Theme.SURFACE, fg=Theme.FG, width=7)
-        val.pack(pady=(Theme.SP_XS, 0))
+        tk.Label(outer.inner, text=f"{axis} Axis", font=Theme.FONT_CAPTION,
+                 bg=Theme.BG, fg=Theme.CAPTION_FG).grid(row=0, column=0, pady=(12, 0))
+        val = tk.Label(outer.inner, text="---", font=Theme.FONT_H1,
+                       bg=Theme.BG, fg=Theme.FG)
+        val.grid(row=1, column=0, pady=(0, 12))
         self.status_labels[axis] = val
         return outer
 

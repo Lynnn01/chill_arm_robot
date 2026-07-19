@@ -17,7 +17,7 @@ class Theme:
 
     # --- Borders ---
     BORDER = "#E2E8F0"        # Card & input borders (Slate 200)
-    BORDER_FOCUS = "#94A3B8"  # Border on focus (Slate 400)
+    BORDER_FOCUS = "#6366F1"  # Indigo 500 (Magic UI accent)
 
     # --- Primary Action (SEND) ---
     PRIMARY = "#1E293B"       # Dark slate
@@ -30,6 +30,8 @@ class Theme:
     DANGER_FG = "#FFFFFF"
 
     # --- Semantic ---
+    ACCENT = "#6366F1"        # Indigo 500
+    ACCENT_FG = "#FFFFFF"
     SUCCESS = "#22C55E"
     WARNING = "#F59E0B"
 

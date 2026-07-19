@@ -50,8 +50,9 @@ class OneArmGUI:
         print("========================================\n")
 
     def setup_ui(self):
-        self.root.columnconfigure(0, weight=4)
-        self.root.columnconfigure(1, weight=6)
+        # Set exactly 50:50 split
+        self.root.columnconfigure(0, weight=1, uniform="pane")
+        self.root.columnconfigure(1, weight=1, uniform="pane")
         self.root.rowconfigure(0, weight=1)
 
         self.left_panel = LeftPanel(
