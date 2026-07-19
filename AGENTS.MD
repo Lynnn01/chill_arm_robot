@@ -91,7 +91,9 @@ Modifying the calibration points or offsets will directly affect the real roboti
 
 ## UI Design Guidelines
 
-When developing or modifying the UI (e.g. `app/gui.py`), please refer to the curated list of design systems at [Awesome Design Systems](https://github.com/alexpate/awesome-design-systems) as a primary guideline for UI/UX patterns and aesthetics.
+When developing or modifying the UI (e.g. `app/gui.py`), please refer to the following resources as primary guidelines for UI/UX patterns and aesthetics:
+- [Awesome Design Systems](https://github.com/alexpate/awesome-design-systems)
+- [shadcn/ui](https://github.com/shadcn-ui/ui)
 ## Testing and Verification Suggestions
 
 - Pure functions and low-side-effect modules can be tested first in a hardware-free environment, for example:

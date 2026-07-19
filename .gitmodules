@@ -1,3 +1,6 @@
 [submodule "docs/awesome-design-systems"]
 	path = docs/awesome-design-systems
 	url = https://github.com/alexpate/awesome-design-systems
+[submodule "docs/shadcn-ui"]
+	path = docs/shadcn-ui
+	url = https://github.com/shadcn-ui/ui
