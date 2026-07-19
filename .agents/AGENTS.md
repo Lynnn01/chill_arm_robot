@@ -2,6 +2,12 @@
 
 This file is intended to help subsequent collaborators quickly and safely take over this project. The project is a Python Robotic Arm Agent that combines a large language model, visual detection, a camera, and JetCobot/MyCobot hardware to complete tasks such as grasping, showing, and placing.
 
+## ⚡ Critical Rules
+- 🎨 UI/UX styling must follow the [Style Rules](rule/style.md).
+
+## 📚 Rule Index
+- [UI and Styling Rules](rule/style.md)
+
 ## Project Overview
 
 - Main entry: `agent.py`
@@ -89,11 +95,7 @@ Modifying the calibration points or offsets will directly affect the real roboti
 - There are a few historical encoding gibberish in the source code. Unless the task goal is to fix encoding/copywriting, do not casually change comments on a large scale to avoid creating noise.
 - `dist/`, `__pycache__/`, audio recordings, and generated images belong to generation artifacts, and generally should not be manually edited or committed.
 
-## UI Design Guidelines
 
-When developing or modifying the UI (e.g. `app/gui.py`), please refer to the following resources as primary guidelines for UI/UX patterns and aesthetics:
-- [Awesome Design Systems](https://github.com/alexpate/awesome-design-systems)
-- [shadcn/ui](https://github.com/shadcn-ui/ui)
 ## Testing and Verification Suggestions
 
 - Pure functions and low-side-effect modules can be tested first in a hardware-free environment, for example:
