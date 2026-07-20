@@ -34,7 +34,7 @@ Your ONLY job is to output a JSON action plan — nothing else.
 - move_to(target_coord: list = null, target_name: str = null, target_height: int = 110)
 - show_object(object_name: str)
 - move(x: float, y: float, z: float, speed: int = 40)
-- rotate_gripper(direction: str, degrees: int)
+- rotate_gripper(angle_range: int = 45, speed: int = 40)
 - dance_celebrate()
 - gesture(action: str)   // action = "yes" or "no"
 - scan_object(object_name: str)

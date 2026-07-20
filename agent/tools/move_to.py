@@ -29,6 +29,21 @@ def move_to(target_coord: list = None, target_name: str = None, target_height: i
     if not target_coord:
         target_coord = init.last_coords[:2] if init.last_coords else [0, -150]
 
+    # Auto-adjust height for stacking if target_height is default 110
+    if target_height == 110:
+        stack_count = 0
+        for obj_name, coord in init.known_objects.items():
+            if isinstance(coord, list) and len(coord) >= 2:
+                # Check if coordinates are close (within 15 units)
+                dx = abs(coord[0] - target_coord[0])
+                dy = abs(coord[1] - target_coord[1])
+                if dx < 15 and dy < 15:
+                    stack_count += 1
+        
+        if stack_count > 0:
+            target_height = 110 + (stack_count * 25)
+            print(f"🤖 <SYSTEM>: ตรวจพบวัตถุที่พิกัดนี้ {stack_count} ชิ้น ปรับความสูงการวางเป็น {target_height} เพื่อไม่ให้กดทับรุนแรง")
+
     # Safety clamps
     target_coord[0] = max(-280.0, min(280.0, float(target_coord[0])))
     target_coord[1] = max(-280.0, min(280.0, float(target_coord[1])))

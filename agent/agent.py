@@ -1,6 +1,7 @@
 import os
 import argparse
 from dotenv import load_dotenv
+
 load_dotenv()
 
 # Force standard OpenAI client to use the custom base URL and key from .env
@@ -19,18 +20,30 @@ from agent.tools import agent_tools
 from hardware import init
 from openai import AsyncOpenAI
 
+
 def exit_function():
     """Cleanup function executed upon program exit"""
-    print("\nProgram is exiting, performing cleanup operations (e.g., returning robot arm to home position)...")
+    print(
+        "\nProgram is exiting, performing cleanup operations (e.g., returning robot arm to home position)..."
+    )
     print("Cleanup complete. Program exited.")
 
+
 def parse_arguments():
-    parser = argparse.ArgumentParser(description='Robotic Arm Agent with openai-agents')
-    parser.add_argument('user_input', nargs='*', 
-                       help='User input content, multiple words will be combined into one sentence')
-    parser.add_argument('--interactive', '-i', action='store_true',
-                       help='Interactive mode, ignore command line input and wait for user input')
+    parser = argparse.ArgumentParser(description="Robotic Arm Agent with openai-agents")
+    parser.add_argument(
+        "user_input",
+        nargs="*",
+        help="User input content, multiple words will be combined into one sentence",
+    )
+    parser.add_argument(
+        "--interactive",
+        "-i",
+        action="store_true",
+        help="Interactive mode, ignore command line input and wait for user input",
+    )
     return parser.parse_args()
+
 
 def get_agent():
     instructions = """
@@ -59,51 +72,57 @@ You are an intelligent 6-axis robotic arm assistant. Your mission is to understa
 13. **Multitasking & Speed (CRITICAL)**: To make the robot extremely fast, you MUST combine multiple tool calls in a SINGLE response turn whenever the user asks for a sequence of actions (e.g., `grab_object` then `move_to`, or `grab_object` then `dance_celebrate`). DO NOT wait to observe the result of the first tool before calling the second tool if the sequence is predictable.
 14. **Voice Output**: Always include a short, concise summary (1-2 sentences) of what you did or what you want to say out loud, wrapped in `<VOICE>...</VOICE>` tags at the very end of your response. This text will be spoken by the TTS engine. **CRITICAL: The text inside `<VOICE>` MUST be written in Isan dialect (ภาษาอีสาน) with a cheeky/teasing male persona.** For example: `... <VOICE>จัดให้แล้วเด้อหล่า ย้ายกล่องแดงให้เรียบร้อย บ่อยากสิคุยว่าแม่นปานใด๋</VOICE>`"""
     llm_model_name = os.getenv("LLM_MODEL_NAME", "deepseek-chat")
-    
+
     # We must use OpenAIChatCompletionsModel instead of the default Responses API
     # because third-party providers (Deepseek, Ollama) only support Chat Completions.
     # It requires an explicit openai_client.
     # Set explicit timeout to prevent AI requests from hanging indefinitely
     client = AsyncOpenAI(timeout=120.0)
     model_config = OpenAIChatCompletionsModel(
-        model=llm_model_name, 
-        openai_client=client
+        model=llm_model_name, openai_client=client
     )
 
     return Agent(
         name="Robotic Arm Assistant",
         instructions=instructions,
         tools=agent_tools,
-        model=model_config
+        model=model_config,
     )
+
 
 def get_contextual_input(raw_input):
     try:
         from hardware import init
+
         coords = init.last_coords
-        
+
         # Format holding status with current held object if any
         if init.is_holding_object:
-            held_str = f"'{init.current_held_object}'" if init.current_held_object else "an unknown object"
+            held_str = (
+                f"'{init.current_held_object}'"
+                if init.current_held_object
+                else "an unknown object"
+            )
             holding_status = f"HOLDING {held_str}"
         else:
             holding_status = "EMPTY (not holding anything)"
-            
+
         memory_str = f"{init.known_objects}" if init.known_objects else "{}"
-        
+
         if coords and len(coords) >= 3:
             return f"[System: Current arm coordinates are X={coords[0]}, Y={coords[1]}, Z={coords[2]}. Gripper state: {holding_status}. Known objects in memory: {memory_str}]\nUser: {raw_input}"
     except Exception as e:
         print(f"Context error: {e}")
     return raw_input
 
+
 async def main():
     args = parse_arguments()
     robotic_arm_agent = get_agent()
-    
+
     try:
         if args.user_input and not args.interactive:
-            user_input = ' '.join(args.user_input)
+            user_input = " ".join(args.user_input)
             print(f"<USER>: {user_input}")
             contextual_input = get_contextual_input(user_input)
             result = await Runner.run(robotic_arm_agent, input=contextual_input)
@@ -113,7 +132,7 @@ async def main():
             while True:
                 try:
                     user_input = input("<USER>: ")
-                    if user_input.lower() in ['exit', 'quit']:
+                    if user_input.lower() in ["exit", "quit"]:
                         break
                     contextual_input = get_contextual_input(user_input)
                     result = await Runner.run(robotic_arm_agent, input=contextual_input)
@@ -123,49 +142,87 @@ async def main():
     finally:
         exit_function()
 
+
 def _play_voice(text):
     import os
     import ctypes
     import edge_tts
     import asyncio
-    
+
     async def _generate_and_play():
         try:
             from hardware import init
+
             mp3_path = os.path.join(init.PROJECT_ROOT, "speech.mp3")
         except ImportError:
             mp3_path = os.path.join(os.getcwd(), "speech.mp3")
-            
+
+        openai_key = os.getenv("OPENAI_API_VOICE_KEY")
+        use_openai = False
+
+        if openai_key:
+            try:
+                from openai import AsyncOpenAI
+
+                # Force base_url to official OpenAI to avoid conflicts with other providers (like DeepSeek)
+                client = AsyncOpenAI(
+                    api_key=openai_key, base_url="https://api.openai.com/v1"
+                )
+
+                # Use onyx for a male persona
+                response = await client.audio.speech.create(
+                    model="tts-1-hd", voice="echo", input=text
+                )
+                response.stream_to_file(mp3_path)
+                use_openai = True
+            except Exception as e:
+                print(f"⚠️ <SYSTEM>: OpenAI TTS Error: {e} - falling back to edge_tts")
+                use_openai = False
+
+        if not use_openai:
+            try:
+                communicate = edge_tts.Communicate(text, "th-TH-NiwatNeural")
+                await communicate.save(mp3_path)
+            except Exception as e:
+                print(f"⚠️ <SYSTEM>: Edge TTS Error: {e}")
+                return
+
         try:
-            communicate = edge_tts.Communicate(text, "th-TH-NiwatNeural")
-            await communicate.save(mp3_path)
-            
-            ctypes.windll.winmm.mciSendStringW('close mymp3', None, 0, None)
-            ctypes.windll.winmm.mciSendStringW(f'open "{mp3_path}" type mpegvideo alias mymp3', None, 0, None)
-            ctypes.windll.winmm.mciSendStringW('play mymp3 wait', None, 0, None)
-            ctypes.windll.winmm.mciSendStringW('close mymp3', None, 0, None)
+            ctypes.windll.winmm.mciSendStringW("close mymp3", None, 0, None)
+            ctypes.windll.winmm.mciSendStringW(
+                f'open "{mp3_path}" type mpegvideo alias mymp3', None, 0, None
+            )
+            ctypes.windll.winmm.mciSendStringW("play mymp3 wait", None, 0, None)
+            ctypes.windll.winmm.mciSendStringW("close mymp3", None, 0, None)
         except Exception as e:
-            print(f"⚠️ <SYSTEM>: Voice TTS Error: {e}")
-            
+            print(f"⚠️ <SYSTEM>: Playback Error: {e}")
+
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     loop.run_until_complete(_generate_and_play())
 
+
 def _process_and_print_result(final_output, speaker_on=True):
     import re
     import threading
-    
+
     voice_text = None
-    voice_match = re.search(r'<VOICE>(.*?)</VOICE>', final_output, re.DOTALL | re.IGNORECASE)
+    voice_match = re.search(
+        r"<VOICE>(.*?)</VOICE>", final_output, re.DOTALL | re.IGNORECASE
+    )
     if voice_match:
         voice_text = voice_match.group(1).strip()
-        final_output = re.sub(r'<VOICE>.*?</VOICE>', '', final_output, flags=re.DOTALL | re.IGNORECASE).strip()
-        
+        final_output = re.sub(
+            r"<VOICE>.*?</VOICE>", "", final_output, flags=re.DOTALL | re.IGNORECASE
+        ).strip()
+
     print(f"🤖 <LLM>: {final_output}")
-    
+
     if voice_text and speaker_on:
         threading.Thread(target=_play_voice, args=(voice_text,), daemon=True).start()
 
+
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(main())
