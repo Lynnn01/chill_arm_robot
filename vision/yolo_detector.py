@@ -90,10 +90,19 @@ def scan_with_yolo(object_name):
                 for th, en in thai_map.items():
                     obj_lower = obj_lower.replace(th, f" {en} ")
 
-                # Check for direct match or substring match (like "red" in "red cube")
-                if any(word in name_lower for word in obj_lower.split()) or any(
-                    word in obj_lower for word in name_lower.split()
-                ):
+                obj_words = set(obj_lower.split())
+                name_words = set(name_lower.split())
+                
+                colors = {'red', 'green', 'blue', 'yellow', 'orange'}
+                obj_colors = obj_words.intersection(colors)
+                name_colors = name_words.intersection(colors)
+                
+                # If both specify a color, they must match exactly
+                if obj_colors and name_colors and not obj_colors.intersection(name_colors):
+                    continue
+                
+                # Check for direct match or substring match
+                if obj_words.intersection(name_words):
                     # Found!
                     x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
                     center_x = (x1 + x2) / 2

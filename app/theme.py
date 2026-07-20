@@ -5,24 +5,24 @@ class Theme:
     All UI constants live here. Never hardcode in components.
     """
     # --- Background Layers ---
-    BG = "#F8FAFC"            # App window — slightly off-white (Slate 50)
+    BG = "#FFFFFF"            # App window (Base)
     SURFACE = "#FFFFFF"       # Cards, panels
-    SURFACE_MUTED = "#F1F5F9" # Input fields, inactive tabs (Slate 100)
+    SURFACE_MUTED = "#F8FAFC" # Input fields, inactive tabs
     SIDEBAR_BG = "#FFFFFF"    # Left panel sidebar
 
     # --- Text ---
-    FG = "#0F172A"            # Primary text — near-black (Slate 900)
-    MUTED_FG = "#94A3B8"      # Secondary / placeholder text (Slate 400)
-    CAPTION_FG = "#64748B"    # Captions / axis labels (Slate 500)
+    FG = "#0F172A"            # Primary text — near-black
+    MUTED_FG = "#94A3B8"      # Secondary / placeholder text
+    CAPTION_FG = "#64748B"    # Captions / axis labels
 
     # --- Borders ---
     BORDER = "#E2E8F0"        # Card & input borders (Slate 200)
     BORDER_FOCUS = "#6366F1"  # Indigo 500 (Magic UI accent)
 
     # --- Primary Action (SEND) ---
-    PRIMARY = "#1E293B"       # Dark slate
+    PRIMARY = "#0F172A"       # Black for buttons
     PRIMARY_FG = "#FFFFFF"
-    PRIMARY_HOVER = "#334155" # Slate 700
+    PRIMARY_HOVER = "#1E293B" # Dark slate hover
 
     # --- Danger Action (RESET) ---
     DANGER = "#EF4444"
@@ -36,16 +36,16 @@ class Theme:
     WARNING = "#F59E0B"
 
     # --- Fonts ---
-    FONT_BRAND = ("Tahoma", 18, "bold")     # "ONE ARM" branding
-    FONT_TITLE = ("Tahoma", 18, "bold")
+    FONT_BRAND = ("Tahoma", 22, "bold")     # "ONE ARM" branding
+    FONT_TITLE = ("Tahoma", 22, "bold")
     FONT_H1 = ("Tahoma", 14, "bold")
     FONT_H2 = ("Tahoma", 12, "bold")
-    FONT_BODY = ("Tahoma", 12)
-    FONT_BODY_BOLD = ("Tahoma", 12, "bold")
-    FONT_SMALL = ("Tahoma", 10)
-    FONT_CAPTION = ("Tahoma", 8)
-    FONT_LOG = ("Tahoma", 12)
-    FONT_LOG_BOLD = ("Tahoma", 12, "bold")
+    FONT_BODY = ("Tahoma", 10)
+    FONT_BODY_BOLD = ("Tahoma", 10, "bold")
+    FONT_SMALL = ("Tahoma", 8)
+    FONT_CAPTION = ("Tahoma", 6)
+    FONT_LOG = ("Tahoma", 14)
+    FONT_LOG_BOLD = ("Tahoma", 14, "bold")
 
     # --- Spacing (8-pt grid) ---
     SP_XS = 4
