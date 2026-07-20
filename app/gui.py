@@ -8,23 +8,25 @@ from app.components.left_panel import LeftPanel
 from app.components.right_panel import RightPanel
 from app.theme import Theme
 
+
 class RedirectText:
     def __init__(self, q):
         self.q = q
         self.buffer = ""
-        
+
     def write(self, string):
         self.buffer += string
-        if '\n' in self.buffer:
-            lines = self.buffer.split('\n')
+        if "\n" in self.buffer:
+            lines = self.buffer.split("\n")
             for line in lines[:-1]:
-                self.q.put(line + '\n')
+                self.q.put(line + "\n")
             self.buffer = lines[-1]
 
     def flush(self):
         if self.buffer:
-            self.q.put(self.buffer + '\n')
+            self.q.put(self.buffer + "\n")
             self.buffer = ""
+
 
 class OneArmGUI:
     def __init__(self, root):
@@ -32,17 +34,17 @@ class OneArmGUI:
         self.root.title("MyCobot 280 AI Control")
         self.root.geometry("1200x800+0+0")
         self.root.minsize(900, 600)
-        
+
         Theme.apply_window_style(self.root)
-        
+
         self.log_queue = queue.Queue()
         self.input_queue = queue.Queue()
         sys.stdout = RedirectText(self.log_queue)
         self.current_speaker = "sys"
-        
+
         self.setup_ui()
         self.root.after(100, self.process_queue)
-        
+
         # Single persistent AI worker thread
         threading.Thread(target=self._agent_loop, daemon=True).start()
 
@@ -56,16 +58,13 @@ class OneArmGUI:
         self.root.columnconfigure(1, weight=1, uniform="pane")
         self.root.rowconfigure(0, weight=1)
 
-        self.left_panel = LeftPanel(
-            parent=self.root, 
-            log_queue=self.log_queue
-        )
-        
+        self.left_panel = LeftPanel(parent=self.root, log_queue=self.log_queue)
+
         self.right_panel = RightPanel(
             parent=self.root,
             log_queue=self.log_queue,
             reset_robot_callback=self.reset_robot,
-            send_message_callback=self.send_message
+            send_message_callback=self.send_message,
         )
 
     def process_queue(self):
@@ -91,29 +90,35 @@ class OneArmGUI:
         # Detect speaker change
         if "👨‍💻 <USER>:" in text or text.startswith("<USER>:"):
             self.current_speaker = "user"
-            text = text.replace("👨‍💻 <USER>:", "👨 You:").strip()
+            text = text.replace("👨‍💻 <USER>:", "👨 ").strip()
             # Add an extra newline before new speaker if not first message
-            if self.right_panel.log_text.index('end-1c') != '1.0':
+            if self.right_panel.log_text.index("end-1c") != "1.0":
                 self.right_panel.log_text.insert(tk.END, "\n", "sys")
         elif "🤖 <LLM>:" in text or text.startswith("<LLM>:"):
             self.current_speaker = "llm"
-            text = text.replace("🤖 <LLM>:", "🤖 ONE ARM:").strip()
-            if self.right_panel.log_text.index('end-1c') != '1.0':
+            text = text.replace("🤖 <LLM>:", "🤖 ").strip()
+            if self.right_panel.log_text.index("end-1c") != "1.0":
                 self.right_panel.log_text.insert(tk.END, "\n", "sys")
-        elif "<SYSTEM>:" in text or text.startswith("✅") or text.startswith("⚠️") or text.startswith("🔄") or "Image saved" in text or "Moving to" in text:
+        elif (
+            "<SYSTEM>:" in text
+            or text.startswith("✅")
+            or text.startswith("⚠️")
+            or text.startswith("🔄")
+            or "Image saved" in text
+            or "Moving to" in text
+        ):
             self.current_speaker = "sys"
             text = text.replace("<SYSTEM>:", "").strip()
 
         # Insert the text with current speaker's tag
         self.right_panel.log_text.insert(tk.END, text + "\n", self.current_speaker)
-        
-        line_count = int(self.right_panel.log_text.index('end-1c').split('.')[0])
+
+        line_count = int(self.right_panel.log_text.index("end-1c").split(".")[0])
         if line_count > 1000:
-            self.right_panel.log_text.delete('1.0', '500.0')
-            
+            self.right_panel.log_text.delete("1.0", "500.0")
+
         self.right_panel.log_text.config(state=tk.DISABLED)
         self.right_panel.log_text.see(tk.END)
-
 
     def reset_robot(self):
         print("\n🔄 <SYSTEM>: กำลังรีเซ็ตหุ่นยนต์กลับสู่ตำแหน่งเริ่มต้น...")
@@ -124,6 +129,7 @@ class OneArmGUI:
         try:
             import time
             from hardware.init import mc
+
             mc.send_angles([0, 0, 0, 0, 0, -45], 50)
             time.sleep(2)
             print("✅ <SYSTEM>: รีเซ็ตเสร็จสมบูรณ์!")
@@ -147,17 +153,20 @@ class OneArmGUI:
         """Single persistent background thread with its own asyncio event loop."""
         from agent.agent import get_agent, get_contextual_input
         from agents import Runner
-        
+
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         agent = get_agent()
-        
+
         while True:
             user_input = self.input_queue.get()
             try:
                 contextual_input = get_contextual_input(user_input)
-                result = loop.run_until_complete(Runner.run(agent, input=contextual_input))
+                result = loop.run_until_complete(
+                    Runner.run(agent, input=contextual_input)
+                )
                 from agent.agent import _process_and_print_result
+
                 print("\n", end="")
                 _process_and_print_result(result.final_output)
                 print("\n", end="")
@@ -166,18 +175,19 @@ class OneArmGUI:
             finally:
                 self.log_queue.put(self.enable_all_inputs)
 
+
 def start_gui():
     from hardware.init import mc, BotInit, cam_manager
-    
+
     # Init robot position in background (non-blocking)
     threading.Thread(target=BotInit, args=(mc,), daemon=True).start()
-    
+
     root = tk.Tk()
     app = OneArmGUI(root)
 
     # Start camera AFTER tkinter window is created to avoid X11/GStreamer conflict
     cam_manager.start()
-    
+
     def on_closing():
         try:
             cam_manager.stop()
@@ -186,6 +196,6 @@ def start_gui():
         finally:
             root.destroy()
             sys.exit(0)
-            
+
     root.protocol("WM_DELETE_WINDOW", on_closing)
     root.mainloop()

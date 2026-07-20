@@ -61,7 +61,8 @@ def grab_object(object_name: str, target_coord: list = None) -> list:
                 center_x = (position['x1'] + position['x2']) / 2
                 center_y = (position['y1'] + position['y2']) / 2
                 target_pixel = (center_x / 1000 * width, center_y / 1000 * height)
-                robot_coord = eyeonhand.pixel_to_arm(target_pixel)
+                robot_coord_np = eyeonhand.pixel_to_arm(target_pixel)
+                robot_coord = [float(robot_coord_np[0]), float(robot_coord_np[1])]
                 print(f"🤖 <SYSTEM>: เจอแล้ว! กำลังเคลื่อนที่ไปพิกัด {robot_coord}")
                 robot_coord[0] = robot_coord[0] + x_offset
                 robot_coord[1] = robot_coord[1] + y_offset
@@ -72,8 +73,8 @@ def grab_object(object_name: str, target_coord: list = None) -> list:
                 return []
 
     # Safety clamps for grasping
-    robot_coord[0] = max(-280.0, min(280.0, float(robot_coord[0])))
-    robot_coord[1] = max(-280.0, min(280.0, float(robot_coord[1])))
+    robot_coord[0] = max(-280.0, min(280.0, robot_coord[0]))
+    robot_coord[1] = max(-280.0, min(280.0, robot_coord[1]))
 
     init.open_gripper()
     mc.send_coords([robot_coord[0], robot_coord[1], 200, -173, 0, -45], 40)

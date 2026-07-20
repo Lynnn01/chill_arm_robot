@@ -100,7 +100,8 @@ def scan_with_yolo(object_name):
                     center_y = (y1 + y2) / 2
 
                     target_pixel = (center_x, center_y)
-                    robot_coord = eyeonhand.pixel_to_arm(target_pixel)
+                    robot_coord_np = eyeonhand.pixel_to_arm(target_pixel)
+                    robot_coord = [float(robot_coord_np[0]), float(robot_coord_np[1])]
 
                     robot_coord[0] = robot_coord[0] + x_offset
                     robot_coord[1] = robot_coord[1] + y_offset
@@ -118,8 +119,8 @@ def scan_with_yolo(object_name):
                     if robot_coord[0] > 210:
                         robot_coord[0] = robot_coord[0] - 5
 
-                    robot_coord[0] = max(-280.0, min(280.0, float(robot_coord[0])))
-                    robot_coord[1] = max(-280.0, min(280.0, float(robot_coord[1])))
+                    robot_coord[0] = max(-280.0, min(280.0, robot_coord[0]))
+                    robot_coord[1] = max(-280.0, min(280.0, robot_coord[1]))
 
                     saved_coord = [round(robot_coord[0], 2), round(robot_coord[1], 2)]
 

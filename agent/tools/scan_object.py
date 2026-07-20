@@ -67,7 +67,8 @@ def scan_object(object_name: str) -> str:
             target_pixel = (center_x / 1000 * width, center_y / 1000 * height)
             
             # Map to arm coordinates (relative to current camera rotation)
-            robot_coord = eyeonhand.pixel_to_arm(target_pixel)
+            robot_coord_np = eyeonhand.pixel_to_arm(target_pixel)
+            robot_coord = [float(robot_coord_np[0]), float(robot_coord_np[1])]
             
             # Add general offsets
             robot_coord[0] = robot_coord[0] + x_offset
@@ -92,8 +93,8 @@ def scan_object(object_name: str) -> str:
                 robot_coord[0] = robot_coord[0] - 5
                 
             # Safety clamps
-            robot_coord[0] = max(-280.0, min(280.0, float(robot_coord[0])))
-            robot_coord[1] = max(-280.0, min(280.0, float(robot_coord[1])))
+            robot_coord[0] = max(-280.0, min(280.0, robot_coord[0]))
+            robot_coord[1] = max(-280.0, min(280.0, robot_coord[1]))
             
             # Save to memory
             saved_coord = [round(robot_coord[0], 2), round(robot_coord[1], 2)]
