@@ -23,8 +23,30 @@ class RightPanel(tk.Frame):
         hdr.grid(row=0, column=0, sticky="ew", pady=(0, Theme.SP_MD))
         tk.Label(hdr, text="AI Interaction Log",
                  font=Theme.FONT_H1, bg=Theme.BG, fg=Theme.FG).pack(side=tk.LEFT)
+        
+        self.mic_on = True
+        self.speaker_on = True
+
+        self.mic_btn = RoundedButton(hdr, text="🎤 Mic: ON",
+                                     radius=Theme.RADIUS_SM,
+                                     bg=Theme.SUCCESS, fg=Theme.PRIMARY_FG,
+                                     hover_bg=Theme.BORDER,
+                                     font=Theme.FONT_BODY,
+                                     command=self._toggle_mic,
+                                     width=100, height=30)
+        self.mic_btn.pack(side=tk.RIGHT, padx=Theme.SP_SM)
+
+        self.speaker_btn = RoundedButton(hdr, text="🔊 Spk: ON",
+                                         radius=Theme.RADIUS_SM,
+                                         bg=Theme.SUCCESS, fg=Theme.PRIMARY_FG,
+                                         hover_bg=Theme.BORDER,
+                                         font=Theme.FONT_BODY,
+                                         command=self._toggle_speaker,
+                                         width=100, height=30)
+        self.speaker_btn.pack(side=tk.RIGHT, padx=Theme.SP_SM)
+
         tk.Label(hdr, text="● Live",
-                 font=Theme.FONT_SMALL, bg=Theme.BG, fg=Theme.SUCCESS).pack(side=tk.RIGHT)
+                 font=Theme.FONT_SMALL, bg=Theme.BG, fg=Theme.SUCCESS).pack(side=tk.RIGHT, padx=Theme.SP_MD)
 
         # ── Log card ───────────────────────────────────────────────────
         self.log_card = RoundedFrame(self, radius=Theme.RADIUS_LG,
@@ -132,3 +154,21 @@ class RightPanel(tk.Frame):
         self.reset_btn.set_state(tk.NORMAL)
         self.input_entry.config(state=tk.NORMAL)
         self.input_entry.focus()
+
+    def _toggle_mic(self):
+        self.mic_on = not self.mic_on
+        if self.mic_on:
+            self.mic_btn.set_text("🎤 Mic: ON")
+            self.mic_btn.set_colors(bg=Theme.SUCCESS, fg=Theme.PRIMARY_FG)
+        else:
+            self.mic_btn.set_text("🔇 Mic: OFF")
+            self.mic_btn.set_colors(bg=Theme.DANGER, fg=Theme.PRIMARY_FG)
+
+    def _toggle_speaker(self):
+        self.speaker_on = not self.speaker_on
+        if self.speaker_on:
+            self.speaker_btn.set_text("🔊 Spk: ON")
+            self.speaker_btn.set_colors(bg=Theme.SUCCESS, fg=Theme.PRIMARY_FG)
+        else:
+            self.speaker_btn.set_text("🔈 Spk: OFF")
+            self.speaker_btn.set_colors(bg=Theme.DANGER, fg=Theme.PRIMARY_FG)

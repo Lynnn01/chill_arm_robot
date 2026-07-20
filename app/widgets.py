@@ -147,3 +147,14 @@ class RoundedButton(tk.Canvas):
         self._disabled = (state == tk.DISABLED)
         self.configure(cursor="arrow" if self._disabled else "hand2")
         self._redraw()
+
+    def set_colors(self, bg=None, fg=None, hover_bg=None):
+        if bg:
+            self._bg_normal = bg
+            if not self._disabled:
+                self._bg_current = bg
+        if fg:
+            self._fg = fg
+        if hover_bg:
+            self._bg_hover = hover_bg
+        self._redraw()
