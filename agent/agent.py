@@ -124,34 +124,33 @@ async def main():
 
 def _play_voice(text):
     try:
-        import os
         import asyncio
-        import edge_tts
-        import ctypes
-        from hardware import init
+        from pipecat.pipeline.pipeline import Pipeline
+        from pipecat.pipeline.task import PipelineTask
+        from pipecat.pipeline.runner import PipelineRunner
+        from pipecat.frames.frames import TextFrame, EndFrame
         
-        mp3_path = os.path.join(init.PROJECT_ROOT, "speech.mp3")
+        from agent.pipecat_edge_tts import EdgeTTSProcessor
         
-        async def _generate():
-            # ใช้เสียง Niwat (ผู้ชายไทย ทางการ)
-            communicate = edge_tts.Communicate(text, "th-TH-NiwatNeural")
-            await communicate.save(mp3_path)
+        async def _run_pipecat():
+            processor = EdgeTTSProcessor(voice="th-TH-NiwatNeural")
+            pipeline = Pipeline([processor])
+            task = PipelineTask(pipeline)
             
-        # เนื่องจากฟังก์ชันนี้รันอยู่ใน Thread ใหม่แยกต่างหาก เราเลยต้องสร้าง Event Loop ใหม่
+            await task.queue_frames([TextFrame(text), EndFrame()])
+                
+            runner = PipelineRunner(handle_sigint=False)
+            await runner.run(task)
+            
+        # Run pipeline in isolated event loop since it's a separate thread
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        loop.run_until_complete(_generate())
-        
-        # ใช้ winmm.dll ของ Windows เพื่อเล่นไฟล์ MP3 โดยตรง (ไม่ต้องใช้ pygame)
-        ctypes.windll.winmm.mciSendStringW('close mymp3', None, 0, None)
-        ctypes.windll.winmm.mciSendStringW(f'open "{mp3_path}" type mpegvideo alias mymp3', None, 0, None)
-        ctypes.windll.winmm.mciSendStringW('play mymp3 wait', None, 0, None)
-        ctypes.windll.winmm.mciSendStringW('close mymp3', None, 0, None)
+        loop.run_until_complete(_run_pipecat())
         
     except Exception as e:
         print(f"⚠️ <SYSTEM>: Voice TTS Error: {e}")
 
-def _process_and_print_result(final_output):
+def _process_and_print_result(final_output, speaker_on=True):
     import re
     import threading
     
@@ -163,7 +162,7 @@ def _process_and_print_result(final_output):
         
     print(f"🤖 <LLM>: {final_output}")
     
-    if voice_text:
+    if voice_text and speaker_on:
         threading.Thread(target=_play_voice, args=(voice_text,), daemon=True).start()
 
 if __name__ == "__main__":

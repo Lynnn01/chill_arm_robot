@@ -24,21 +24,21 @@ class RightPanel(tk.Frame):
         tk.Label(hdr, text="AI Interaction Log",
                  font=Theme.FONT_H1, bg=Theme.BG, fg=Theme.FG).pack(side=tk.LEFT)
         
-        self.mic_on = True
-        self.speaker_on = True
+        self.mic_on = False
+        self.speaker_on = False
 
-        self.mic_btn = RoundedButton(hdr, text="🎤 Mic: ON",
+        self.mic_btn = RoundedButton(hdr, text="🔇 Mic: OFF",
                                      radius=Theme.RADIUS_SM,
-                                     bg=Theme.SUCCESS, fg=Theme.PRIMARY_FG,
+                                     bg=Theme.DANGER, fg=Theme.PRIMARY_FG,
                                      hover_bg=Theme.BORDER,
                                      font=Theme.FONT_BODY,
                                      command=self._toggle_mic,
                                      width=100, height=30)
         self.mic_btn.pack(side=tk.RIGHT, padx=Theme.SP_SM)
 
-        self.speaker_btn = RoundedButton(hdr, text="🔊 Spk: ON",
+        self.speaker_btn = RoundedButton(hdr, text="🔈 Spk: OFF",
                                          radius=Theme.RADIUS_SM,
-                                         bg=Theme.SUCCESS, fg=Theme.PRIMARY_FG,
+                                         bg=Theme.DANGER, fg=Theme.PRIMARY_FG,
                                          hover_bg=Theme.BORDER,
                                          font=Theme.FONT_BODY,
                                          command=self._toggle_speaker,

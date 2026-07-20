@@ -168,7 +168,7 @@ class OneArmGUI:
                 from agent.agent import _process_and_print_result
 
                 print("\n", end="")
-                _process_and_print_result(result.final_output)
+                _process_and_print_result(result.final_output, speaker_on=self.right_panel.speaker_on)
                 print("\n", end="")
             except Exception as e:
                 print(f"\n⚠️ <ERROR>: {e}\n")
