@@ -72,7 +72,7 @@ def execute_plan(tasks: list, plan_summary: str = "") -> list:
             continue
 
         # Smart arg injection: move_to can use coord from previous grab
-        if tool_name == "move_to" and not args.get("target_coord"):
+        if tool_name == "move_to" and not args.get("target_coord") and not args.get("target_name"):
             if last_grab_coord and isinstance(last_grab_coord, list):
                 print(f"🤖 <SYSTEM>: move_to ใช้พิกัดจาก grab ก่อนหน้า: {last_grab_coord}")
                 args["target_coord"] = last_grab_coord

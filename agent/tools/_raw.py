@@ -82,8 +82,27 @@ def raw_grab_object(object_name: str, target_coord: list = None) -> list:
 
 # ── move_to ──────────────────────────────────────────────────────────────────
 
-def raw_move_to(target_coord: list, target_height: int = 110) -> str:
-    """Move and place current object at target_coord."""
+def raw_move_to(target_coord: list = None, target_name: str = None, target_height: int = 110) -> str:
+    """Move and place current object at target_coord or on top of target_name."""
+    if target_name and not target_coord:
+        if target_name in init.known_objects and isinstance(init.known_objects[target_name], list):
+            target_coord = init.known_objects[target_name]
+            print(f"🤖 <SYSTEM>: ใช้พิกัดของ '{target_name}' จากความจำ {target_coord}")
+        else:
+            from vision import yolo_detector
+            print(f"🤖 <SYSTEM>: ไม่รู้พิกัดของ '{target_name}' กำลังใช้กล้องสแกนหา...")
+            found_coord = yolo_detector.scan_with_yolo(target_name)
+            if found_coord:
+                target_coord = found_coord
+                print(f"🤖 <SYSTEM>: สแกนเจอ '{target_name}' ที่พิกัด {target_coord}")
+            else:
+                print(f"⚠️ <SYSTEM>: หา '{target_name}' ไม่เจอ! วางไว้ที่เดิม...")
+                target_coord = init.last_coords[:2] if init.last_coords else [0, -150]
+
+    if not target_coord:
+        print(f"⚠️ <SYSTEM>: ไม่มีพิกัดเป้าหมาย! วางไว้ที่เดิม...")
+        target_coord = init.last_coords[:2] if init.last_coords else [0, -150]
+
     tc = [max(-280.0, min(280.0, float(target_coord[0]))),
           max(-280.0, min(280.0, float(target_coord[1])))]
     th = max(0, min(280, int(target_height)))

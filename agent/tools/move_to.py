@@ -5,25 +5,34 @@ from hardware import init
 from agents import function_tool
 
 @function_tool
-def move_to(target_coord: list, target_height: int = 110) -> str:
+def move_to(target_coord: list = None, target_name: str = None, target_height: int = 110) -> str:
     """
     [Tags: Action, Placement, Memory]
-    Moves the currently grabbed object to a specific target coordinate [x, y] and releases it at target_height.
+    Moves the currently grabbed object to a specific target coordinate [x, y] or on top of target_name and releases it.
     
     When to use:
     - เมื่อผู้ใช้สั่งให้ "วาง", "ย้าย", "นำไปไว้ที่" พิกัดที่ระบุ หรือนำไปซ้อนกัน
     - ต้องเรียกใช้ **หลังจาก** ใช้ grab_object หยิบของสำเร็จแล้วเท่านั้น ห้ามใช้ถ้ามือเปล่า
     
     Args:
-        target_coord: The target coordinate [x, y] to place the object. For complex patterns, calculate this using Python code first.
-        target_height: The height to release the object. Default is 110. For stacking, increase by 20 for each subsequent object.
+        target_coord: The target coordinate [x, y] to place the object.
+        target_name: The name of the object to place it on top of (e.g., 'green block').
+        target_height: The height to release the object. Default is 110. For stacking, increase by 20.
     """
+    if target_name and not target_coord:
+        if target_name in init.known_objects and isinstance(init.known_objects[target_name], list):
+            target_coord = init.known_objects[target_name]
+        else:
+            from vision import yolo_detector
+            target_coord = yolo_detector.scan_with_yolo(target_name)
+    
+    if not target_coord:
+        target_coord = init.last_coords[:2] if init.last_coords else [0, -150]
+
     # Safety clamps
     target_coord[0] = max(-280.0, min(280.0, float(target_coord[0])))
     target_coord[1] = max(-280.0, min(280.0, float(target_coord[1])))
     target_height = max(0, min(280, int(target_height)))
-
-    # Image size is not needed in this tool
 
     # Move the object to the target position
     print(f"🤖 <SYSTEM>: กำลังเคลื่อนย้ายวัตถุไปวางที่เป้าหมายพิกัด {target_coord} ความสูง {target_height}...")
