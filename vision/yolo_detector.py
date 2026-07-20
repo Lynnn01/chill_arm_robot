@@ -52,7 +52,8 @@ def scan_with_yolo(object_name):
         if frame is None:
             continue
             
-        results = model(frame, verbose=False)
+        # ใช้ conf=0.15 เพื่อเพิ่มความไวในการดักจับ (บางทีแสงหรือมุมทำให้ความมั่นใจต่ำลง)
+        results = model(frame, conf=0.15, verbose=False)
         annotated_frame = results[0].plot()
         cam_manager.set_overlay(annotated_frame, duration=2.0)
         
@@ -66,9 +67,16 @@ def scan_with_yolo(object_name):
                 name = model.names[cls]
                 
                 # Simple matching logic: if any word matches
-                # e.g., "red" in "red_cube"
                 obj_lower = object_name.lower().replace("_", " ")
                 name_lower = name.lower().replace("_", " ")
+                
+                thai_map = {
+                    "แดง": "red", "เขียว": "green", "น้ำเงิน": "blue",
+                    "ฟ้า": "blue", "เหลือง": "yellow", "ส้ม": "orange",
+                    "กล่อง": "cube", "บล็อก": "cube", "สี": ""
+                }
+                for th, en in thai_map.items():
+                    obj_lower = obj_lower.replace(th, f" {en} ")
                 
                 # Check for direct match or substring match (like "red" in "red cube")
                 if any(word in name_lower for word in obj_lower.split()) or any(word in obj_lower for word in name_lower.split()):

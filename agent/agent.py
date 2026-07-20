@@ -55,7 +55,8 @@ You are an intelligent 6-axis robotic arm assistant. Your mission is to understa
     - **Z-axis**: Represents Up/Down (Up is positive Z). Z=200 is hovering high, Z=110 is table level (lowest safe point). Safe range: [0, 280].
     Keep this in mind when the user asks you to move in a specific direction!
 11. **Object Memory**: You can use the `scan_object` tool to search the environment and remember an object's location. If the system context shows an object is already in "Known objects", you can use `grab_object` directly without needing to provide `target_coord` (it will pull from memory automatically).
-12. **Response Formatting**: DO NOT use markdown like `**` or `*` for bolding or italics because the UI does not support it. Use clear, plain text with Emojis to make it readable. Instead of markdown, use clean bullet points like `- ` or `1. ` and use spaces/newlines to separate thoughts. Structure your final output clearly so the user can easily read it."""
+12. **Response Formatting**: DO NOT use markdown like `**` or `*` for bolding or italics because the UI does not support it. Use clear, plain text with Emojis to make it readable. Instead of markdown, use clean bullet points like `- ` or `1. ` and use spaces/newlines to separate thoughts. Structure your final output clearly so the user can easily read it.
+13. **Voice Output**: Always include a short, concise summary (1-2 sentences) of what you did or what you want to say out loud, wrapped in `<VOICE>...</VOICE>` tags at the very end of your response. This text will be spoken by the TTS engine. **CRITICAL: The text inside `<VOICE>` MUST be written in Isan dialect (ภาษาอีสาน) playfully and naturally.** For example: `... <VOICE>หยิบกล่องสีแดงให้เรียบร้อยแล้วเด้อจ้า สิจัดให้ตามคำขอเลย</VOICE>`"""
     llm_model_name = os.getenv("LLM_MODEL_NAME", "deepseek-chat")
     
     # We must use OpenAIChatCompletionsModel instead of the default Responses API
@@ -105,7 +106,7 @@ async def main():
             print(f"<USER>: {user_input}")
             contextual_input = get_contextual_input(user_input)
             result = await Runner.run(robotic_arm_agent, input=contextual_input)
-            print(f"<LLM>: {result.final_output}")
+            _process_and_print_result(result.final_output)
         else:
             print("Entering interactive mode...")
             while True:
@@ -115,11 +116,51 @@ async def main():
                         break
                     contextual_input = get_contextual_input(user_input)
                     result = await Runner.run(robotic_arm_agent, input=contextual_input)
-                    print(f"<LLM>: {result.final_output}")
+                    _process_and_print_result(result.final_output)
                 except EOFError:
                     break
     finally:
         exit_function()
+
+def _play_voice(text):
+    try:
+        from openai import OpenAI
+        import subprocess
+        
+        # Create a sync client. It will automatically use OPENAI_API_KEY from environment.
+        sync_client = OpenAI()
+        
+        # Some custom endpoints (like DeepSeek) might not support TTS.
+        # We attempt to use the standard OpenAI TTS.
+        response = sync_client.audio.speech.create(
+            model="tts-1",
+            voice="nova",
+            input=text,
+            response_format="wav"
+        )
+        wav_path = os.path.join(init.PROJECT_ROOT, "speech.wav")
+        response.stream_to_file(wav_path)
+        
+        # Play asynchronously using Windows built-in winsound
+        import winsound
+        winsound.PlaySound(wav_path, winsound.SND_FILENAME)
+    except Exception as e:
+        print(f"⚠️ <SYSTEM>: Voice TTS Error: {e}")
+
+def _process_and_print_result(final_output):
+    import re
+    import threading
+    
+    voice_text = None
+    voice_match = re.search(r'<VOICE>(.*?)</VOICE>', final_output, re.DOTALL | re.IGNORECASE)
+    if voice_match:
+        voice_text = voice_match.group(1).strip()
+        final_output = re.sub(r'<VOICE>.*?</VOICE>', '', final_output, flags=re.DOTALL | re.IGNORECASE).strip()
+        
+    print(f"<LLM>: {final_output}")
+    
+    if voice_text:
+        threading.Thread(target=_play_voice, args=(voice_text,), daemon=True).start()
 
 if __name__ == "__main__":
     import asyncio
