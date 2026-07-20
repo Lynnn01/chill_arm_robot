@@ -46,13 +46,13 @@ def scan_with_yolo(object_name):
     x_offset = config_data.get("x", 0)
     y_offset = config_data.get("y", 0)
 
-    # รอ 5 วินาทีเพื่อให้ระบบ YOLO โหลดเสร็จและพร้อมทำงานก่อนเริ่มขยับ
-    time.sleep(5.0)
+    # ลดเวลาการรอเริ่มต้นให้เร็วขึ้น
+    time.sleep(0.5)
 
     for j1 in scan_angles:
         print(f"🤖 <SYSTEM>: YOLO หันกล้องไปที่มุม {j1} องศา...")
         mc.send_angles([17.75 + j1, -0.79, 0.35, -75, 1.14, -28.12], 40)
-        time.sleep(2.5)
+        time.sleep(1.5)
 
         frame = cam_manager.get_frame()
         if frame is None:
@@ -61,11 +61,9 @@ def scan_with_yolo(object_name):
         # ใช้ conf=0.15 เพื่อเพิ่มความไวในการดักจับ (บางทีแสงหรือมุมทำให้ความมั่นใจต่ำลง)
         results = model(frame, verbose=False)
         annotated_frame = results[0].plot()
-        cam_manager.set_overlay(annotated_frame, duration=2.0)
-
-        # หน่วงเวลา 2 วินาทีเพื่อให้ผู้ใช้เห็นกรอบจับวัตถุบนหน้าจอก่อนขยับไปมุมอื่น
-        time.sleep(2.0)
-
+        # แสดง Overlay ซ้อนภาพ แต่ไม่บังคับหยุดรอถ้ายังไม่เจอของ
+        cam_manager.set_overlay(annotated_frame, duration=1.0)
+        
         for result in results:
             boxes = result.boxes
             for box in boxes:
@@ -136,9 +134,11 @@ def scan_with_yolo(object_name):
                     print(
                         f"🤖 <SYSTEM>: YOLO เจอ '{name}' ที่มุม {j1}! พิกัดโลก: {saved_coord}"
                     )
+                    # หน่วงเวลาสั้นๆ ให้ผู้ใช้เห็นกรอบ
+                    time.sleep(1.0)
                     # Return to center
                     mc.send_angles([0, 0, 0, 0, 0, -45], 40)
-                    time.sleep(1)
+                    time.sleep(1.0)
                     return saved_coord
 
     print(

@@ -150,30 +150,63 @@ class OneArmGUI:
         self.input_queue.put(user_input)
 
     def _agent_loop(self):
-        """Single persistent background thread with its own asyncio event loop."""
-        from agent.agent import get_agent, get_contextual_input
+        """Single persistent background thread with its own asyncio event loop.
+
+        Two-Phase Multitask Execution:
+        - Phase 1: planner.plan_tasks() → LLM returns JSON task list (1 roundtrip only)
+        - Phase 2: executor.execute_plan() → runs all tasks sequentially, zero LLM roundtrips
+        - Fallback: if planner returns mode=fallback, uses legacy Runner (free-form queries)
+        """
+        from agent.agent import get_agent, get_contextual_input, _process_and_print_result
+        from agent.planner import plan_tasks, summarize_results
+        from agent.executor import execute_plan
         from agents import Runner
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        agent = get_agent()
+        agent = get_agent()  # keep runner agent for fallback
 
         while True:
             user_input = self.input_queue.get()
             try:
                 contextual_input = get_contextual_input(user_input)
-                result = loop.run_until_complete(
-                    Runner.run(agent, input=contextual_input)
-                )
-                from agent.agent import _process_and_print_result
+                speaker_on = self.right_panel.speaker_on
 
-                print("\n", end="")
-                _process_and_print_result(result.final_output, speaker_on=self.right_panel.speaker_on)
-                print("\n", end="")
+                # ── Phase 1: Plan ──────────────────────────────
+                plan = loop.run_until_complete(plan_tasks(contextual_input))
+
+                if plan.get("mode") == "plan":
+                    # ── Phase 2: Execute (zero roundtrips) ─────
+                    results = execute_plan(
+                        tasks=plan.get("tasks", []),
+                        plan_summary=plan.get("plan_summary", ""),
+                    )
+                    
+                    # ── Phase 3: Summarize ─────────────────────
+                    print("🤖 <SYSTEM>: กำลังสรุปผลการทำงาน...")
+                    final_summary = loop.run_until_complete(
+                        summarize_results(contextual_input, results)
+                    )
+                    print("\n", end="")
+                    _process_and_print_result(final_summary, speaker_on=speaker_on)
+                    print("\n", end="")
+                else:
+                    # ── Fallback: legacy Runner ─────────────────
+                    print("🤖 <SYSTEM>: ใช้ Runner ปกติ (fallback mode)...")
+                    result = loop.run_until_complete(
+                        Runner.run(agent, input=contextual_input)
+                    )
+                    print("\n", end="")
+                    _process_and_print_result(result.final_output, speaker_on=speaker_on)
+                    print("\n", end="")
+
             except Exception as e:
+                import traceback
                 print(f"\n⚠️ <ERROR>: {e}\n")
+                traceback.print_exc()
             finally:
                 self.log_queue.put(self.enable_all_inputs)
+
 
 
 def start_gui():
