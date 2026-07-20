@@ -123,32 +123,32 @@ async def main():
         exit_function()
 
 def _play_voice(text):
-    try:
-        import asyncio
-        from pipecat.pipeline.pipeline import Pipeline
-        from pipecat.pipeline.task import PipelineTask
-        from pipecat.pipeline.runner import PipelineRunner
-        from pipecat.frames.frames import TextFrame, EndFrame
-        
-        from agent.pipecat_edge_tts import EdgeTTSProcessor
-        
-        async def _run_pipecat():
-            processor = EdgeTTSProcessor(voice="th-TH-NiwatNeural")
-            pipeline = Pipeline([processor])
-            task = PipelineTask(pipeline)
+    import os
+    import ctypes
+    import edge_tts
+    import asyncio
+    
+    async def _generate_and_play():
+        try:
+            from hardware import init
+            mp3_path = os.path.join(init.PROJECT_ROOT, "speech.mp3")
+        except ImportError:
+            mp3_path = os.path.join(os.getcwd(), "speech.mp3")
             
-            await task.queue_frames([TextFrame(text), EndFrame()])
-                
-            runner = PipelineRunner(handle_sigint=False)
-            await runner.run(task)
+        try:
+            communicate = edge_tts.Communicate(text, "th-TH-NiwatNeural")
+            await communicate.save(mp3_path)
             
-        # Run pipeline in isolated event loop since it's a separate thread
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(_run_pipecat())
-        
-    except Exception as e:
-        print(f"⚠️ <SYSTEM>: Voice TTS Error: {e}")
+            ctypes.windll.winmm.mciSendStringW('close mymp3', None, 0, None)
+            ctypes.windll.winmm.mciSendStringW(f'open "{mp3_path}" type mpegvideo alias mymp3', None, 0, None)
+            ctypes.windll.winmm.mciSendStringW('play mymp3 wait', None, 0, None)
+            ctypes.windll.winmm.mciSendStringW('close mymp3', None, 0, None)
+        except Exception as e:
+            print(f"⚠️ <SYSTEM>: Voice TTS Error: {e}")
+            
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(_generate_and_play())
 
 def _process_and_print_result(final_output, speaker_on=True):
     import re

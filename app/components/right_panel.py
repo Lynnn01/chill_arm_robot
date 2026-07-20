@@ -2,6 +2,11 @@
 app/components/right_panel.py — Chat log, input bar, SEND / RESET
 """
 import tkinter as tk
+import time
+import queue
+import threading
+import sounddevice as sd
+import numpy as np
 from app.theme import Theme
 from app.widgets import RoundedButton, RoundedFrame
 
@@ -12,6 +17,12 @@ class RightPanel(tk.Frame):
         self.log_queue = log_queue
         self.reset_robot_callback = reset_robot_callback
         self.send_message_callback = send_message_callback
+        
+        self.audio_queue = queue.Queue()
+        self.is_recording = False
+        self.stream = None
+        self.recorded_frames = []
+        self.sample_rate = 16000
 
         self.grid(row=0, column=1, sticky="nsew",
                   padx=Theme.SP_XL, pady=Theme.SP_XL)
@@ -155,14 +166,91 @@ class RightPanel(tk.Frame):
         self.input_entry.config(state=tk.NORMAL)
         self.input_entry.focus()
 
+    def _stop_mic_auto(self):
+        if self.mic_on:
+            self._toggle_mic()
+
     def _toggle_mic(self):
         self.mic_on = not self.mic_on
         if self.mic_on:
-            self.mic_btn.set_text("🎤 Mic: ON")
-            self.mic_btn.set_colors(bg=Theme.SUCCESS, fg=Theme.PRIMARY_FG)
+            self.mic_btn.set_text("🔴 Mic: REC")
+            self.mic_btn.set_colors(bg=Theme.WARNING, fg=Theme.PRIMARY_FG)
+            self.is_recording = True
+            threading.Thread(target=self._run_speech_recognition, daemon=True).start()
         else:
             self.mic_btn.set_text("🔇 Mic: OFF")
             self.mic_btn.set_colors(bg=Theme.DANGER, fg=Theme.PRIMARY_FG)
+            self.is_recording = False
+
+    def _run_speech_recognition(self):
+        import speech_recognition as sr
+        
+        r = sr.Recognizer()
+        r.energy_threshold = 300
+        r.dynamic_energy_threshold = True
+        
+        audio = None
+        try:
+            with sr.Microphone() as source:
+                # Instantly update UI and start listening without ambient noise delay
+                if hasattr(self, 'window') and self.window:
+                    self.window.after(0, lambda: self.input_entry.delete(0, tk.END))
+                    self.window.after(0, lambda: self.input_entry.insert(0, "Listening..."))
+                
+                audio = r.listen(source, timeout=5, phrase_time_limit=10)
+        except sr.WaitTimeoutError:
+            print("Listening timed out.")
+        except Exception as e:
+            print(f"Microphone error: {e}")
+            
+        if hasattr(self, 'window') and self.window:
+            self.window.after(0, self._stop_mic_auto)
+            
+        if audio:
+            self._process_stt_google(audio)
+        else:
+            if hasattr(self, 'window') and self.window:
+                self.window.after(0, lambda: self.input_entry.delete(0, tk.END))
+                self.window.after(0, lambda: self.input_entry.insert(0, "..."))
+
+    def _process_stt_google(self, audio):
+        import speech_recognition as sr
+        r = sr.Recognizer()
+        
+        if hasattr(self, 'window') and self.window:
+            self.window.after(0, lambda: self.input_entry.delete(0, tk.END))
+            self.window.after(0, lambda: self.input_entry.insert(0, "Converting (Google)..."))
+            self.window.after(0, lambda: self.disable_inputs(send_text="STT..."))
+            
+        try:
+            text = r.recognize_google(audio, language="th-TH")
+            text = text.strip()
+            
+            if text:
+                if hasattr(self, 'window') and self.window:
+                    self.window.after(0, lambda: self.input_entry.delete(0, tk.END))
+                    self.window.after(0, lambda: self.input_entry.insert(0, text))
+                    self.window.after(0, self.enable_inputs)
+                if self.send_message_callback:
+                    self.send_message_callback(text)
+            else:
+                if hasattr(self, 'window') and self.window:
+                    self.window.after(0, lambda: self.input_entry.delete(0, tk.END))
+                    self.window.after(0, lambda: self.input_entry.insert(0, "..."))
+                    self.window.after(0, self.enable_inputs)
+                    
+        except sr.UnknownValueError:
+            print("Google could not understand audio")
+            if hasattr(self, 'window') and self.window:
+                self.window.after(0, lambda: self.input_entry.delete(0, tk.END))
+                self.window.after(0, lambda: self.input_entry.insert(0, "..."))
+                self.window.after(0, self.enable_inputs)
+        except sr.RequestError as e:
+            print(f"Could not request results from Google; {e}")
+            if hasattr(self, 'window') and self.window:
+                self.window.after(0, lambda: self.input_entry.delete(0, tk.END))
+                self.window.after(0, lambda: self.input_entry.insert(0, f"STT Error: {e}"))
+                self.window.after(0, self.enable_inputs)
 
     def _toggle_speaker(self):
         self.speaker_on = not self.speaker_on
