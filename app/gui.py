@@ -157,7 +157,10 @@ class OneArmGUI:
             try:
                 contextual_input = get_contextual_input(user_input)
                 result = loop.run_until_complete(Runner.run(agent, input=contextual_input))
-                print(f"\n🤖 <LLM>: {result.final_output}\n")
+                from agent.agent import _process_and_print_result
+                print("\n", end="")
+                _process_and_print_result(result.final_output)
+                print("\n", end="")
             except Exception as e:
                 print(f"\n⚠️ <ERROR>: {e}\n")
             finally:

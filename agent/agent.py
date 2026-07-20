@@ -124,26 +124,30 @@ async def main():
 
 def _play_voice(text):
     try:
-        from openai import OpenAI
-        import subprocess
+        import os
+        import asyncio
+        import edge_tts
+        import ctypes
+        from hardware import init
         
-        # Create a sync client. It will automatically use OPENAI_API_KEY from environment.
-        sync_client = OpenAI()
+        mp3_path = os.path.join(init.PROJECT_ROOT, "speech.mp3")
         
-        # Some custom endpoints (like DeepSeek) might not support TTS.
-        # We attempt to use the standard OpenAI TTS.
-        response = sync_client.audio.speech.create(
-            model="tts-1",
-            voice="nova",
-            input=text,
-            response_format="wav"
-        )
-        wav_path = os.path.join(init.PROJECT_ROOT, "speech.wav")
-        response.stream_to_file(wav_path)
+        async def _generate():
+            # ใช้เสียง Premwadee (ผู้หญิงไทย)
+            communicate = edge_tts.Communicate(text, "th-TH-PremwadeeNeural")
+            await communicate.save(mp3_path)
+            
+        # เนื่องจากฟังก์ชันนี้รันอยู่ใน Thread ใหม่แยกต่างหาก เราเลยต้องสร้าง Event Loop ใหม่
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(_generate())
         
-        # Play asynchronously using Windows built-in winsound
-        import winsound
-        winsound.PlaySound(wav_path, winsound.SND_FILENAME)
+        # ใช้ winmm.dll ของ Windows เพื่อเล่นไฟล์ MP3 โดยตรง (ไม่ต้องใช้ pygame)
+        ctypes.windll.winmm.mciSendStringW('close mymp3', None, 0, None)
+        ctypes.windll.winmm.mciSendStringW(f'open "{mp3_path}" type mpegvideo alias mymp3', None, 0, None)
+        ctypes.windll.winmm.mciSendStringW('play mymp3 wait', None, 0, None)
+        ctypes.windll.winmm.mciSendStringW('close mymp3', None, 0, None)
+        
     except Exception as e:
         print(f"⚠️ <SYSTEM>: Voice TTS Error: {e}")
 
@@ -157,7 +161,7 @@ def _process_and_print_result(final_output):
         voice_text = voice_match.group(1).strip()
         final_output = re.sub(r'<VOICE>.*?</VOICE>', '', final_output, flags=re.DOTALL | re.IGNORECASE).strip()
         
-    print(f"<LLM>: {final_output}")
+    print(f"🤖 <LLM>: {final_output}")
     
     if voice_text:
         threading.Thread(target=_play_voice, args=(voice_text,), daemon=True).start()
