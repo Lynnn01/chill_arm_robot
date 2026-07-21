@@ -8,6 +8,8 @@ _models = {}
 _current_mode = "ARM Mode"
 _is_active = False
 _thread = None
+_target_angles = [0, 0, 0, 0, 0, -45]
+_last_send_time = 0
 
 def get_model(mode_name):
     if mode_name == "Person Detect":
@@ -54,6 +56,55 @@ def _detection_loop():
             # Draw bounding boxes
             annotated_frame = results[0].plot()
             
+            # --- FACE/PERSON TRACKING LOGIC ---
+            if _current_mode in ["Face Detect", "Person Detect"] and len(results) > 0:
+                boxes = results[0].boxes
+                if len(boxes) > 0:
+                    largest_box = None
+                    max_area = 0
+                    for box in boxes:
+                        x1, y1, x2, y2 = box.xyxy[0].tolist()
+                        area = (x2 - x1) * (y2 - y1)
+                        if area > max_area:
+                            max_area = area
+                            largest_box = (x1, y1, x2, y2)
+                    
+                    if largest_box:
+                        x1, y1, x2, y2 = largest_box
+                        cx = (x1 + x2) / 2.0
+                        cy = (y1 + y2) / 2.0
+                        
+                        img_h, img_w = img.shape[:2]
+                        center_x = img_w / 2.0
+                        center_y = img_h / 2.0
+                        
+                        pan_error = center_x - cx
+                        tilt_error = center_y - cy
+                        
+                        # Deadzone of 20 pixels to prevent jitter
+                        if abs(pan_error) > 20 or abs(tilt_error) > 20:
+                            global _target_angles, _last_send_time
+                            Kp = 0.08 # Slightly faster response
+                            
+                            # Increase J1 turns left. If person is on left (cx < center_x), pan_error > 0.
+                            new_j1 = _target_angles[0] + (pan_error * Kp)
+                            # Increase J4 tilts up/down. We will guess positive tilts up.
+                            new_j4 = _target_angles[3] + (tilt_error * Kp)
+                            
+                            # Clamp safety limits
+                            new_j1 = max(-160, min(160, new_j1))
+                            new_j4 = max(-150, min(150, new_j4))
+                            
+                            if abs(new_j1 - _target_angles[0]) > 0.5 or abs(new_j4 - _target_angles[3]) > 0.5:
+                                _target_angles[0] = new_j1
+                                _target_angles[3] = new_j4
+                                
+                                # Rate limit sending commands to max 10 times a second to prevent serial choke
+                                if time.time() - _last_send_time > 0.1:
+                                    init.mc.send_angles(_target_angles, 60) # Speed 60 for smoother/faster tracking
+                                    _last_send_time = time.time()
+            # ---------------------------
+            
             # Set it back to the cam_manager overlay so it displays on the GUI
             cam_manager.set_overlay(annotated_frame, duration=1.0)
             
@@ -64,9 +115,14 @@ def _detection_loop():
 
 def set_detect_mode(new_mode: str):
     """Change the background detection mode."""
-    global _is_active, _thread, _current_mode
+    global _is_active, _thread, _current_mode, _target_angles
     
     _current_mode = new_mode
+    
+    if new_mode in ["Face Detect", "Person Detect"]:
+        print(f"🤖 <SYSTEM>: Resetting posture for {new_mode} Tracking...")
+        _target_angles = [0, 0, 0, 0, 0, -45]
+        init.mc.send_angles(_target_angles, 50)
     
     if new_mode in ["Person Detect", "Face Detect"] and not _is_active:
         print(f"🤖 <SYSTEM>: {new_mode} started.")
