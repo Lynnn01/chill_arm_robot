@@ -279,3 +279,8 @@ class RightPanel(tk.Frame):
 
     def _on_mode_change(self, new_mode):
         self.log_queue.put(f"⚙️ <SYSTEM>: Switched to {new_mode} mode")
+        try:
+            from vision.person_detector import set_person_detect_mode
+            set_person_detect_mode(new_mode == "Person Detect")
+        except Exception as e:
+            print(f"⚠️ Error changing mode: {e}")
