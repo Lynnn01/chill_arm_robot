@@ -43,14 +43,14 @@ class MemoryTab(tk.Frame):
         if w < 10 or h < 10:
             return
 
-        # Coordinate System: Base at bottom-center
+        # Coordinate System: Base near bottom-center but with room for negative X
         base_x = w / 2
-        base_y = h - 30
+        base_y = h - 80
         max_reach_mm = 280.0
         
         # Calculate scale to fit max reach
         scale_w = (w - 40) / (max_reach_mm * 2) # X spans -280 to 280
-        scale_h = (h - 50) / max_reach_mm       # Y spans 0 to 280
+        scale_h = (h - 100) / max_reach_mm       # Y spans to 280
         scale = min(scale_w, scale_h)
         if scale <= 0: scale = 0.5
 
@@ -83,18 +83,41 @@ class MemoryTab(tk.Frame):
         try:
             import hardware.init as hw
             
-            # Draw Known Objects
+            # Group Known Objects by proximity
+            clusters = []
             for obj_name, coords in hw.known_objects.items():
                 if not isinstance(coords, list) or len(coords) < 2:
                     continue
                 rx, ry = coords[0], coords[1]
-                cx, cy = r2c(rx, ry)
-                color = self._get_color_from_name(obj_name)
+                rz = coords[2] if len(coords) >= 3 else 0
                 
-                # Draw square for object
+                found = False
+                for cluster in clusters:
+                    if abs(rx - cluster['x']) < 15 and abs(ry - cluster['y']) < 15:
+                        cluster['objects'].append({'name': obj_name, 'z': rz})
+                        found = True
+                        break
+                
+                if not found:
+                    clusters.append({'x': rx, 'y': ry, 'objects': [{'name': obj_name, 'z': rz}]})
+
+            # Draw clusters
+            for cluster in clusters:
+                cx, cy = r2c(cluster['x'], cluster['y'])
+                
+                # Sort objects by Z so bottom is first
+                sorted_objs = sorted(cluster['objects'], key=lambda o: o['z'])
+                names = [o['name'].split()[0] for o in sorted_objs]
+                name_text = "[" + ", ".join(names) + "]" if len(names) > 1 else names[0]
+                
+                # Use color of the topmost object
+                top_obj = sorted_objs[-1]['name']
+                color = self._get_color_from_name(top_obj)
+                
+                # Draw square for object stack
                 s = 8
                 self.canvas.create_rectangle(cx - s, cy - s, cx + s, cy + s, fill=color, outline="#ffffff")
-                self.canvas.create_text(cx, cy - 14, text=obj_name.split()[0], fill=Theme.FG, font=("Inter", 8))
+                self.canvas.create_text(cx, cy - 14, text=name_text, fill=Theme.FG, font=("Inter", 8))
 
             # Draw Current Arm Position (Crosshair)
             if hasattr(hw, 'last_coords') and hw.last_coords and len(hw.last_coords) >= 2:

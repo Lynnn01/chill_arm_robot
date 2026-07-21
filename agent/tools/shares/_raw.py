@@ -95,6 +95,7 @@ def raw_move_to(target_coord: list = None, target_name: str = None, target_heigh
             found_coord = yolo_detector.scan_with_yolo(target_name)
             if found_coord:
                 target_coord = found_coord
+                init.known_objects[target_name] = [target_coord[0], target_coord[1], armconfig.STACK_BASE_HEIGHT]
                 print(f"🤖 <SYSTEM>: สแกนเจอ '{target_name}' ที่พิกัด {target_coord}")
             else:
                 print(f"⚠️ <SYSTEM>: หา '{target_name}' ไม่เจอ! วางไว้ที่เดิม...")
@@ -109,14 +110,14 @@ def raw_move_to(target_coord: list = None, target_name: str = None, target_heigh
         stack_count = 0
         for obj_name, coord in init.known_objects.items():
             if isinstance(coord, list) and len(coord) >= 2:
-                # Check if coordinates are close (within 15 units)
+                # Check if coordinates are close (within proximity threshold)
                 dx = abs(coord[0] - target_coord[0])
                 dy = abs(coord[1] - target_coord[1])
-                if dx < 15 and dy < 15:
+                if dx < armconfig.STACK_PROXIMITY_THRESHOLD and dy < armconfig.STACK_PROXIMITY_THRESHOLD:
                     stack_count += 1
         
         if stack_count > 0:
-            target_height = 110 + (stack_count * 25)
+            target_height = armconfig.STACK_BASE_HEIGHT + (stack_count * armconfig.STACK_HEIGHT_PER_LAYER) + armconfig.STACK_SAFE_OFFSET
             print(f"🤖 <SYSTEM>: ตรวจพบวัตถุที่พิกัดนี้ {stack_count} ชิ้น ปรับความสูงการวางเป็น {target_height} เพื่อไม่ให้กดทับรุนแรง")
 
     tc = [max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, float(target_coord[0]))),
@@ -136,7 +137,7 @@ def raw_move_to(target_coord: list = None, target_name: str = None, target_heigh
     time.sleep(1)
 
     if init.current_held_object:
-        init.known_objects[init.current_held_object] = [round(tc[0], 2), round(tc[1], 2)]
+        init.known_objects[init.current_held_object] = [round(tc[0], 2), round(tc[1], 2), th]
         init.current_held_object = None
 
     print("🤖 <SYSTEM>: วางวัตถุสำเร็จ")

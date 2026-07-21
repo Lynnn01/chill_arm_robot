@@ -140,6 +140,22 @@ class RightPanel(tk.Frame):
                               lambda e: self.input_wrap.configure_colors(border_color=Theme.BORDER_FOCUS))
         self.input_entry.bind("<FocusOut>",
                               lambda e: self.input_wrap.configure_colors(border_color=Theme.SURFACE_MUTED))
+                              
+        def _on_key(event):
+            # Check for Ctrl+V: state 4 is Ctrl, keycode 86 is 'V' key on Windows
+            if (event.state & 0x0004) and (event.keycode == 86 or event.keysym.lower() == 'v'):
+                try:
+                    text = self.input_entry.clipboard_get()
+                    try:
+                        self.input_entry.delete(tk.SEL_FIRST, tk.SEL_LAST)
+                    except tk.TclError:
+                        pass
+                    self.input_entry.insert(tk.INSERT, text)
+                    return "break"
+                except tk.TclError:
+                    pass
+                
+        self.input_entry.bind("<Key>", _on_key)
 
         # SEND button
         self.send_btn = RoundedButton(bar, text="SEND",

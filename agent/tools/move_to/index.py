@@ -26,6 +26,8 @@ def move_to(target_coord: list[float] = None, target_name: str = None, target_he
         else:
             from vision import yolo_detector
             target_coord = yolo_detector.scan_with_yolo(target_name)
+            if target_coord:
+                init.known_objects[target_name] = target_coord
     
     if not target_coord:
         target_coord = init.last_coords[:2] if init.last_coords else [0, -150]
