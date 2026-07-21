@@ -61,7 +61,7 @@ class CameraView(tk.Canvas):
             # Leave space for the label (image size 380x380)
             img = Image.fromarray(square_frame).resize((self.W - 20, self.H - 30))
         else:
-            img = Image.new("RGB", (self.W - 20, self.H - 30), "#E2E8F0")
+            img = Image.new("RGB", (self.W - 20, self.H - 30), Theme.SURFACE_MUTED)
         photo = ImageTk.PhotoImage(img)
         self._photo = photo
         self.delete("cam_img")
