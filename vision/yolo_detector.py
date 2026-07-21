@@ -148,3 +148,86 @@ def scan_with_yolo(object_name):
     mc.send_angles([0, 0, 0, 0, 0, -45], 40)
     time.sleep(1)
     return None
+
+def scan_all_objects():
+    """
+    Scans the entire environment across multiple angles and returns a dictionary of all detected objects.
+    Returns: dict format {"color block": [x, y], ...}
+    """
+    model = get_yolo_model()
+    if not model:
+        return {}
+
+    print("🤖 <SYSTEM>: เริ่มการสแกนแบบ Panoramic เพื่อหาวัตถุทั้งหมดบนโต๊ะ...")
+    scan_angles = [0, 45, 90, -45, -90]
+
+    import json
+    with open(init.CONFIG_PATH, "r", encoding="utf-8") as config_file:
+        config_data = json.load(config_file)
+    x_offset = config_data.get("x", 0)
+    y_offset = config_data.get("y", 0)
+
+    found_objects = {}
+
+    for j1 in scan_angles:
+        mc.send_angles([17.75 + j1, -0.79, 0.35, -75, 1.14, -28.12], 40)
+        # We need to wait for arrival for smooth scanning, but yolo_detector uses simple sleep for now
+        # We'll use safe_get_coords logic or just wait
+        time.sleep(1.5)
+
+        frame = cam_manager.get_frame()
+        if frame is None:
+            continue
+
+        results = model(frame, verbose=False)
+        annotated_frame = results[0].plot()
+        cam_manager.set_overlay(annotated_frame, duration=0.5)
+        
+        for result in results:
+            boxes = result.boxes
+            for box in boxes:
+                cls = int(box.cls[0])
+                name = model.names[cls]
+                
+                # If we already recorded this object type and we just want one of each color, we might skip.
+                # But what if there are multiple? For now, we record uniquely by color name + index if needed.
+                # Since YOLO names are just "red", "blue", let's append " block"
+                full_name = name.lower() + " block"
+                
+                # To handle multiple blocks of the same color, we append a number if it already exists
+                base_name = full_name
+                count = 1
+                while full_name in found_objects:
+                    count += 1
+                    full_name = f"{base_name} {count}"
+
+                x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+                center_x = (x1 + x2) / 2
+                center_y = (y1 + y2) / 2
+
+                target_pixel = (center_x, center_y)
+                robot_coord_np = eyeonhand.pixel_to_arm(target_pixel)
+                robot_coord = [float(robot_coord_np[0]) + x_offset, float(robot_coord_np[1]) + y_offset]
+
+                theta = math.radians(j1)
+                x_local = robot_coord[0]
+                y_local = robot_coord[1]
+
+                x_world = x_local * math.cos(theta) - y_local * math.sin(theta)
+                y_world = x_local * math.sin(theta) + y_local * math.cos(theta)
+
+                if x_world > 210:
+                    x_world -= 5
+
+                x_world = max(-280.0, min(280.0, x_world))
+                y_world = max(-280.0, min(280.0, y_world))
+
+                saved_coord = [round(x_world, 2), round(y_world, 2)]
+                found_objects[full_name] = saved_coord
+
+    # Return to center
+    mc.send_angles([0, 0, 0, 0, 0, -45], 40)
+    time.sleep(1.0)
+    
+    print(f"🤖 <SYSTEM>: สแกนเสร็จสิ้น พบวัตถุทั้งหมด {len(found_objects)} ชิ้น: {found_objects}")
+    return found_objects

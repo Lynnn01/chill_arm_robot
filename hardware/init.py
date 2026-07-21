@@ -23,12 +23,12 @@ if _is_windows:
     from pymycobot.mycobot280 import MyCobot280 as _MyCobotClass
 
     _default_port = os.getenv("MYCOBOT_PORT", "COM9")
-    print("[init] Platform: Windows → using MyCobot280")
+    print("[init] Platform: Windows -> using MyCobot280")
 else:
     from pymycobot.mycobot import MyCobot as _MyCobotClass
 
     _default_port = "/dev/ttyUSB0"
-    print("[init] Platform: Linux/Jetson → using MyCobot")
+    print("[init] Platform: Linux/Jetson -> using MyCobot")
 
 mycobot_port = os.getenv("MYCOBOT_PORT", _default_port)
 mycobot_baud = int(os.getenv("MYCOBOT_BAUD", "1000000"))
@@ -130,12 +130,12 @@ try:
         f"✅ Connected to {'MyCobot280' if _is_windows else 'MyCobot'} on {mycobot_port}"
     )
 except Exception as e:
-    print(f"\n⚠️ <SYSTEM>: Could not connect on {mycobot_port}. Error: {e}")
+    print(f"\n[WARNING] <SYSTEM>: Could not connect on {mycobot_port}. Error: {e}")
     mc = unittest.mock.MagicMock()
     mc.get_coords.return_value = [0, 0, 200, -175, 0, -45]
     mc.get_angles.return_value = [0, 0, 0, 0, 0, -45]
     print(
-        "\n⚠️ [MOCK MODE] Physical robotic arm not found. Running in simulation mode."
+        "\n[WARNING] [MOCK MODE] Physical robotic arm not found. Running in simulation mode."
     )
 
 _HERE = os.path.dirname(os.path.abspath(__file__))

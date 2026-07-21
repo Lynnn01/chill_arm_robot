@@ -13,5 +13,7 @@ from .describe_scene import describe_scene
 from .dance import dance_celebrate
 from .gesture import gesture
 from .scan_object import scan_object
+from .give_to_person import give_to_person
+from .sort_by_color import sort_by_color
 
-agent_tools = [move_to, grab_object, move_around, show_object, execute_python_code, move, rotate_gripper, describe_scene, dance_celebrate, gesture, scan_object]
+agent_tools = [move_to, grab_object, move_around, show_object, execute_python_code, move, rotate_gripper, describe_scene, dance_celebrate, gesture, scan_object, give_to_person, sort_by_color]
