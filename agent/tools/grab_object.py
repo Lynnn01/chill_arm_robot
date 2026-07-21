@@ -76,11 +76,35 @@ def grab_object(object_name: str, target_coord: list = None) -> list:
     robot_coord[0] = max(-280.0, min(280.0, robot_coord[0]))
     robot_coord[1] = max(-280.0, min(280.0, robot_coord[1]))
 
+    import math
+    if z < 100:
+        radius = math.sqrt(robot_coord[0]**2 + robot_coord[1]**2)
+        if radius < 80:
+            print(f"⚠️ <SYSTEM>: เป้าหมายหยิบของอยู่ใกล้ฐานเกินไปและ Z ต่ำ ปรับให้ปลอดภัยขึ้น...")
+            if radius > 0:
+                scale = 80 / radius
+                robot_coord[0] = robot_coord[0] * scale
+                robot_coord[1] = robot_coord[1] * scale
+            else:
+                robot_coord[0], robot_coord[1] = 80, 0
+
     init.open_gripper()
+    
+    # Safe Movement Sequence
+    current_coords = mc.get_coords()
+    if current_coords and len(current_coords) >= 3:
+        # 1. Lift straight up first to avoid hitting objects
+        mc.send_coords([current_coords[0], current_coords[1], 200, -173, 0, -45], 40)
+        time.sleep(1.5)
+        
+    # 2. Move Horizontally at safe height
     mc.send_coords([robot_coord[0], robot_coord[1], 200, -173, 0, -45], 40)
-    time.sleep(3)
+    time.sleep(2.5)
+    
+    # 3. Descend to grab
     mc.send_coords([robot_coord[0], robot_coord[1], z, -173, 0, -45], 40)
-    time.sleep(2)
+    time.sleep(1.5)
+    
     init.close_gripper()
     
     # Update Memory

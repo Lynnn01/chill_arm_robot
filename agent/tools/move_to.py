@@ -41,27 +41,52 @@ def move_to(target_coord: list = None, target_name: str = None, target_height: i
                     stack_count += 1
         
         if stack_count > 0:
-            target_height = 110 + (stack_count * 25)
+            # 32mm per block + 15mm drop gap to prevent pressing down
+            target_height = 110 + (stack_count * 32) + 15
             print(f"🤖 <SYSTEM>: ตรวจพบวัตถุที่พิกัดนี้ {stack_count} ชิ้น ปรับความสูงการวางเป็น {target_height} เพื่อไม่ให้กดทับรุนแรง")
 
+    import math
     # Safety clamps
     target_coord[0] = max(-280.0, min(280.0, float(target_coord[0])))
     target_coord[1] = max(-280.0, min(280.0, float(target_coord[1])))
     target_height = max(0, min(280, int(target_height)))
+    
+    # Base radius safety (prevent hitting its own body if Z is low)
+    if target_height < 100:
+        radius = math.sqrt(target_coord[0]**2 + target_coord[1]**2)
+        if radius < 80:
+            print(f"⚠️ <SYSTEM>: เป้าหมายอยู่ใกล้ฐานเกินไปและ Z ต่ำ ปรับให้ปลอดภัยขึ้น...")
+            if radius > 0:
+                scale = 80 / radius
+                target_coord[0] = target_coord[0] * scale
+                target_coord[1] = target_coord[1] * scale
+            else:
+                target_coord[0], target_coord[1] = 80, 0
 
     # Move the object to the target position
     print(f"🤖 <SYSTEM>: กำลังเคลื่อนย้ายวัตถุไปวางที่เป้าหมายพิกัด {target_coord} ความสูง {target_height}...")
 
-    mc.send_coords([target_coord[0], target_coord[1], 180, -175, 0, -45], 40)
+    # Safe Movement Sequence
+    current_coords = mc.get_coords()
+    if current_coords and len(current_coords) >= 3:
+        # 1. Lift Up current pos
+        mc.send_coords([current_coords[0], current_coords[1], 200, -175, 0, -45], 40)
+        time.sleep(1.5)
+
+    # 2. Move Horizontally at safe height
+    mc.send_coords([target_coord[0], target_coord[1], 200, -175, 0, -45], 40)
     time.sleep(2.5)
 
+    # 3. Descend to target height
     mc.send_coords([target_coord[0], target_coord[1], target_height, -175, 0, -45], 40)
-    time.sleep(2)
+    time.sleep(1.5)
+    
     init.open_gripper()
     time.sleep(1)
 
+    # 4. Lift straight up after releasing
     mc.send_coords([target_coord[0], target_coord[1], 200, -175, 0, -45], 40)
-    time.sleep(2)
+    time.sleep(1.5)
     mc.send_angles([0, 0, 0, 0, 0, -45], 40)
     time.sleep(1)
 
