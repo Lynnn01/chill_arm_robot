@@ -59,6 +59,22 @@ class RightPanel(tk.Frame):
         tk.Label(hdr, text="● Live",
                  font=Theme.FONT_SMALL, bg=Theme.BG, fg=Theme.SUCCESS).pack(side=tk.RIGHT, padx=Theme.SP_MD)
 
+        # Mode Selector
+        self.current_mode = tk.StringVar(value="ARM Mode")
+        modes = ["ARM Mode", "Person Detect"]
+        self.mode_menu = tk.OptionMenu(hdr, self.current_mode, *modes, command=self._on_mode_change)
+        self.mode_menu.config(
+            bg=Theme.SURFACE, fg=Theme.FG, 
+            activebackground=Theme.BORDER, activeforeground=Theme.FG,
+            font=Theme.FONT_BODY, highlightthickness=0, bd=0, relief=tk.FLAT
+        )
+        self.mode_menu["menu"].config(
+            bg=Theme.SURFACE, fg=Theme.FG, 
+            activebackground=Theme.BORDER, activeforeground=Theme.FG,
+            font=Theme.FONT_BODY, bd=0
+        )
+        self.mode_menu.pack(side=tk.RIGHT, padx=Theme.SP_MD)
+
         # ── Log card ───────────────────────────────────────────────────
         self.log_card = RoundedFrame(self, radius=Theme.RADIUS_LG,
                                      bg=Theme.SURFACE, border_color=Theme.BORDER)
@@ -260,3 +276,6 @@ class RightPanel(tk.Frame):
         else:
             self.speaker_btn.set_text("🔈 Spk: OFF")
             self.speaker_btn.set_colors(bg=Theme.DANGER, fg=Theme.PRIMARY_FG)
+
+    def _on_mode_change(self, new_mode):
+        self.log_queue.put(f"⚙️ <SYSTEM>: Switched to {new_mode} mode")
