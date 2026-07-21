@@ -27,7 +27,7 @@ def raw_grab_object(object_name: str, target_coord: list = None) -> list:
     x_offset = cfg.get("x", 0)
     y_offset = cfg.get("y", 0)
     z_offset = cfg.get("z", 0)
-    z = 120 + z_offset
+    z = armconfig.GRAB_BASE_HEIGHT + z_offset
 
     if target_coord and len(target_coord) >= 2:
         print(f"🤖 <SYSTEM>: กำลังขยับแขนกลไปหยิบของที่พิกัด {target_coord}...")
@@ -59,26 +59,34 @@ def raw_grab_object(object_name: str, target_coord: list = None) -> list:
                 print(f"🤖 <SYSTEM>: Vision เจอแล้ว! พิกัด {robot_coord}")
             else:
                 print(f"🤖 <SYSTEM>: ไม่พบ {object_name} ในภาพ")
-                return []
+                return {"status": "ERROR", "message": f"ไม่พบ {object_name} ในภาพ"}
 
     robot_coord[0] = max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, robot_coord[0]))
     robot_coord[1] = max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, robot_coord[1]))
 
     init.open_gripper()
     mc.send_coords([robot_coord[0], robot_coord[1], armconfig.Z_SAFE_TRAVEL] + armconfig.WRIST_DOWN, armconfig.SPEED_GRAB)
-    time.sleep(3)
+    mc.wait_for_arrival([robot_coord[0], robot_coord[1], armconfig.Z_SAFE_TRAVEL], mode="coords")
+    
+    print(f"🤖 <SYSTEM>: กำลังพุ่งหัวลงไปหยิบที่ Z={z}...")
     mc.send_coords([robot_coord[0], robot_coord[1], z] + armconfig.WRIST_DOWN, armconfig.SPEED_GRAB)
-    time.sleep(2)
+    mc.wait_for_z(z)   # รอเฉพาะแกน Z — ไม่สนใจ XY drift
+    
     init.close_gripper()
+    time.sleep(1)  # รอกริปเปอร์หนีบเสร็จ
 
     init.current_held_object = object_name
     init.known_objects[object_name] = "in gripper"
 
     mc.send_coords([robot_coord[0], robot_coord[1], armconfig.Z_SAFE_TRAVEL] + armconfig.WRIST_DOWN, armconfig.SPEED_LIFT)
-    time.sleep(3)
+    mc.wait_for_arrival([robot_coord[0], robot_coord[1], armconfig.Z_SAFE_TRAVEL], mode="coords")
+    
     mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
+    mc.wait_for_arrival(armconfig.POSE_HOME, mode="angles")
+        
+    print(f"✅ <SYSTEM>: DONE TASK - {object_name}")
 
-    return robot_coord
+    return {"status": "DONE TASK", "data": robot_coord}
 
 
 # ── move_to ──────────────────────────────────────────────────────────────────
@@ -120,8 +128,8 @@ def raw_move_to(target_coord: list = None, target_name: str = None, target_heigh
             target_height = armconfig.STACK_BASE_HEIGHT + (stack_count * armconfig.STACK_HEIGHT_PER_LAYER) + armconfig.STACK_SAFE_OFFSET
             print(f"🤖 <SYSTEM>: ตรวจพบวัตถุที่พิกัดนี้ {stack_count} ชิ้น ปรับความสูงการวางเป็น {target_height} เพื่อไม่ให้กดทับรุนแรง")
 
-    tc = [max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, float(target_coord[0]))),
-          max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, float(target_coord[1])))]
+    tc = [max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, float(target_coord[0]) + armconfig.STACK_X_OFFSET)),
+          max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, float(target_coord[1]) + armconfig.STACK_Y_OFFSET))]
     th = max(armconfig.COORD_Z_MIN, min(armconfig.COORD_Z_MAX, int(target_height)))
 
     print(f"🤖 <SYSTEM>: กำลังเคลื่อนย้ายวัตถุไปวางที่พิกัด {tc} ความสูง {th}...")
@@ -134,14 +142,14 @@ def raw_move_to(target_coord: list = None, target_name: str = None, target_heigh
     mc.send_coords([tc[0], tc[1], armconfig.Z_SAFE_TRAVEL] + armconfig.WRIST_PLACE, armconfig.SPEED_GRAB)
     time.sleep(2)
     mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
-    time.sleep(1)
+    mc.wait_for_arrival(armconfig.POSE_HOME, mode="angles")
 
     if init.current_held_object:
         init.known_objects[init.current_held_object] = [round(tc[0], 2), round(tc[1], 2), th]
         init.current_held_object = None
 
-    print("🤖 <SYSTEM>: วางวัตถุสำเร็จ")
-    return "Placed successfully."
+    print(f"✅ <SYSTEM>: DONE TASK - Placed at {tc}")
+    return {"status": "DONE TASK", "message": "Placed successfully."}
 
 
 # ── show_object ──────────────────────────────────────────────────────────────
@@ -151,8 +159,11 @@ def raw_show_object(object_name: str) -> str:
     mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
     time.sleep(2)
     mc.send_angles(armconfig.POSE_SHOW, armconfig.SPEED_GRAB)
-    time.sleep(2.5)
-    return "success"
+    mc.wait_for_arrival(armconfig.POSE_SHOW, mode="angles")
+        
+    time.sleep(2) # โชว์ค้างไว้ 2 วิ
+    print(f"✅ <SYSTEM>: DONE TASK - Show {object_name}")
+    return {"status": "DONE TASK"}
 
 
 # ── move ─────────────────────────────────────────────────────────────────────
@@ -163,8 +174,10 @@ def raw_move(x: float, y: float, z: float, speed: int = 40) -> str:
     z = max(armconfig.COORD_Z_MIN, min(armconfig.COORD_Z_MAX, float(z)))
     print(f"🤖 <SYSTEM>: กำลังขยับแขนกลไปที่ (X:{x}, Y:{y}, Z:{z}) ด้วยความเร็ว {speed}...")
     mc.send_coords([x, y, z] + armconfig.WRIST_PLACE, speed)
-    time.sleep(3)
-    return f"Moved to X:{x}, Y:{y}, Z:{z}."
+    mc.wait_for_arrival([x, y, z], mode="coords")
+        
+    print(f"✅ <SYSTEM>: DONE TASK - Moved to {x}, {y}, {z}")
+    return {"status": "DONE TASK"}
 
 
 # ── rotate_gripper ───────────────────────────────────────────────────────────
@@ -178,8 +191,10 @@ def raw_rotate_gripper(angle_range: int = 45, speed: int = 40) -> str:
     mc.send_angle(6, j6 - angle_range, speed)
     time.sleep(2.0)
     mc.send_angle(6, j6, speed)
-    time.sleep(1.5)
-    return "Rotation done."
+    mc.wait_for_arrival(current, mode="angles")
+        
+    print(f"✅ <SYSTEM>: DONE TASK - Rotated")
+    return {"status": "DONE TASK"}
 
 
 # ── dance_celebrate ──────────────────────────────────────────────────────────
@@ -192,7 +207,8 @@ def raw_dance_celebrate() -> str:
     mc.send_angles([-45, 0,  30, -30, 0, -45], speed); time.sleep(1)
     mc.send_angles([45,  0,  30, -30, 0, -45], speed); time.sleep(1)
     mc.send_angles(armconfig.POSE_HOME, speed); time.sleep(1.5)
-    return "Dance done."
+    print(f"✅ <SYSTEM>: DONE TASK - Dance")
+    return {"status": "DONE TASK"}
 
 
 # ── gesture ──────────────────────────────────────────────────────────────────
@@ -211,14 +227,16 @@ def raw_gesture(action: str) -> str:
         mc.send_angle(5, j5 - 30, speed); time.sleep(0.6)
         mc.send_angle(5, j5 + 30, speed); time.sleep(0.6)
         mc.send_angle(5, j5, speed);      time.sleep(0.5)
-        return "Nodded YES."
+        print(f"✅ <SYSTEM>: DONE TASK - Gesture YES")
+        return {"status": "DONE TASK"}
     else:
         j1 = base[0]
         mc.send_angle(1, j1 + 30, speed); time.sleep(0.5)
         mc.send_angle(1, j1 - 30, speed); time.sleep(0.6)
         mc.send_angle(1, j1 + 30, speed); time.sleep(0.6)
         mc.send_angle(1, j1, speed);      time.sleep(0.5)
-        return "Shook NO."
+        print(f"✅ <SYSTEM>: DONE TASK - Gesture NO")
+        return {"status": "DONE TASK"}
 
 
 # ── scan_object ──────────────────────────────────────────────────────────────
@@ -228,5 +246,6 @@ def raw_scan_object(object_name: str) -> str:
     yolo_coord = yolo_detector.scan_with_yolo(object_name)
     if yolo_coord:
         init.known_objects[object_name] = yolo_coord
-        return f"Found '{object_name}' at {yolo_coord}. Memory updated."
-    return f"'{object_name}' not found."
+        print(f"✅ <SYSTEM>: DONE TASK - Scan {object_name}")
+        return {"status": "DONE TASK", "message": f"Found '{object_name}' at {yolo_coord}. Memory updated."}
+    return {"status": "ERROR", "message": f"'{object_name}' not found."}

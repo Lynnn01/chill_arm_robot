@@ -27,6 +27,14 @@ def get_yolo_model():
             print("⚠️ <SYSTEM>: ไม่พบไลบรารี ultralytics (pip install ultralytics)")
     return _model
 
+def preload_model():
+    """Load model in background to avoid delay on first use"""
+    import threading
+    threading.Thread(target=get_yolo_model, daemon=True).start()
+
+# Start preloading immediately when module is imported
+preload_model()
+
 
 def scan_with_yolo(object_name):
     """

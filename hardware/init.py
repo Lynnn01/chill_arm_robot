@@ -82,7 +82,7 @@ class LockedMyCobot:
             time.sleep(0.1)
         return None
 
-    def wait_for_arrival(self, target, mode="coords", timeout=8.0, threshold=2.0):
+    def wait_for_arrival(self, target, mode="coords", timeout=10.0, threshold=15.0):
         """
         Dynamically waits until the arm reaches the target (coords or angles).
         mode: 'coords' or 'angles'
@@ -96,17 +96,50 @@ class LockedMyCobot:
                 time.sleep(0.2)
                 continue
             
-            # Check distance/difference
             try:
                 diff = sum(abs(c - t) for c, t in zip(current[:len(target)], target))
                 if diff <= threshold:
-                    return True # Arrived
+                    return True
             except Exception:
                 pass
             
             time.sleep(0.1)
         
-        print(f"⚠️ <SYSTEM>: wait_for_arrival timed out after {timeout}s")
+        return False
+
+    def wait_for_z(self, target_z, timeout=12.0, threshold=10.0):
+        """
+        รอเฉพาะแกน Z ถึงระดับเป้าหมาย — ใช้ตอนพุ่งหัวลงหยิบของ
+        ไม่สนใจ XY drift เลย
+        """
+        start_time = time.time()
+        time.sleep(0.3)
+        last_z = None
+        stall_count = 0
+
+        while time.time() - start_time < timeout:
+            current = self.safe_get_coords()
+            if current is None or len(current) < 3:
+                time.sleep(0.15)
+                continue
+
+            z_now = current[2]
+            if abs(z_now - target_z) <= threshold:
+                print(f"✅ <SYSTEM>: หัวลงถึง Z={z_now:.1f} (เป้า {target_z})")
+                return True
+
+            # ตรวจว่าแขนหยุดนิ่งหรือเปล่า (stall detection)
+            if last_z is not None and abs(z_now - last_z) < 0.3:
+                stall_count += 1
+                if stall_count >= 15:  # นิ่ง 1.5 วิ ถือว่าติดแล้ว
+                    print(f"⚠️ <SYSTEM>: หัวค้างที่ Z={z_now:.1f} ไปไม่ถึง Z={target_z} (อาจติดข้อต่อ)")
+                    return False
+            else:
+                stall_count = 0
+            last_z = z_now
+
+            time.sleep(0.1)
+
         return False
 
     def set_gripper_value(self, value, speed):

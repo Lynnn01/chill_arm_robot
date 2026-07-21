@@ -8,6 +8,12 @@ from app.components.left_panel import LeftPanel
 from app.components.right_panel import RightPanel
 from app.theme import Theme
 
+# Trigger YOLO preload
+try:
+    import vision.yolo_detector
+except Exception:
+    pass
+
 
 class RedirectText:
     def __init__(self, q):

@@ -21,7 +21,7 @@ def safe_descend(x: float, y: float, z: float, wrist=None):
     wrist = wrist or armconfig.WRIST_DOWN
     target = [x, y, z]
     mc.send_coords(target + wrist, armconfig.SPEED_GRAB)
-    mc.wait_for_arrival(target, mode="coords")
+    mc.wait_for_z(z)
 
 def return_home():
     """กลับท่า Home"""
