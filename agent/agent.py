@@ -143,22 +143,7 @@ async def main():
         exit_function()
 
 
-_f5_tts_instance = None
-
-def _get_f5_tts():
-    global _f5_tts_instance
-    if _f5_tts_instance is None:
-        try:
-            from f5_tts_th.tts import TTS
-            print("⏳ <SYSTEM>: Loading F5-TTS model (v2) into VRAM... please wait.")
-            _f5_tts_instance = TTS(model="v2")
-            print("✅ <SYSTEM>: F5-TTS model loaded successfully.")
-        except Exception as e:
-            print(f"⚠️ <SYSTEM>: Failed to load F5-TTS: {e}")
-            return None
-    return _f5_tts_instance
-
-def _play_voice(text, filename="speech.wav"):
+def _play_voice(text, filename="speech.mp3"):
     import os
     import ctypes
     import edge_tts
@@ -171,47 +156,12 @@ def _play_voice(text, filename="speech.wav"):
         except ImportError:
             mp3_path = os.path.join(os.getcwd(), filename)
 
-        openai_key = os.getenv("OPENAI_API_VOICE_KEY")
-        use_openai = False
-        use_f5tts = False
-        
-        # 1. Try F5-TTS first
-        tts_model = _get_f5_tts()
-        if tts_model:
-            try:
-                import soundfile as sf
-                output = tts_model.infer(text)
-                if isinstance(output, tuple) and len(output) >= 2:
-                    wav, sr = output[0], output[1]
-                    sf.write(mp3_path, wav, sr)
-                    use_f5tts = True
-            except Exception as e:
-                print(f"⚠️ <SYSTEM>: F5-TTS inference failed: {e}")
-
-        # 2. Fallback to OpenAI TTS
-        if not use_f5tts and openai_key:
-            try:
-                from openai import AsyncOpenAI
-                client = AsyncOpenAI(
-                    api_key=openai_key, base_url="https://api.openai.com/v1"
-                )
-                response = await client.audio.speech.create(
-                    model="tts-1-hd", voice="echo", input=text
-                )
-                response.stream_to_file(mp3_path)
-                use_openai = True
-            except Exception as e:
-                print(f"⚠️ <SYSTEM>: OpenAI TTS Error: {e} - falling back to edge_tts")
-                use_openai = False
-
-        # 3. Fallback to edge_tts
-        if not use_f5tts and not use_openai:
-            try:
-                communicate = edge_tts.Communicate(text, "th-TH-NiwatNeural")
-                await communicate.save(mp3_path)
-            except Exception as e:
-                print(f"⚠️ <SYSTEM>: Edge TTS Error: {e}")
-                return
+        try:
+            communicate = edge_tts.Communicate(text, "th-TH-NiwatNeural")
+            await communicate.save(mp3_path)
+        except Exception as e:
+            print(f"⚠️ <SYSTEM>: Edge TTS Error: {e}")
+            return
 
         # Create a unique alias for MCI
         alias = filename.replace(".wav", "").replace(".mp3", "").replace("_", "")

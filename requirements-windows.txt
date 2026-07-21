@@ -1,4 +1,4 @@
-﻿# ============================================================
+# ============================================================
 # requirements-windows.txt
 # สำหรับรันบน Windows (เครื่อง Dev / ไม่มี Jetson GPIO)
 # ใช้: pip install -r requirements-windows.txt
@@ -27,6 +27,7 @@ pymycobot
 
 # --- Speech ---
 SpeechRecognition
+edge-tts
 # PyAudio           # ❌ ต้องติดตั้ง binary wheel บน Windows ด้วยมือ:
 #                   #    pip install pipwin && pipwin install pyaudio
 #                   #    หรือดาวน์โหลด .whl จาก https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyaudio
