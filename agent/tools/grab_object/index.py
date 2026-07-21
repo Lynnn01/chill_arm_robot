@@ -1,6 +1,5 @@
 from agents import function_tool
-from .vision import resolve_coord
-from .motion import execute_grab
+from agent.tools.shares._raw import raw_grab_object
 
 @function_tool
 def grab_object(object_name: str, target_coord: list[float] = None) -> str:
@@ -17,7 +16,13 @@ def grab_object(object_name: str, target_coord: list[float] = None) -> str:
         object_name: The descriptive name of the object to grab (e.g., "red block", "blue cube").
         target_coord: Optional [x, y] coordinates to grab from. If provided, vision is skipped.
     """
-    coord = resolve_coord(object_name, target_coord)
-    if not coord:
-        return f"Error: มองไม่เห็น '{object_name}' บนโต๊ะเลยครับ ขอยกเลิกการหยิบ"
-    return execute_grab(object_name, coord)
+    result = raw_grab_object(object_name, target_coord)
+    
+    if isinstance(result, dict):
+        if result.get("status") == "ERROR":
+            return f"Error: {result.get('message', 'Unknown error')}"
+        elif result.get("status") == "DONE TASK":
+            coord = result.get("data")
+            return f"Successfully grabbed {object_name} at coordinates {coord}"
+    
+    return f"Successfully grabbed {object_name}"

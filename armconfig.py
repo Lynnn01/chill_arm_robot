@@ -28,7 +28,7 @@ SPEED_LIFT = 20
 SPEED_RESET = 50
 
 # ความเร็วสำหรับ Face/Person Tracking — เร็วเพื่อให้ติดตามได้ทัน
-SPEED_TRACKING = 60
+SPEED_TRACKING = 80
 
 # ความเร็วสำหรับการเต้นและ Gesture
 SPEED_DANCE = 60

@@ -1,39 +1,22 @@
-import time
-from hardware.init import mc
 from agents import function_tool
-import armconfig
+from agent.tools.shares._raw import raw_dance_celebrate
 
 @function_tool
 def dance_celebrate() -> str:
     """
-    [Tags: Entertainment, Action]
-    Performs a fun dancing or celebrating sequence with the robotic arm.
+    [Tags: Action, Interaction]
+    Makes the robotic arm perform a short, pre-programmed dance sequence to celebrate success.
     
     When to use:
-    - เมื่อผู้ใช้สั่งให้ "เต้น", "ดีใจ", "ฉลอง" หรือเมื่อผู้ใช้ชมเชยว่าเก่งมาก
+    - เมื่อผู้ใช้บอกให้ "เต้นหน่อย", "ฉลองหน่อย", "ดีใจด้วย" 
+    - หรือหลังจากทำภารกิจชุดใหญ่/ภารกิจที่ยากสำเร็จ (เช่น หยิบและเรียงของเสร็จสมบูรณ์ 3 ชิ้น)
     """
-    print("Dancing and celebrating! 💃🕺")
-    speed = armconfig.SPEED_DANCE
+    result = raw_dance_celebrate()
     
-    # Dance sequence
-    # Sway left
-    mc.send_angles([-45, 0, -20, 0, 0, -45], speed)
-    time.sleep(1)
-    
-    # Sway right
-    mc.send_angles([45, 0, -20, 0, 0, -45], speed)
-    time.sleep(1)
-    
-    # Sway left and pitch up
-    mc.send_angles([-45, 0, 30, -30, 0, -45], speed)
-    time.sleep(1)
-    
-    # Sway right and pitch up
-    mc.send_angles([45, 0, 30, -30, 0, -45], speed)
-    time.sleep(1)
-    
-    # Return to base home
-    mc.send_angles(armconfig.POSE_HOME, speed)
-    time.sleep(1.5)
-    
+    if isinstance(result, dict):
+        if result.get("status") == "ERROR":
+            return f"Error: {result.get('message', 'Unknown error')}"
+        elif result.get("status") == "DONE TASK":
+            return "Dance completed successfully."
+            
     return "Dance completed successfully."
