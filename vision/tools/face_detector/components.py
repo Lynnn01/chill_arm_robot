@@ -1,9 +1,21 @@
 import os
+import time
+import random
 from hardware import init
 import armconfig
 from vision.tools.shares.tracking_logic import calculate_and_move
+from agent.tts import play_voice_async
 
 _model = None
+_last_speak_time = 0
+
+_FACE_PHRASES = [
+    "อุ้ย เจอหน้าคนหล่อๆ สวยๆ อีกแล้วเด้อ",
+    "มองหน้าข่อยเฮ็ดหยัง สนใจข่อยตี้",
+    "หน้าคุ้นๆ เน๊าะ สบายดีบ่",
+    "ฮั่นแน่ รู้นะว่าแอบมองข่อยอยู่",
+    "เห็นหน้าแจ่มๆ แบบนี้ ข่อยมีแฮงทำงานเลย"
+]
 
 def get_model():
     global _model
@@ -20,6 +32,7 @@ def get_model():
     return _model
 
 def detect_and_track(img, target_angles, last_send_time):
+    global _last_speak_time
     model = get_model()
     if not model:
         return img, target_angles, last_send_time
@@ -30,6 +43,13 @@ def detect_and_track(img, target_angles, last_send_time):
     if len(results) > 0:
         boxes = results[0].boxes
         if len(boxes) > 0:
+            # Voice Announcement (cooldown 15 seconds)
+            current_time = time.time()
+            if current_time - _last_speak_time > 15:
+                phrase = random.choice(_FACE_PHRASES)
+                play_voice_async(phrase, f"face_{int(current_time)}.mp3")
+                _last_speak_time = current_time
+
             largest_box = None
             max_area = 0
             for box in boxes:
