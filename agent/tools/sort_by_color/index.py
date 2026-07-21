@@ -1,10 +1,10 @@
-import time
+from agents import function_tool
+from agent.tools.grab_object import grab_object
+from agent.tools.move_to import move_to
+from vision.yolo_detector import scan_all_objects
 from hardware import init
 from hardware.init import mc
-from agents import function_tool
-from .grab_object import grab_object
-from .move_to import move_to
-from vision.yolo_detector import scan_all_objects
+from .color_zones import COLOR_ZONES, DEFAULT_ZONE
 
 @function_tool
 def sort_by_color() -> str:
@@ -18,43 +18,29 @@ def sort_by_color() -> str:
     """
     print("🤖 <SYSTEM>: เริ่มต้นโหมดแยกสี (Sort by Color)...")
     
-    # 1. Panoramic Scan to find all objects
     found_objects = scan_all_objects()
     if not found_objects:
         return "ไม่พบสิ่งของบนโต๊ะเลยครับ ไม่สามารถแยกสีได้"
         
-    # Default color zones (corners of the table)
-    color_zones = {
-        "red": [150.0, 150.0],     # Top-Right
-        "blue": [-150.0, 150.0],   # Top-Left
-        "green": [150.0, -150.0],  # Bottom-Right
-        "yellow": [-150.0, -150.0] # Bottom-Left
-    }
-    
     success_count = 0
-    # 2. Iterate through found objects and sort them
     for full_name, coord in found_objects.items():
-        # Determine base color
-        target_zone = [0, -150.0] # Default fallback
-        for color, zone in color_zones.items():
+        target_zone = DEFAULT_ZONE
+        for color, zone in COLOR_ZONES.items():
             if color in full_name:
                 target_zone = zone
                 break
                 
         print(f"🤖 <SYSTEM>: กำลังแยกชิ้น '{full_name}' ไปที่โซนพิกัด {target_zone}...")
         
-        # We inject the known coordinate into grab_object to skip redundant scanning
         init.known_objects[full_name] = coord
         grab_result = grab_object(full_name)
         
-        # Check if grab was successful
         if "Error:" not in grab_result and init.is_holding_object:
             move_to(target_zone)
             success_count += 1
         else:
             print(f"⚠️ <SYSTEM>: หยิบ {full_name} ไม่สำเร็จ ข้ามไปชิ้นต่อไป...")
             
-    # Return to safe center
     mc.send_angles([0, 0, 0, 0, 0, -45], 40)
     mc.wait_for_arrival([0, 0, 0, 0, 0, -45], mode="angles")
     

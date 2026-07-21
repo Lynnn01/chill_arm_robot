@@ -21,7 +21,7 @@ def _get_raw_tool_map():
     # and call asyncio.run(on_invoke_tool(None, json_args)) would need context.
     # Instead we store callables that directly call the raw logic.
 
-    from agent.tools._raw import (
+    from agent.tools.shares._raw import (
         raw_grab_object,
         raw_move_to,
         raw_show_object,
