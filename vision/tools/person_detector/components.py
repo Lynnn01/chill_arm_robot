@@ -1,5 +1,6 @@
 import os
 from hardware import init
+import armconfig
 from vision.tools.shares.tracking_logic import calculate_and_move
 
 _model = None
@@ -23,8 +24,8 @@ def detect_and_track(img, target_angles, last_send_time):
     if not model:
         return img, target_angles, last_send_time
 
-    results = model(img, verbose=False)
-    annotated_frame = results[0].plot() if len(results) > 0 else img
+    results = model(img, verbose=False, conf=getattr(armconfig, "VISION_CONFIDENCE_THRESHOLD", 0.30))
+    ai_results = results[0] if len(results) > 0 else None
     
     if len(results) > 0:
         boxes = results[0].boxes
@@ -49,4 +50,4 @@ def detect_and_track(img, target_angles, last_send_time):
                 
                 target_angles, last_send_time = calculate_and_move(cx, cy, center_x, center_y, target_angles, last_send_time)
                 
-    return annotated_frame, target_angles, last_send_time
+    return ai_results, target_angles, last_send_time

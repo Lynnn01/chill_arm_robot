@@ -31,6 +31,11 @@ def find_object_coord(object_name: str, j1_deg: float = 0) -> list | None:
     pos = positions[0]
     cx = (pos["x1"] + pos["x2"]) / 2 / 1000 * width
     cy = (pos["y1"] + pos["y2"]) / 2 / 1000 * height
+    
+    import armconfig
+    if getattr(armconfig, 'CAMERA_FLIP_HORIZONTAL', False):
+        cx = width - cx
+        
     coord_np = eyeonhand.pixel_to_arm((cx, cy))
     coord = [float(coord_np[0]) + offsets["x"], float(coord_np[1]) + offsets["y"]]
 

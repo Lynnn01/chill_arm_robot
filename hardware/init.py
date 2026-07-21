@@ -202,6 +202,13 @@ class CameraManager:
         self.lock = threading.Lock()
         self.running = False
         self._started = False
+        self.ai_results = None
+        self.ai_expiry = 0
+
+    def set_ai_results(self, results, duration=0.5):
+        with self.lock:
+            self.ai_results = results
+            self.ai_expiry = time.time() + duration
 
     def set_overlay(self, frame, duration=2.0):
         with self.lock:
@@ -251,20 +258,36 @@ class CameraManager:
             try:
                 ret, frame = self.cap.read()
                 if ret and frame is not None and frame.size > 0:
+                    # พลิกภาพซ้ายขวาถ้าตั้งค่าไว้ใน armconfig
+                    if getattr(armconfig, 'CAMERA_FLIP_HORIZONTAL', False):
+                        frame = cv2.flip(frame, 1)
                     with self.lock:
                         self.frame = frame
             except Exception as e:
                 print(f"⚠️ Camera read error: {e}")
-            time.sleep(0.04)  # ~25 fps
+            if hasattr(armconfig, 'CAMERA_READ_DELAY') and armconfig.CAMERA_READ_DELAY > 0:
+                time.sleep(armconfig.CAMERA_READ_DELAY)
 
     def get_frame(self):
         import time
 
         with self.lock:
-            if self.overlay_frame is not None and time.time() < self.overlay_expiry:
-                return self.overlay_frame.copy()
             if self.frame is not None:
-                return self.frame.copy()
+                img = self.frame.copy()
+                
+                # Draw live AI bounding boxes on the NEWEST frame! (Smooth Video)
+                if self.ai_results is not None and time.time() < self.ai_expiry:
+                    try:
+                        # ultralytics results.plot can draw on a provided image
+                        img = self.ai_results.plot(img=img)
+                    except Exception:
+                        pass
+                
+                # Legacy overlay (freezes video, used by yolo_detector for 1s scans)
+                elif self.overlay_frame is not None and time.time() < self.overlay_expiry:
+                    return self.overlay_frame.copy()
+                
+                return img
         return None
 
     def stop(self):

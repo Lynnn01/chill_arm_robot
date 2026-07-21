@@ -10,6 +10,10 @@ def calculate_and_move(cx: float, cy: float, center_x: float, center_y: float, t
     pan_error = center_x - cx
     tilt_error = center_y - cy
     
+    # ถ้ามีการกลับซ้าย-ขวาที่กล้อง ต้องสลับทิศทางการหัน (Pan) ของหุ่นด้วย
+    if getattr(armconfig, 'CAMERA_FLIP_HORIZONTAL', False):
+        pan_error = -pan_error
+    
     if abs(pan_error) > armconfig.TRACKING_DEADZONE_PX or abs(tilt_error) > armconfig.TRACKING_DEADZONE_PX:
         Kp = armconfig.TRACKING_KP
         

@@ -17,7 +17,7 @@ def get_yolo_model():
             from ultralytics import YOLO
 
             model_path = os.path.join(
-                init.PROJECT_ROOT, "vision", "models", "cube_detect.pt"
+                init.PROJECT_ROOT, "vision", "models", "cube.pt"
             )
             if os.path.exists(model_path):
                 _model = YOLO(model_path)
@@ -57,12 +57,17 @@ def scan_with_yolo(object_name):
         mc.send_angles(current_ready, armconfig.SPEED_GRAB)
         time.sleep(1.5)
 
-        frame = cam_manager.get_frame()
-        if frame is None:
-            continue
+        # ให้โอกาส YOLO สแกน 3 เฟรมที่มุมนี้ เผื่อภาพเบลอจากกล้องที่เพิ่งหยุดหมุน
+        found = False
+        for attempt in range(3):
+            frame = cam_manager.get_frame()
+            if frame is None:
+                time.sleep(0.1)
+                continue
 
-        # ใช้ conf=0.15 เพื่อเพิ่มความไวในการดักจับ (บางทีแสงหรือมุมทำให้ความมั่นใจต่ำลง)
-        results = model(frame, verbose=False)
+        # ใช้ conf=0.15 เพื่อเพิ่มความไวในการดักจับ (บางทีแสงหรือมุมทำให้ความมั่นใจต่ำลง) หรือใช้จาก armconfig ถ้าตั้งไว้
+        conf_thresh = getattr(armconfig, "VISION_CONFIDENCE_THRESHOLD", 0.30)
+        results = model(frame, verbose=False, conf=conf_thresh)
         annotated_frame = results[0].plot()
         # แสดง Overlay ซ้อนภาพ แต่ไม่บังคับหยุดรอถ้ายังไม่เจอของ
         cam_manager.set_overlay(annotated_frame, duration=1.0)
@@ -108,6 +113,9 @@ def scan_with_yolo(object_name):
                     x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
                     center_x = (x1 + x2) / 2
                     center_y = (y1 + y2) / 2
+                    
+                    if getattr(armconfig, 'CAMERA_FLIP_HORIZONTAL', False):
+                        center_x = 640 - center_x
 
                     target_pixel = (center_x, center_y)
                     robot_coord_np = eyeonhand.pixel_to_arm(target_pixel)
@@ -143,6 +151,12 @@ def scan_with_yolo(object_name):
                     mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
                     time.sleep(1.0)
                     return saved_coord
+            
+            # End of box loop
+            if found:
+                break
+                
+            time.sleep(0.1)  # รอ 0.1 วิแล้วดึงภาพใหม่มาเช็คอีกรอบ
 
     print(
         f"🤖 <SYSTEM>: YOLO สแกนครบ 5 มุมแล้ว ไม่พบ '{object_name}' (จะสลับไปใช้ Vision AI API)"
@@ -180,18 +194,21 @@ def scan_all_objects():
         # We'll use safe_get_coords logic or just wait
         time.sleep(1.5)
 
-        frame = cam_manager.get_frame()
-        if frame is None:
-            continue
+        for attempt in range(3):
+            frame = cam_manager.get_frame()
+            if frame is None:
+                time.sleep(0.1)
+                continue
 
-        results = model(frame, verbose=False)
-        annotated_frame = results[0].plot()
-        cam_manager.set_overlay(annotated_frame, duration=0.5)
-        
-        for result in results:
-            boxes = result.boxes
-            for box in boxes:
-                cls = int(box.cls[0])
+            conf_thresh = getattr(armconfig, "VISION_CONFIDENCE_THRESHOLD", 0.30)
+            results = model(frame, verbose=False, conf=conf_thresh)
+            annotated_frame = results[0].plot()
+            cam_manager.set_overlay(annotated_frame, duration=0.5)
+            
+            for result in results:
+                boxes = result.boxes
+                for box in boxes:
+                    cls = int(box.cls[0])
                 name = model.names[cls]
                 
                 # If we already recorded this object type and we just want one of each color, we might skip.
@@ -209,6 +226,9 @@ def scan_all_objects():
                 x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
                 center_x = (x1 + x2) / 2
                 center_y = (y1 + y2) / 2
+                
+                if getattr(armconfig, 'CAMERA_FLIP_HORIZONTAL', False):
+                    center_x = 640 - center_x
 
                 target_pixel = (center_x, center_y)
                 robot_coord_np = eyeonhand.pixel_to_arm(target_pixel)
@@ -229,6 +249,8 @@ def scan_all_objects():
 
                 saved_coord = [round(x_world, 2), round(y_world, 2)]
                 found_objects[full_name] = saved_coord
+            
+            time.sleep(0.1)  # รอเฟรมใหม่เผื่อมีอะไรที่จับได้เพิ่มในมุมเดิม
 
     # Return to center
     mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)

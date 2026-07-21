@@ -11,7 +11,7 @@ def execute_grab(object_name: str, coord: list) -> str:
     init.BotInit(mc)
     
     cfg = load_offsets()
-    z = 120 + cfg["z"]
+    z = armconfig.GRAB_BASE_HEIGHT + cfg["z"]
 
     coord = clamp_xy(coord)
     coord = clamp_radius(coord, z)

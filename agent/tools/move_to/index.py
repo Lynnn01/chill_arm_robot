@@ -30,20 +30,22 @@ def move_to(target_coord: list[float] = None, target_name: str = None, target_he
     if not target_coord:
         target_coord = init.last_coords[:2] if init.last_coords else [0, -150]
 
-    # Auto-adjust height for stacking if target_height is default 110
-    if target_height == armconfig.STACK_BASE_HEIGHT:
-        stack_count = 0
-        for obj_name, coord in init.known_objects.items():
-            if isinstance(coord, list) and len(coord) >= 2:
-                # Check if coordinates are close
-                dx = abs(coord[0] - target_coord[0])
-                dy = abs(coord[1] - target_coord[1])
-                if dx < armconfig.STACK_PROXIMITY_THRESHOLD and dy < armconfig.STACK_PROXIMITY_THRESHOLD:
-                    stack_count += 1
-        
-        if stack_count > 0:
-            target_height = armconfig.STACK_BASE_HEIGHT + (stack_count * armconfig.STACK_HEIGHT_PER_LAYER) + armconfig.STACK_SAFE_OFFSET
-            print(f"🤖 <SYSTEM>: ตรวจพบวัตถุที่พิกัดนี้ {stack_count} ชิ้น ปรับความสูงการวางเป็น {target_height} เพื่อไม่ให้กดทับรุนแรง")
+    # Auto-adjust height for stacking to prevent crushing boxes
+    stack_count = 0
+    for obj_name, coord in init.known_objects.items():
+        if isinstance(coord, list) and len(coord) >= 2:
+            # Check if coordinates are close
+            dx = abs(coord[0] - target_coord[0])
+            dy = abs(coord[1] - target_coord[1])
+            if dx < armconfig.STACK_PROXIMITY_THRESHOLD and dy < armconfig.STACK_PROXIMITY_THRESHOLD:
+                stack_count += 1
+    
+    if stack_count > 0:
+        target_height = armconfig.STACK_BASE_HEIGHT + (stack_count * armconfig.STACK_HEIGHT_PER_LAYER) + armconfig.STACK_SAFE_OFFSET
+        print(f"🤖 <SYSTEM>: ตรวจพบวัตถุที่พิกัดนี้ {stack_count} ชิ้น ปรับความสูงการวางเป็น {target_height} เพื่อไม่ให้กดทับรุนแรง")
+    else:
+        # If no stack, ensure minimum safe height
+        target_height = max(armconfig.STACK_BASE_HEIGHT, target_height)
 
     import math
     # Safety clamps

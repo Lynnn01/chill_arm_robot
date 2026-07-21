@@ -27,7 +27,13 @@ class CameraView(tk.Canvas):
 
         self._photo = None
         self.bind("<Configure>", self._draw_base)
-        self.after(50, self._poll_frame)
+        self._interval = 16  # default ~60fps, overridden by armconfig if loaded
+        try:
+            import armconfig
+            self._interval = getattr(armconfig, 'GUI_CAMERA_INTERVAL_MS', 16)
+        except Exception:
+            pass
+        self.after(self._interval, self._poll_frame)
 
     # ------------------------------------------------------------------
     def _draw_base(self, _event=None):
@@ -58,8 +64,8 @@ class CameraView(tk.Canvas):
             x1 = (fw - size) // 2
             square_frame = frame_rgb[y1:y1+size, x1:x1+size]
             
-            # Leave space for the label (image size 380x380)
-            img = Image.fromarray(square_frame).resize((self.W - 20, self.H - 30))
+            square_frame = cv2.resize(square_frame, (self.W - 20, self.H - 30))
+            img = Image.fromarray(square_frame)
         else:
             img = Image.new("RGB", (self.W - 20, self.H - 30), Theme.SURFACE_MUTED)
         photo = ImageTk.PhotoImage(img)
@@ -68,7 +74,7 @@ class CameraView(tk.Canvas):
         w = self.winfo_width() or self.W
         # Center image slightly higher to leave room for text
         self.create_image(w // 2, (self.H - 14) // 2 - 5, image=photo, anchor="center", tags="cam_img")
-        self.after(50, self._poll_frame)
+        self.after(self._interval, self._poll_frame)
 
     # ------------------------------------------------------------------
     @staticmethod

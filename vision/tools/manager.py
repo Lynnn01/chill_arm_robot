@@ -30,19 +30,22 @@ def _detection_loop():
             
             # Delegate to specific tools based on mode
             if _current_mode == "Face Detect":
-                annotated_frame, _target_angles, _last_send_time = face_process(img, _target_angles, _last_send_time)
+                ai_results, _target_angles, _last_send_time = face_process(img, _target_angles, _last_send_time)
             elif _current_mode == "Person Detect":
-                annotated_frame, _target_angles, _last_send_time = person_process(img, _target_angles, _last_send_time)
+                ai_results, _target_angles, _last_send_time = person_process(img, _target_angles, _last_send_time)
             elif _current_mode == "Cube Detect":
-                annotated_frame, _target_angles, _last_send_time = cube_process(img, _target_angles, _last_send_time)
+                ai_results, _target_angles, _last_send_time = cube_process(img, _target_angles, _last_send_time)
             else:
-                annotated_frame = img
+                ai_results = None
             
-            # Set it back to the cam_manager overlay so it displays on the GUI
-            cam_manager.set_overlay(annotated_frame, duration=1.0)
+            # Send the AI boxes to the camera manager (so it draws them on the live frame)
+            if hasattr(cam_manager, 'set_ai_results') and ai_results is not None:
+                cam_manager.set_ai_results(ai_results, duration=1.0)
             
         # Give some breathing room for CPU/UI
-        time.sleep(0.05)
+        delay = getattr(armconfig, 'VISION_LOOP_DELAY', 0.05)
+        if delay > 0:
+            time.sleep(delay)
         
     print("🤖 <SYSTEM>: Background Detection stopped.")
 
