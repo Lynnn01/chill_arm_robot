@@ -44,13 +44,14 @@ def _get_raw_tool_map():
     }
 
 
-def execute_plan(tasks: list, plan_summary: str = "") -> list:
+def execute_plan(tasks: list, plan_summary: str = "", speaker_on: bool = True) -> list:
     """
     Execute a list of tasks sequentially without any LLM roundtrips.
 
     Args:
-        tasks:        list of {"tool": str, "args": dict}
+        tasks:        list of {"tool": str, "args": dict, "voice": str (optional)}
         plan_summary: Short Thai description of the overall plan
+        speaker_on:   Whether to play TTS voice
     
     Returns:
         list of results for each tool
@@ -65,11 +66,20 @@ def execute_plan(tasks: list, plan_summary: str = "") -> list:
     for i, task in enumerate(tasks):
         tool_name = task.get("tool", "")
         args = dict(task.get("args") or {})
+        task_voice = task.get("voice", "")
 
         if tool_name not in tool_map:
-            print(f"⚠️ <SYSTEM>: ไม่รู้จัก tool '{tool_name}' — ข้ามไป")
-            results.append({"tool": tool_name, "status": "skipped"})
+            print(f"⚠️ <SYSTEM>: ไม่รู้จักคำสั่ง '{tool_name}' ข้ามไป")
+            results.append({"tool": tool_name, "status": "error", "result": "Unknown tool"})
             continue
+            
+        # เล่นเสียงบรรยายของ task นี้ (แบบ background)
+        if task_voice and speaker_on:
+            import threading
+            from agent.agent import _play_voice
+            # ใช้ชื่อไฟล์เฉพาะสำหรับ task นี้เพื่อไม่ให้ไฟล์ล็อคตีกัน
+            filename = f"speech_task_{i}.mp3"
+            threading.Thread(target=_play_voice, args=(task_voice, filename), daemon=True).start()
 
         # Smart arg injection: move_to can use coord from previous grab
         if tool_name == "move_to" and not args.get("target_coord") and not args.get("target_name"):

@@ -24,7 +24,11 @@ Your ONLY job is to output a JSON action plan — nothing else.
   "mode": "plan",
   "plan_summary": "<short Thai description of what you will do>",
   "tasks": [
-    {"tool": "<tool_name>", "args": {<args>}},
+    {
+      "tool": "<tool_name>",
+      "args": {<args>},
+      "voice": "<1 sentence Isan dialect explanation of what you are doing in this step>"
+    },
     ...
   ]
 }
@@ -45,6 +49,7 @@ Your ONLY job is to output a JSON action plan — nothing else.
 3. If placing on another object, use `target_name`. If placing at a specific coordinate, use `target_coord`. If putting it back where it was, leave both null.
 4. For commands that need vision/description (e.g. "อธิบายสิ่งที่เห็น"), output: {"mode": "fallback"}
 5. For pure conversation (no robot action needed), output: {"mode": "fallback"}
+6. You MUST provide a short 'voice' text in Isan dialect (ภาษาอีสาน) for EACH task. This will be spoken WHILE the arm is performing that specific task.
 
 ## Coordinate system:
 - X: Forward/Backward (Safe: -280 to 280)

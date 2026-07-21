@@ -143,19 +143,18 @@ async def main():
         exit_function()
 
 
-def _play_voice(text):
+def _play_voice(text, filename="speech.mp3"):
     import os
     import ctypes
     import edge_tts
     import asyncio
-
+    
     async def _generate_and_play():
         try:
             from hardware import init
-
-            mp3_path = os.path.join(init.PROJECT_ROOT, "speech.mp3")
+            mp3_path = os.path.join(init.PROJECT_ROOT, filename)
         except ImportError:
-            mp3_path = os.path.join(os.getcwd(), "speech.mp3")
+            mp3_path = os.path.join(os.getcwd(), filename)
 
         openai_key = os.getenv("OPENAI_API_VOICE_KEY")
         use_openai = False
@@ -187,13 +186,14 @@ def _play_voice(text):
                 print(f"⚠️ <SYSTEM>: Edge TTS Error: {e}")
                 return
 
+        # Create a unique alias for MCI
+        alias = filename.replace(".mp3", "").replace("_", "")
+        
         try:
-            ctypes.windll.winmm.mciSendStringW("close mymp3", None, 0, None)
-            ctypes.windll.winmm.mciSendStringW(
-                f'open "{mp3_path}" type mpegvideo alias mymp3', None, 0, None
-            )
-            ctypes.windll.winmm.mciSendStringW("play mymp3 wait", None, 0, None)
-            ctypes.windll.winmm.mciSendStringW("close mymp3", None, 0, None)
+            ctypes.windll.winmm.mciSendStringW(f'close {alias}', None, 0, None)
+            ctypes.windll.winmm.mciSendStringW(f'open "{mp3_path}" type mpegvideo alias {alias}', None, 0, None)
+            ctypes.windll.winmm.mciSendStringW(f'play {alias} wait', None, 0, None)
+            ctypes.windll.winmm.mciSendStringW(f'close {alias}', None, 0, None)
         except Exception as e:
             print(f"⚠️ <SYSTEM>: Playback Error: {e}")
 

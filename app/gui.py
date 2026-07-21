@@ -180,6 +180,7 @@ class OneArmGUI:
                     results = execute_plan(
                         tasks=plan.get("tasks", []),
                         plan_summary=plan.get("plan_summary", ""),
+                        speaker_on=speaker_on,
                     )
                     
                     # ── Phase 3: Summarize ─────────────────────
