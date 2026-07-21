@@ -1,6 +1,7 @@
 import time
 from hardware.init import mc
 from agents import function_tool
+import armconfig
 
 @function_tool
 def move(x: float, y: float, z: float, speed: int = 40) -> str:
@@ -20,21 +21,21 @@ def move(x: float, y: float, z: float, speed: int = 40) -> str:
     import math
     
     # Safety clamps
-    x = max(-280.0, min(280.0, float(x)))
-    y = max(-280.0, min(280.0, float(y)))
-    z = max(0.0, min(280.0, float(z)))
+    x = max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, float(x)))
+    y = max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, float(y)))
+    z = max(armconfig.COORD_Z_MIN, min(armconfig.COORD_Z_MAX, float(z)))
     
     # Base radius safety (prevent hitting its own body if Z is low)
     if z < 100:
         radius = math.sqrt(x**2 + y**2)
-        if radius < 80:
+        if radius < armconfig.GRAB_MIN_RADIUS:
             print(f"⚠️ <SYSTEM>: พิกัด (X:{x}, Y:{y}) อยู่ใกล้ฐานเกินไปและ Z ต่ำ ปรับให้ปลอดภัยขึ้น...")
             if radius > 0:
-                scale = 80 / radius
+                scale = armconfig.GRAB_MIN_RADIUS / radius
                 x = x * scale
                 y = y * scale
             else:
-                x, y = 80, 0
+                x, y = armconfig.GRAB_MIN_RADIUS, 0
 
     print(f"🤖 <SYSTEM>: กำลังขยับแขนกลไปที่พิกัด (X:{x}, Y:{y}, Z:{z}) ด้วยความเร็ว {speed}...")
     
@@ -42,18 +43,18 @@ def move(x: float, y: float, z: float, speed: int = 40) -> str:
     if current_coords and len(current_coords) >= 3:
         # Safe Movement Sequence: 1. Lift Up, 2. Move X,Y, 3. Descend
         # 1. Lift
-        lift_target = [current_coords[0], current_coords[1], 200]
-        mc.send_coords(lift_target + [-175, 0, -45], speed)
+        lift_target = [current_coords[0], current_coords[1], armconfig.Z_SAFE_TRAVEL]
+        mc.send_coords(lift_target + armconfig.WRIST_PLACE, speed)
         mc.wait_for_arrival(lift_target, mode="coords")
         
     # 2. Move Horizontally at safe height
-    xy_target = [x, y, 200]
-    mc.send_coords(xy_target + [-175, 0, -45], speed)
+    xy_target = [x, y, armconfig.Z_SAFE_TRAVEL]
+    mc.send_coords(xy_target + armconfig.WRIST_PLACE, speed)
     mc.wait_for_arrival(xy_target, mode="coords")
     
     # 3. Descend to target Z
     final_target = [x, y, z]
-    mc.send_coords(final_target + [-175, 0, -45], speed)
+    mc.send_coords(final_target + armconfig.WRIST_PLACE, speed)
     mc.wait_for_arrival(final_target, mode="coords")
     
     actual_coords = mc.safe_get_coords()

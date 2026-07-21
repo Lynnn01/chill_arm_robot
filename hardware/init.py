@@ -4,6 +4,7 @@ import os
 import sys
 import json
 import threading
+import armconfig
 import unittest.mock
 
 # ---------------------------------------------------------------------------
@@ -182,10 +183,10 @@ def BotInit(mc):
             mc.set_fresh_mode(0)
 
         print("Moving to Home position...")
-        mc.send_angles([0, 0, 0, 0, 0, -45], 40)
+        mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
         time.sleep(3)
         print("Moving to Ready position...")
-        mc.send_angles([17.75, -0.79, 0.35, -75, 1.14, -28.12], 40)
+        mc.send_angles(armconfig.POSE_READY, armconfig.SPEED_GRAB)
         time.sleep(3)
     except Exception as e:
         print(f"⚠️ BotInit error (non-fatal): {e}")

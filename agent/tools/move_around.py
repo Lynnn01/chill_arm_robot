@@ -1,6 +1,7 @@
 import time
 from hardware.init import mc
 from agents import function_tool
+import armconfig
 
 @function_tool
 def move_around(speed: int = 40) -> str:
@@ -18,7 +19,7 @@ def move_around(speed: int = 40) -> str:
     print(f"Executing move around sequence at speed {speed}...")
     
     # 1. Move to default/center position
-    mc.send_angles([0, 0, 0, 0, 0, -45], speed)
+    mc.send_angles(armconfig.POSE_HOME, speed)
     time.sleep(3)
     
     # 2. Pan Left
@@ -34,7 +35,7 @@ def move_around(speed: int = 40) -> str:
     time.sleep(3)
     
     # 5. Return to default/center position
-    mc.send_angles([0, 0, 0, 0, 0, -45], speed)
+    mc.send_angles(armconfig.POSE_HOME, speed)
     time.sleep(3)
     
     print("Move around sequence completed.")

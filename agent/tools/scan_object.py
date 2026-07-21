@@ -8,6 +8,7 @@ from vision import eyeonhand
 from hardware.init import mc
 from agents import function_tool
 from vision import yolo_detector
+import armconfig
 
 @function_tool
 def scan_object(object_name: str) -> str:
@@ -32,8 +33,8 @@ def scan_object(object_name: str) -> str:
     # 2. Fallback to Vision AI (Qwen)
     print(f"🤖 <SYSTEM>: กำลังใช้กล้องสแกนหา '{object_name}' ด้วย Vision AI (ทั้งหมด 5 มุม)...")
     
-    # 5-step scan angles for J1: Down-center, Left 45, Left 90, Right 45, Right 90
-    scan_angles = [0, 45, 90, -45, -90]
+    # 5-step scan angles
+    scan_angles = armconfig.SCAN_ANGLES
     
     with open(init.CONFIG_PATH, "r", encoding="utf-8") as config_file:
         config_data = json.load(config_file)
@@ -44,8 +45,10 @@ def scan_object(object_name: str) -> str:
     for j1 in scan_angles:
         print(f"🤖 <SYSTEM>: กำลังหันกล้องไปที่มุม {j1} องศา...")
         # Use the same bending angles as grab_object/BotInit, but pan J1 by j1
-        mc.send_angles([17.75 + j1, -0.79, 0.35, -75, 1.14, -28.12], 40)
-        time.sleep(2.5) # Wait for arm to stop and camera to stabilize
+        current_ready = armconfig.POSE_READY.copy()
+        current_ready[0] = current_ready[0] + j1
+        mc.send_angles(current_ready, armconfig.SPEED_GRAB)
+        time.sleep(armconfig.SCAN_WAIT_PER_ANGLE) # Wait for arm to stop and camera to stabilize
         
         init.GetImage()
         print(f"🤖 <SYSTEM>: ถ่ายภาพมุม {j1} องศาสำเร็จ กำลังส่งให้ Vision AI วิเคราะห์... (รอคำตอบ)")
@@ -93,8 +96,8 @@ def scan_object(object_name: str) -> str:
                 robot_coord[0] = robot_coord[0] - 5
                 
             # Safety clamps
-            robot_coord[0] = max(-280.0, min(280.0, robot_coord[0]))
-            robot_coord[1] = max(-280.0, min(280.0, robot_coord[1]))
+            robot_coord[0] = max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, robot_coord[0]))
+            robot_coord[1] = max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, robot_coord[1]))
             
             # Save to memory
             saved_coord = [round(robot_coord[0], 2), round(robot_coord[1], 2)]
@@ -103,12 +106,12 @@ def scan_object(object_name: str) -> str:
             print(f"🤖 <SYSTEM>: เจอแล้ว! สแกนพบ '{object_name}' ที่มุม {j1} องศา (พิกัดโลก: {saved_coord})")
             
             # กลับมาท่าตั้งต้น
-            mc.send_angles([0, 0, 0, 0, 0, -45], 40)
+            mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
             return f"Found '{object_name}' at {saved_coord}. Memory updated."
             
         else:
             print(f"🤖 <SYSTEM>: สแกนมุม {j1} องศา ไม่พบ '{object_name}'")
 
-    print(f"🤖 <SYSTEM>: สแกนครบ 5 มุมแล้ว ไม่พบ '{object_name}' ในบริเวณนี้")
-    mc.send_angles([0, 0, 0, 0, 0, -45], 40)
+    print(f"🤖 <SYSTEM>: สแกนครบ {len(scan_angles)} มุมแล้ว ไม่พบ '{object_name}' ในบริเวณนี้")
+    mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
     return f"Could not find '{object_name}'."

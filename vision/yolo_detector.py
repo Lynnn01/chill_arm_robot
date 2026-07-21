@@ -4,6 +4,7 @@ import math
 from hardware import init
 from hardware.init import mc, cam_manager
 from vision import eyeonhand
+import armconfig
 
 # Lazy load model
 _model = None
@@ -37,7 +38,7 @@ def scan_with_yolo(object_name):
         return None
 
     print(f"🤖 <SYSTEM>: เริ่มการสแกนเร็วด้วย YOLO ค้นหา '{object_name}'...")
-    scan_angles = [0, 45, 90, -45, -90]
+    scan_angles = armconfig.SCAN_ANGLES
 
     import json
 
@@ -51,7 +52,9 @@ def scan_with_yolo(object_name):
 
     for j1 in scan_angles:
         print(f"🤖 <SYSTEM>: YOLO หันกล้องไปที่มุม {j1} องศา...")
-        mc.send_angles([17.75 + j1, -0.79, 0.35, -75, 1.14, -28.12], 40)
+        current_ready = armconfig.POSE_READY.copy()
+        current_ready[0] = current_ready[0] + j1
+        mc.send_angles(current_ready, armconfig.SPEED_GRAB)
         time.sleep(1.5)
 
         frame = cam_manager.get_frame()
@@ -126,8 +129,8 @@ def scan_with_yolo(object_name):
                     if robot_coord[0] > 210:
                         robot_coord[0] = robot_coord[0] - 5
 
-                    robot_coord[0] = max(-280.0, min(280.0, robot_coord[0]))
-                    robot_coord[1] = max(-280.0, min(280.0, robot_coord[1]))
+                    robot_coord[0] = max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, robot_coord[0]))
+                    robot_coord[1] = max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, robot_coord[1]))
 
                     saved_coord = [round(robot_coord[0], 2), round(robot_coord[1], 2)]
 
@@ -137,7 +140,7 @@ def scan_with_yolo(object_name):
                     # หน่วงเวลาสั้นๆ ให้ผู้ใช้เห็นกรอบ
                     time.sleep(1.0)
                     # Return to center
-                    mc.send_angles([0, 0, 0, 0, 0, -45], 40)
+                    mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
                     time.sleep(1.0)
                     return saved_coord
 
@@ -145,7 +148,7 @@ def scan_with_yolo(object_name):
         f"🤖 <SYSTEM>: YOLO สแกนครบ 5 มุมแล้ว ไม่พบ '{object_name}' (จะสลับไปใช้ Vision AI API)"
     )
     # Return to center for the next stage
-    mc.send_angles([0, 0, 0, 0, 0, -45], 40)
+    mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
     time.sleep(1)
     return None
 
@@ -159,7 +162,7 @@ def scan_all_objects():
         return {}
 
     print("🤖 <SYSTEM>: เริ่มการสแกนแบบ Panoramic เพื่อหาวัตถุทั้งหมดบนโต๊ะ...")
-    scan_angles = [0, 45, 90, -45, -90]
+    scan_angles = armconfig.SCAN_ANGLES
 
     import json
     with open(init.CONFIG_PATH, "r", encoding="utf-8") as config_file:
@@ -170,7 +173,9 @@ def scan_all_objects():
     found_objects = {}
 
     for j1 in scan_angles:
-        mc.send_angles([17.75 + j1, -0.79, 0.35, -75, 1.14, -28.12], 40)
+        current_ready = armconfig.POSE_READY.copy()
+        current_ready[0] = current_ready[0] + j1
+        mc.send_angles(current_ready, armconfig.SPEED_GRAB)
         # We need to wait for arrival for smooth scanning, but yolo_detector uses simple sleep for now
         # We'll use safe_get_coords logic or just wait
         time.sleep(1.5)
@@ -219,14 +224,14 @@ def scan_all_objects():
                 if x_world > 210:
                     x_world -= 5
 
-                x_world = max(-280.0, min(280.0, x_world))
-                y_world = max(-280.0, min(280.0, y_world))
+                x_world = max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, x_world))
+                y_world = max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, y_world))
 
                 saved_coord = [round(x_world, 2), round(y_world, 2)]
                 found_objects[full_name] = saved_coord
 
     # Return to center
-    mc.send_angles([0, 0, 0, 0, 0, -45], 40)
+    mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
     time.sleep(1.0)
     
     print(f"🤖 <SYSTEM>: สแกนเสร็จสิ้น พบวัตถุทั้งหมด {len(found_objects)} ชิ้น: {found_objects}")

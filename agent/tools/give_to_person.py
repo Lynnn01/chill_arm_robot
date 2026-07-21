@@ -2,6 +2,7 @@ import time
 from hardware.init import mc
 from hardware import init
 from agents import function_tool
+import armconfig
 
 @function_tool
 def give_to_person() -> str:
@@ -25,18 +26,18 @@ def give_to_person() -> str:
     current_coords = mc.safe_get_coords()
     if current_coords and len(current_coords) >= 3:
         # 1. Lift Up current pos
-        lift_target = [current_coords[0], current_coords[1], 200]
-        mc.send_coords(lift_target + [-175, 0, -45], 40)
+        lift_target = [current_coords[0], current_coords[1], armconfig.Z_SAFE_TRAVEL]
+        mc.send_coords(lift_target + armconfig.WRIST_PLACE, armconfig.SPEED_GRAB)
         mc.wait_for_arrival(lift_target, mode="coords")
         
     # 2. Move Horizontally to handover X,Y
-    xy_target = [target_coord[0], target_coord[1], 200]
-    mc.send_coords(xy_target + [-175, 0, -45], 40)
+    xy_target = [target_coord[0], target_coord[1], armconfig.Z_SAFE_TRAVEL]
+    mc.send_coords(xy_target + armconfig.WRIST_PLACE, armconfig.SPEED_GRAB)
     mc.wait_for_arrival(xy_target, mode="coords")
     
     # 3. Descend to handover height
     final_target = [target_coord[0], target_coord[1], target_coord[2]]
-    mc.send_coords(final_target + [-175, 0, -45], 40)
+    mc.send_coords(final_target + armconfig.WRIST_PLACE, armconfig.SPEED_GRAB)
     mc.wait_for_arrival(final_target, mode="coords")
     
     print("🤖 <SYSTEM>: มารับของไปได้เลยครับ จะปล่อยใน 4 วินาที...")
@@ -48,10 +49,10 @@ def give_to_person() -> str:
     time.sleep(1)
     
     # 4. Lift straight up and return to center
-    mc.send_coords(xy_target + [-175, 0, -45], 40)
+    mc.send_coords(xy_target + armconfig.WRIST_PLACE, armconfig.SPEED_GRAB)
     mc.wait_for_arrival(xy_target, mode="coords")
-    mc.send_angles([0, 0, 0, 0, 0, -45], 40)
-    mc.wait_for_arrival([0, 0, 0, 0, 0, -45], mode="angles")
+    mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
+    mc.wait_for_arrival(armconfig.POSE_HOME, mode="angles")
     
     # Update Memory
     if init.current_held_object:

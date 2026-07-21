@@ -7,6 +7,7 @@ from hardware import init
 from vision import eyeonhand
 from agents import function_tool
 from vision import yolo_detector
+import armconfig
 
 @function_tool
 def grab_object(object_name: str, target_coord: list = None) -> list:
@@ -73,20 +74,20 @@ def grab_object(object_name: str, target_coord: list = None) -> list:
                 return f"Error: มองไม่เห็น '{object_name}' บนโต๊ะเลยครับ ขอยกเลิกการหยิบ"
 
     # Safety clamps for grasping
-    robot_coord[0] = max(-280.0, min(280.0, robot_coord[0]))
-    robot_coord[1] = max(-280.0, min(280.0, robot_coord[1]))
+    robot_coord[0] = max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, robot_coord[0]))
+    robot_coord[1] = max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, robot_coord[1]))
 
     import math
     if z < 100:
         radius = math.sqrt(robot_coord[0]**2 + robot_coord[1]**2)
-        if radius < 80:
+        if radius < armconfig.GRAB_MIN_RADIUS:
             print(f"⚠️ <SYSTEM>: เป้าหมายหยิบของอยู่ใกล้ฐานเกินไปและ Z ต่ำ ปรับให้ปลอดภัยขึ้น...")
             if radius > 0:
-                scale = 80 / radius
+                scale = armconfig.GRAB_MIN_RADIUS / radius
                 robot_coord[0] = robot_coord[0] * scale
                 robot_coord[1] = robot_coord[1] * scale
             else:
-                robot_coord[0], robot_coord[1] = 80, 0
+                robot_coord[0], robot_coord[1] = armconfig.GRAB_MIN_RADIUS, 0
 
     init.open_gripper()
     
@@ -94,18 +95,18 @@ def grab_object(object_name: str, target_coord: list = None) -> list:
     current_coords = mc.safe_get_coords()
     if current_coords and len(current_coords) >= 3:
         # 1. Lift straight up first to avoid hitting objects
-        lift_target = [current_coords[0], current_coords[1], 200]
-        mc.send_coords(lift_target + [-173, 0, -45], 40)
+        lift_target = [current_coords[0], current_coords[1], armconfig.Z_SAFE_TRAVEL]
+        mc.send_coords(lift_target + armconfig.WRIST_DOWN, armconfig.SPEED_GRAB)
         mc.wait_for_arrival(lift_target, mode="coords")
         
     # 2. Move Horizontally at safe height
-    xy_target = [robot_coord[0], robot_coord[1], 200]
-    mc.send_coords(xy_target + [-173, 0, -45], 40)
+    xy_target = [robot_coord[0], robot_coord[1], armconfig.Z_SAFE_TRAVEL]
+    mc.send_coords(xy_target + armconfig.WRIST_DOWN, armconfig.SPEED_GRAB)
     mc.wait_for_arrival(xy_target, mode="coords")
     
     # 3. Descend to grab
     final_target = [robot_coord[0], robot_coord[1], z]
-    mc.send_coords(final_target + [-173, 0, -45], 40)
+    mc.send_coords(final_target + armconfig.WRIST_DOWN, armconfig.SPEED_GRAB)
     mc.wait_for_arrival(final_target, mode="coords")
     
     init.close_gripper()
@@ -122,9 +123,9 @@ def grab_object(object_name: str, target_coord: list = None) -> list:
     init.current_held_object = object_name
     init.known_objects[object_name] = "in gripper"
 
-    mc.send_coords(xy_target + [-173, 0, -45], 20)
+    mc.send_coords(xy_target + armconfig.WRIST_DOWN, armconfig.SPEED_LIFT)
     mc.wait_for_arrival(xy_target, mode="coords")
-    mc.send_angles([0, 0, 0, 0, 0, -45], 40)
-    mc.wait_for_arrival([0, 0, 0, 0, 0, -45], mode="angles")
+    mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
+    mc.wait_for_arrival(armconfig.POSE_HOME, mode="angles")
 
     return f"Successfully grabbed {object_name} at coordinates {robot_coord}"

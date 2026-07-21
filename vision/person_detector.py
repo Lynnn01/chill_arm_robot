@@ -3,12 +3,13 @@ import time
 import threading
 from hardware import init
 from hardware.init import cam_manager
+import armconfig
 
 _models = {}
 _current_mode = "ARM Mode"
 _is_active = False
 _thread = None
-_target_angles = [0, 0, 0, 0, 0, -45]
+_target_angles = armconfig.POSE_HOME.copy()
 _last_send_time = 0
 
 def get_model(mode_name):
@@ -82,9 +83,9 @@ def _detection_loop():
                         tilt_error = center_y - cy
                         
                         # Deadzone of 20 pixels to prevent jitter
-                        if abs(pan_error) > 20 or abs(tilt_error) > 20:
+                        if abs(pan_error) > armconfig.TRACKING_DEADZONE_PX or abs(tilt_error) > armconfig.TRACKING_DEADZONE_PX:
                             global _target_angles, _last_send_time
-                            Kp = 0.08 # Slightly faster response
+                            Kp = armconfig.TRACKING_KP # Slightly faster response
                             
                             # Increase J1 turns left. If person is on left (cx < center_x), pan_error > 0.
                             new_j1 = _target_angles[0] + (pan_error * Kp)
@@ -92,16 +93,16 @@ def _detection_loop():
                             new_j4 = _target_angles[3] + (tilt_error * Kp)
                             
                             # Clamp safety limits
-                            new_j1 = max(-160, min(160, new_j1))
-                            new_j4 = max(-150, min(150, new_j4))
+                            new_j1 = max(armconfig.TRACKING_J1_MIN, min(armconfig.TRACKING_J1_MAX, new_j1))
+                            new_j4 = max(armconfig.TRACKING_J4_MIN, min(armconfig.TRACKING_J4_MAX, new_j4))
                             
                             if abs(new_j1 - _target_angles[0]) > 0.5 or abs(new_j4 - _target_angles[3]) > 0.5:
                                 _target_angles[0] = new_j1
                                 _target_angles[3] = new_j4
                                 
                                 # Rate limit sending commands to max 10 times a second to prevent serial choke
-                                if time.time() - _last_send_time > 0.1:
-                                    init.mc.send_angles(_target_angles, 60) # Speed 60 for smoother/faster tracking
+                                if time.time() - _last_send_time > armconfig.TRACKING_SEND_INTERVAL:
+                                    init.mc.send_angles(_target_angles, armconfig.SPEED_TRACKING) # Speed 60 for smoother/faster tracking
                                     _last_send_time = time.time()
             # ---------------------------
             
@@ -121,8 +122,8 @@ def set_detect_mode(new_mode: str):
     
     if new_mode in ["Face Detect", "Person Detect"]:
         print(f"🤖 <SYSTEM>: Resetting posture for {new_mode} Tracking...")
-        _target_angles = [0, 0, 0, 0, 0, -45]
-        init.mc.send_angles(_target_angles, 50)
+        _target_angles = armconfig.POSE_HOME.copy()
+        init.mc.send_angles(_target_angles, armconfig.SPEED_RESET)
     
     if new_mode in ["Person Detect", "Face Detect"] and not _is_active:
         print(f"🤖 <SYSTEM>: {new_mode} started.")

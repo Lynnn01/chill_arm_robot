@@ -129,8 +129,9 @@ class OneArmGUI:
         try:
             import time
             from hardware.init import mc
+            import armconfig
 
-            mc.send_angles([0, 0, 0, 0, 0, -45], 50)
+            mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_RESET)
             time.sleep(2)
             print("✅ <SYSTEM>: รีเซ็ตเสร็จสมบูรณ์!")
         except Exception as e:

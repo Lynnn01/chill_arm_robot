@@ -1,6 +1,7 @@
 import time
 from hardware.init import mc
 from agents import function_tool
+import armconfig
 
 @function_tool
 def show_object(object_name: str) -> str:
@@ -16,8 +17,8 @@ def show_object(object_name: str) -> str:
         object_name: The name of the object being shown.
     """
     print(f"🤖 <SYSTEM>: กำลังโชว์ {object_name}...")
-    mc.send_angles([0, 0, 0, 0, 0, -45], 40)
+    mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
     time.sleep(2)
-    mc.send_angles([0, 0, 0, -90, 0, -45], 40)
+    mc.send_angles(armconfig.POSE_SHOW, armconfig.SPEED_GRAB)
     time.sleep(2.5)
     return "success"
