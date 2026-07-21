@@ -61,7 +61,7 @@ class RightPanel(tk.Frame):
 
         # Mode Selector
         self.current_mode = tk.StringVar(value="ARM Mode")
-        modes = ["ARM Mode", "Person Detect", "Face Detect"]
+        modes = ["ARM Mode", "Person Detect", "Face Detect", "Cube Detect"]
         self.mode_menu = tk.OptionMenu(hdr, self.current_mode, *modes, command=self._on_mode_change)
         self.mode_menu.config(
             bg=Theme.SURFACE, fg=Theme.FG, 
@@ -280,7 +280,7 @@ class RightPanel(tk.Frame):
     def _on_mode_change(self, new_mode):
         self.log_queue.put(f"⚙️ <SYSTEM>: Switched to {new_mode} mode")
         try:
-            from vision.person_detector import set_detect_mode
+            from vision.tools.manager import set_detect_mode
             set_detect_mode(new_mode)
         except Exception as e:
             print(f"⚠️ Error changing mode: {e}")
