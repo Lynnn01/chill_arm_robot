@@ -63,6 +63,51 @@ class LockedMyCobot:
     def get_angles(self):
         return self._call("get_angles")
 
+    def safe_get_coords(self, retries=3):
+        """Robust wrapper for get_coords that handles None or empty returns."""
+        for _ in range(retries):
+            res = self.get_coords()
+            if res and isinstance(res, list) and len(res) >= 3:
+                return res
+            time.sleep(0.1)
+        return None
+
+    def safe_get_angles(self, retries=3):
+        """Robust wrapper for get_angles."""
+        for _ in range(retries):
+            res = self.get_angles()
+            if res and isinstance(res, list) and len(res) >= 6:
+                return res
+            time.sleep(0.1)
+        return None
+
+    def wait_for_arrival(self, target, mode="coords", timeout=8.0, threshold=2.0):
+        """
+        Dynamically waits until the arm reaches the target (coords or angles).
+        mode: 'coords' or 'angles'
+        """
+        start_time = time.time()
+        time.sleep(0.2) # Initial buffer for command to register
+        
+        while time.time() - start_time < timeout:
+            current = self.safe_get_coords() if mode == "coords" else self.safe_get_angles()
+            if current is None:
+                time.sleep(0.2)
+                continue
+            
+            # Check distance/difference
+            try:
+                diff = sum(abs(c - t) for c, t in zip(current[:len(target)], target))
+                if diff <= threshold:
+                    return True # Arrived
+            except Exception:
+                pass
+            
+            time.sleep(0.1)
+        
+        print(f"⚠️ <SYSTEM>: wait_for_arrival timed out after {timeout}s")
+        return False
+
     def set_gripper_value(self, value, speed):
         return self._call("set_gripper_value", value, speed)
 

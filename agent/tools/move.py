@@ -38,22 +38,25 @@ def move(x: float, y: float, z: float, speed: int = 40) -> str:
 
     print(f"🤖 <SYSTEM>: กำลังขยับแขนกลไปที่พิกัด (X:{x}, Y:{y}, Z:{z}) ด้วยความเร็ว {speed}...")
     
-    current_coords = mc.get_coords()
+    current_coords = mc.safe_get_coords()
     if current_coords and len(current_coords) >= 3:
         # Safe Movement Sequence: 1. Lift Up, 2. Move X,Y, 3. Descend
         # 1. Lift
-        mc.send_coords([current_coords[0], current_coords[1], 200, -175, 0, -45], speed)
-        time.sleep(1.5)
+        lift_target = [current_coords[0], current_coords[1], 200]
+        mc.send_coords(lift_target + [-175, 0, -45], speed)
+        mc.wait_for_arrival(lift_target, mode="coords")
         
     # 2. Move Horizontally at safe height
-    mc.send_coords([x, y, 200, -175, 0, -45], speed)
-    time.sleep(2.5)
+    xy_target = [x, y, 200]
+    mc.send_coords(xy_target + [-175, 0, -45], speed)
+    mc.wait_for_arrival(xy_target, mode="coords")
     
     # 3. Descend to target Z
-    mc.send_coords([x, y, z, -175, 0, -45], speed)
-    time.sleep(1.5)
+    final_target = [x, y, z]
+    mc.send_coords(final_target + [-175, 0, -45], speed)
+    mc.wait_for_arrival(final_target, mode="coords")
     
-    actual_coords = mc.get_coords()
+    actual_coords = mc.safe_get_coords()
     if actual_coords and len(actual_coords) >= 3:
         return f"Moved successfully. Verified current coordinates are: X:{actual_coords[0]}, Y:{actual_coords[1]}, Z:{actual_coords[2]}."
     return f"Moved successfully to target X:{x}, Y:{y}, Z:{z}."

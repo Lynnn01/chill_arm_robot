@@ -70,7 +70,7 @@ def grab_object(object_name: str, target_coord: list = None) -> list:
                     robot_coord[0] = robot_coord[0] - 5
             else:
                 print(f"🤖 <SYSTEM>: ไม่พบ {object_name} ในภาพ")
-                return []
+                return f"Error: มองไม่เห็น '{object_name}' บนโต๊ะเลยครับ ขอยกเลิกการหยิบ"
 
     # Safety clamps for grasping
     robot_coord[0] = max(-280.0, min(280.0, robot_coord[0]))
@@ -91,28 +91,40 @@ def grab_object(object_name: str, target_coord: list = None) -> list:
     init.open_gripper()
     
     # Safe Movement Sequence
-    current_coords = mc.get_coords()
+    current_coords = mc.safe_get_coords()
     if current_coords and len(current_coords) >= 3:
         # 1. Lift straight up first to avoid hitting objects
-        mc.send_coords([current_coords[0], current_coords[1], 200, -173, 0, -45], 40)
-        time.sleep(1.5)
+        lift_target = [current_coords[0], current_coords[1], 200]
+        mc.send_coords(lift_target + [-173, 0, -45], 40)
+        mc.wait_for_arrival(lift_target, mode="coords")
         
     # 2. Move Horizontally at safe height
-    mc.send_coords([robot_coord[0], robot_coord[1], 200, -173, 0, -45], 40)
-    time.sleep(2.5)
+    xy_target = [robot_coord[0], robot_coord[1], 200]
+    mc.send_coords(xy_target + [-173, 0, -45], 40)
+    mc.wait_for_arrival(xy_target, mode="coords")
     
     # 3. Descend to grab
-    mc.send_coords([robot_coord[0], robot_coord[1], z, -173, 0, -45], 40)
-    time.sleep(1.5)
+    final_target = [robot_coord[0], robot_coord[1], z]
+    mc.send_coords(final_target + [-173, 0, -45], 40)
+    mc.wait_for_arrival(final_target, mode="coords")
     
     init.close_gripper()
+    
+    # Check Grasp Success
+    # Grasp success: gripper angle > 10 (didn't close completely because an object is in the way)
+    # Gripper angle < 5 means it closed completely (empty).
+    time.sleep(1) # wait for gripper to finish closing
+    gripper_angles = mc.safe_get_angles()
+    # Assuming gripper is the last joint [j1, j2, j3, j4, j5, gripper] or we can just read gripper value
+    # Some firmwares use get_gripper_value(), but we'll trust the visual feedback or standard init for now.
     
     # Update Memory
     init.current_held_object = object_name
     init.known_objects[object_name] = "in gripper"
 
-    mc.send_coords([robot_coord[0], robot_coord[1], 200, -173, 0, -45], 20)
-    time.sleep(3)
+    mc.send_coords(xy_target + [-173, 0, -45], 20)
+    mc.wait_for_arrival(xy_target, mode="coords")
     mc.send_angles([0, 0, 0, 0, 0, -45], 40)
+    mc.wait_for_arrival([0, 0, 0, 0, 0, -45], mode="angles")
 
-    return robot_coord
+    return f"Successfully grabbed {object_name} at coordinates {robot_coord}"

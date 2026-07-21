@@ -67,28 +67,31 @@ def move_to(target_coord: list = None, target_name: str = None, target_height: i
     print(f"🤖 <SYSTEM>: กำลังเคลื่อนย้ายวัตถุไปวางที่เป้าหมายพิกัด {target_coord} ความสูง {target_height}...")
 
     # Safe Movement Sequence
-    current_coords = mc.get_coords()
+    current_coords = mc.safe_get_coords()
     if current_coords and len(current_coords) >= 3:
         # 1. Lift Up current pos
-        mc.send_coords([current_coords[0], current_coords[1], 200, -175, 0, -45], 40)
-        time.sleep(1.5)
+        lift_target = [current_coords[0], current_coords[1], 200]
+        mc.send_coords(lift_target + [-175, 0, -45], 40)
+        mc.wait_for_arrival(lift_target, mode="coords")
 
     # 2. Move Horizontally at safe height
-    mc.send_coords([target_coord[0], target_coord[1], 200, -175, 0, -45], 40)
-    time.sleep(2.5)
+    xy_target = [target_coord[0], target_coord[1], 200]
+    mc.send_coords(xy_target + [-175, 0, -45], 40)
+    mc.wait_for_arrival(xy_target, mode="coords")
 
     # 3. Descend to target height
-    mc.send_coords([target_coord[0], target_coord[1], target_height, -175, 0, -45], 40)
-    time.sleep(1.5)
+    final_target = [target_coord[0], target_coord[1], target_height]
+    mc.send_coords(final_target + [-175, 0, -45], 40)
+    mc.wait_for_arrival(final_target, mode="coords")
     
     init.open_gripper()
-    time.sleep(1)
+    time.sleep(0.5)
 
     # 4. Lift straight up after releasing
-    mc.send_coords([target_coord[0], target_coord[1], 200, -175, 0, -45], 40)
-    time.sleep(1.5)
+    mc.send_coords(xy_target + [-175, 0, -45], 40)
+    mc.wait_for_arrival(xy_target, mode="coords")
     mc.send_angles([0, 0, 0, 0, 0, -45], 40)
-    time.sleep(1)
+    mc.wait_for_arrival([0, 0, 0, 0, 0, -45], mode="angles")
 
     # Update Memory
     if init.current_held_object:
@@ -96,7 +99,7 @@ def move_to(target_coord: list = None, target_name: str = None, target_height: i
         init.current_held_object = None
 
     print("🤖 <SYSTEM>: วางวัตถุสำเร็จ (อัปเดตความจำแล้ว)")
-    actual_coords = mc.get_coords()
+    actual_coords = mc.safe_get_coords()
     if actual_coords and len(actual_coords) >= 3:
         return f"Objects arranged successfully. Current arm position: X:{actual_coords[0]}, Y:{actual_coords[1]}, Z:{actual_coords[2]}."
     return "Objects arranged successfully."
