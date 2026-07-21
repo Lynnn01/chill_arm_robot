@@ -6,7 +6,7 @@ from agents import function_tool
 import armconfig
 
 @function_tool
-def move_to(target_coord: list = None, target_name: str = None, target_height: int = 110) -> str:
+def move_to(target_coord: list[float] = None, target_name: str = None, target_height: int = 110) -> str:
     """
     [Tags: Action, Placement, Memory]
     Moves the currently grabbed object to a specific target coordinate [x, y] or on top of target_name and releases it.

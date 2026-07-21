@@ -3,7 +3,7 @@ from .vision import resolve_coord
 from .motion import execute_grab
 
 @function_tool
-def grab_object(object_name: str, target_coord: list = None) -> str:
+def grab_object(object_name: str, target_coord: list[float] = None) -> str:
     """
     [Tags: Action, Vision, Memory]
     Uses computer vision to detect and grab the specified object from the workspace.
