@@ -33,7 +33,7 @@ async def plan_tasks(contextual_input: str) -> dict:
                 {"role": "user",   "content": contextual_input},
             ],
             temperature=0.2,
-            max_tokens=512,
+            max_tokens=1536,
         )
         raw = response.choices[0].message.content.strip()
 

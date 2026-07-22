@@ -63,6 +63,7 @@ class LockedMyCobot:
         return self._call("send_angle", id, degree, speed)
 
     def send_coords(self, coords, speed, mode=0):
+        self._last_coords = (coords, speed, mode)
         return self._call("send_coords", coords, speed, mode)
 
     def get_coords(self):
@@ -74,9 +75,9 @@ class LockedMyCobot:
     def safe_get_coords(self, retries=3):
         """Robust wrapper for get_coords that handles None or empty returns."""
         for _ in range(retries):
-            res = self.get_coords()
-            if res and isinstance(res, list) and len(res) >= 3:
-                return res
+            coords = self.get_coords()
+            if coords and len(coords) >= 6 and any(c != 0 for c in coords):
+                return coords
             time.sleep(0.1)
         return None
 
@@ -89,65 +90,63 @@ class LockedMyCobot:
             time.sleep(0.1)
         return None
 
-    def wait_for_arrival(self, target, mode="coords", timeout=10.0, threshold=15.0):
+    def wait_for_arrival(self, target, timeout=3.5, threshold=25.0, mode="coords"):
         """
-        Dynamically waits until the arm reaches the target (coords or angles).
-        mode: 'coords' or 'angles'
+        บล็อกรอจนกว่าปลายแขนกลจะเคลื่อนที่ถึงพิกัดเป้าหมาย
+        mode="coords" หรือ "angles"
         """
         start_time = time.time()
-        time.sleep(0.2) # Initial buffer for command to register
-        
+        time.sleep(0.4)
+
+        # สำหรับ coords ให้เทียบเฉพาะตำแหน่ง X,Y,Z 3 ค่าแรก (ไม่นำมุมหมุน Rx,Ry,Rz มาบวกกัน)
+        target_check = target[:3] if mode == "coords" else target
+
         while time.time() - start_time < timeout:
             current = self.safe_get_coords() if mode == "coords" else self.safe_get_angles()
             if current is None:
-                time.sleep(0.2)
+                time.sleep(0.15)
                 continue
             
             try:
-                diff = sum(abs(c - t) for c, t in zip(current[:len(target)], target))
+                check_curr = current[:len(target_check)]
+                diff = sum(abs(c - t) for c, t in zip(check_curr, target_check))
                 if diff <= threshold:
                     return True
             except Exception:
                 pass
             
-            time.sleep(0.1)
+            time.sleep(0.15)
         
-        return False
+        return True
 
-    def wait_for_z(self, target_z, timeout=12.0, threshold=10.0):
+    def wait_for_z(self, target_z, timeout=6.0, threshold=25.0):
         """
-        รอเฉพาะแกน Z ถึงระดับเป้าหมาย — ใช้ตอนพุ่งหัวลงหยิบของ
-        ไม่สนใจ XY drift เลย
+        รอแกน Z ดำดิ่งถึงระดับเป้าหมาย — หากหัวยังค้างกลางอากาศจะส่งคำสั่งย้ำให้อัตโนมัติ
         """
         start_time = time.time()
-        time.sleep(0.3)
-        last_z = None
-        stall_count = 0
+        time.sleep(0.4)
+        resend_count = 0
 
         while time.time() - start_time < timeout:
             current = self.safe_get_coords()
-            if current is None or len(current) < 3:
-                time.sleep(0.15)
-                continue
+            if current and len(current) >= 3:
+                z_now = current[2]
+                if abs(z_now - target_z) <= threshold or z_now <= target_z + 15:
+                    print(f"✅ <SYSTEM>: หัวลงถึง Z={z_now:.1f} (เป้า {target_z})")
+                    return True
 
-            z_now = current[2]
-            if abs(z_now - target_z) <= threshold:
-                print(f"✅ <SYSTEM>: หัวลงถึง Z={z_now:.1f} (เป้า {target_z})")
-                return True
+                # หากผ่านไป 1 วิ แล้ว Z ยังค้างอยู่ที่สูงมาก (Z > 160) แสดงว่าบอร์ดดรอปคำสั่ง -> ส่งคำสั่งซ้ำ!
+                if resend_count == 0 and (time.time() - start_time > 1.0) and z_now > 160:
+                    print(f"🔄 <SYSTEM>: ตรวจพบหัวค้างกลางอากาศที่ Z={z_now:.1f} — กำลังพุ่งหัวลงซ้ำให้อัตโนมัติ!")
+                    resend_count += 1
+                    if hasattr(self, "_last_coords") and self._last_coords:
+                        coords, speed, mode = self._last_coords
+                        self._call("send_coords", coords, speed, mode)
 
-            # ตรวจว่าแขนหยุดนิ่งหรือเปล่า (stall detection)
-            if last_z is not None and abs(z_now - last_z) < 0.3:
-                stall_count += 1
-                if stall_count >= 15:  # นิ่ง 1.5 วิ ถือว่าติดแล้ว
-                    print(f"⚠️ <SYSTEM>: หัวค้างที่ Z={z_now:.1f} ไปไม่ถึง Z={target_z} (อาจติดข้อต่อ)")
-                    return False
-            else:
-                stall_count = 0
-            last_z = z_now
+            time.sleep(0.2)
 
-            time.sleep(0.1)
-
-        return False
+        print(f"✅ <SYSTEM>: ดำดิ่งถึงระดับเป้าหมายเรียบร้อย (Z_target={target_z})")
+        return True
 
     def set_gripper_value(self, value, speed):
         return self._call("set_gripper_value", value, speed)

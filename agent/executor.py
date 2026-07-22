@@ -76,6 +76,19 @@ def execute_plan(tasks: list, plan_summary: str = "", speaker_on: bool = True) -
             )
             continue
 
+        if not task_voice:
+            default_voices = {
+                "grab_object": f"กำลังพุ่งลงไปจับ {args.get('object_name', 'วัตถุ')} เด้อหล่า เบิ่งไว้ดีๆ",
+                "move_to": f"กำลังย้ายไปวาง {args.get('target_name', 'เป้าหมาย')} ให้แล้วเด้อ",
+                "show_object": f"เอา {args.get('object_name', 'วัตถุ')} ขึ้นมาโชว์ให้เห็นจะๆ แล้วเด้อ",
+                "dance_celebrate": "เซิ้งฉลองความสำเร็จหน่อยเร็ว ม่วนแท้เด้อ",
+                "scan_object": f"กำลังมองหา {args.get('object_name', 'วัตถุ')} อยู่เด้อ รอแป๊บเดียว",
+                "rotate_gripper": "หมุนหัวกริปเปอร์โชว์แป๊บเด้อ",
+                "gesture": "ตอบรับให้แล้วเด้อครับ",
+                "move": "กำลังเคลื่อนขยับแขนกลเด้อ",
+            }
+            task_voice = default_voices.get(tool_name, "กำลังทำตามคำสั่งเด้อครับ")
+
         # เล่นเสียงบรรยายของ task นี้ (แบบ background)
         if task_voice and speaker_on:
             import threading

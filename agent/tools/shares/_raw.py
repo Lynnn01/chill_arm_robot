@@ -7,6 +7,7 @@ so executor.py can call them directly without going through openai-agents async 
 
 import time
 import json
+import math
 from hardware.init import mc
 from hardware import init
 import armconfig
@@ -19,6 +20,10 @@ def raw_grab_object(object_name: str, target_coord: list = None) -> list:
     from vision import eyeonhand, yolo_detector, api
     from PIL import Image
     import os
+
+    if init.current_held_object:
+        print(f"⚠️ <SYSTEM>: กริปเปอร์กำลังถือ '{init.current_held_object}' อยู่แล้ว! ป้องกันการหยิบซ้อนโดยไม่วางก่อน")
+        return {"status": "ERROR", "message": f"Already holding {init.current_held_object}. Place it first with move_to."}
 
     init.BotInit(mc)
 
@@ -61,16 +66,35 @@ def raw_grab_object(object_name: str, target_coord: list = None) -> list:
                 print(f"🤖 <SYSTEM>: ไม่พบ {object_name} ในภาพ")
                 return {"status": "ERROR", "message": f"ไม่พบ {object_name} ในภาพ"}
 
+    # Check radius limits to prevent joint IK singularity near base
+    radius = math.hypot(robot_coord[0], robot_coord[1])
+    min_r = getattr(armconfig, "GRAB_MIN_RADIUS", 150.0)
+    if radius < min_r and radius > 0:
+        scale = min_r / radius
+        robot_coord[0] *= scale
+        robot_coord[1] *= scale
+        print(f"🤖 <SYSTEM>: ปรับพิกัดรัศมีจาก {radius:.1f}mm เป็น {min_r}mm ป้องกันข้อต่อติดขัดใกล้ฐาน")
+
     robot_coord[0] = max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, robot_coord[0]))
     robot_coord[1] = max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, robot_coord[1]))
 
     init.open_gripper()
     mc.send_coords([robot_coord[0], robot_coord[1], armconfig.Z_SAFE_TRAVEL] + armconfig.WRIST_DOWN, armconfig.SPEED_GRAB)
     mc.wait_for_arrival([robot_coord[0], robot_coord[1], armconfig.Z_SAFE_TRAVEL], mode="coords")
-    
+    time.sleep(0.5)  # พักเคลียร์บอร์ดให้พร้อมรับคำสั่งดำดิ่งถัดไป
+
     print(f"🤖 <SYSTEM>: กำลังพุ่งหัวลงไปหยิบที่ Z={z}...")
     mc.send_coords([robot_coord[0], robot_coord[1], z] + armconfig.WRIST_DOWN, armconfig.SPEED_GRAB)
-    mc.wait_for_z(z)   # รอเฉพาะแกน Z — ไม่สนใจ XY drift
+    time.sleep(0.2)
+    mc.send_coords([robot_coord[0], robot_coord[1], z] + armconfig.WRIST_DOWN, armconfig.SPEED_GRAB)  # ส่งคำสั่งย้ำป้องกันเฟิร์มแวร์เมิน
+    reached_z = mc.wait_for_z(z)   # รอเฉพาะแกน Z — ไม่สนใจ XY drift
+
+    if not reached_z:
+        print(f"⚠️ <SYSTEM>: ไม่สามารถลงไปถึงระดับหยิบ Z={z} ได้! ดึงหัวกลับตำแหน่งปลอดภัยและยกเลิกภารกิจ")
+        mc.send_coords([robot_coord[0], robot_coord[1], armconfig.Z_SAFE_TRAVEL] + armconfig.WRIST_DOWN, armconfig.SPEED_GRAB)
+        time.sleep(1.5)
+        mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
+        return {"status": "ERROR", "message": f"Joint stall at target Z={z}. Object unreachable."}
     
     init.close_gripper()
     time.sleep(1)  # รอกริปเปอร์หนีบเสร็จ
@@ -136,20 +160,29 @@ def raw_move_to(target_coord: list = None, target_name: str = None, target_heigh
           max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, float(target_coord[1]) + armconfig.STACK_Y_OFFSET))]
     th = max(armconfig.COORD_Z_MIN, min(armconfig.COORD_Z_MAX, int(target_height)))
 
-    print(f"🤖 <SYSTEM>: กำลังเคลื่อนย้ายวัตถุไปวางที่พิกัด {tc} ความสูง {th}...")
-    mc.send_coords([tc[0], tc[1], armconfig.Z_PRE_PLACE] + armconfig.WRIST_PLACE, armconfig.SPEED_GRAB)
+    # Dynamic approach and retreat heights based on actual target height
+    # Ensures arm ALWAYS approaches from ABOVE the stack and lifts STRAIGHT UP before returning Home
+    z_approach = max(armconfig.Z_PRE_PLACE, th + 40)
+    z_retreat = max(armconfig.Z_SAFE_TRAVEL, th + 50)
+
+    print(f"🤖 <SYSTEM>: กำลังเคลื่อนย้ายวัตถุไปวางที่พิกัด {tc} ความสูง {th} (เข้าประชิดที่ Z={z_approach})...")
+    mc.send_coords([tc[0], tc[1], z_approach] + armconfig.WRIST_PLACE, armconfig.SPEED_GRAB)
     time.sleep(2.5)
     mc.send_coords([tc[0], tc[1], th] + armconfig.WRIST_PLACE, armconfig.SPEED_GRAB)
     time.sleep(2)
     init.open_gripper()
     time.sleep(1)
-    mc.send_coords([tc[0], tc[1], armconfig.Z_SAFE_TRAVEL] + armconfig.WRIST_PLACE, armconfig.SPEED_GRAB)
+    print(f"🤖 <SYSTEM>: ถอยหัวกลับแนวตั้งถึงระดับปลอดภัย Z={z_retreat} ป้องกันการสะบัดโดนของ...")
+    mc.send_coords([tc[0], tc[1], z_retreat] + armconfig.WRIST_PLACE, armconfig.SPEED_GRAB)
     time.sleep(2)
     mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
     mc.wait_for_arrival(armconfig.POSE_HOME, mode="angles")
 
     if init.current_held_object:
+        # Save exact physical placed position for subsequent stacking layers to snap cleanly
         init.known_objects[init.current_held_object] = [round(tc[0], 2), round(tc[1], 2), th]
+        if target_name:
+            init.known_objects[target_name] = [round(tc[0], 2), round(tc[1], 2), th - armconfig.STACK_HEIGHT_PER_LAYER]
         init.current_held_object = None
 
     print(f"✅ <SYSTEM>: DONE TASK - Placed at {tc}")
@@ -159,13 +192,16 @@ def raw_move_to(target_coord: list = None, target_name: str = None, target_heigh
 # ── show_object ──────────────────────────────────────────────────────────────
 
 def raw_show_object(object_name: str) -> str:
-    print(f"🤖 <SYSTEM>: กำลังโชว์ {object_name}...")
+    print(f"🤖 <SYSTEM>: กำลังยก {object_name} ขึ้นแสดง...")
     mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
-    time.sleep(2)
+    time.sleep(1.5)
     mc.send_angles(armconfig.POSE_SHOW, armconfig.SPEED_GRAB)
     mc.wait_for_arrival(armconfig.POSE_SHOW, mode="angles")
         
-    time.sleep(2) # โชว์ค้างไว้ 2 วิ
+    time.sleep(2.5) # โชว์ค้างไว้ 2.5 วิ
+    print(f"🤖 <SYSTEM>: โชว์เสร็จเรียบร้อย ดึงหัวกลับตำแหน่งเตรียมพร้อม...")
+    mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
+    mc.wait_for_arrival(armconfig.POSE_HOME, mode="angles")
     print(f"✅ <SYSTEM>: DONE TASK - Show {object_name}")
     return {"status": "DONE TASK"}
 
@@ -175,7 +211,9 @@ def raw_show_object(object_name: str) -> str:
 def raw_move(x: float, y: float, z: float, speed: int = 40) -> str:
     from modules.robot_arm.domain.coordinates import TargetCoordinate
     target = TargetCoordinate(x, y, z)
-    x, y, z = target.x, target.y, target.z
+    x = max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, target.x))
+    y = max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, target.y))
+    z = max(armconfig.COORD_Z_MIN, min(armconfig.COORD_Z_MAX, target.z))
     print(f"🤖 <SYSTEM>: กำลังขยับแขนกลไปที่ (X:{x:.1f}, Y:{y:.1f}, Z:{z:.1f}) ด้วยความเร็ว {speed}...")
     mc.send_coords([x, y, z] + armconfig.WRIST_PLACE, speed)
     mc.wait_for_arrival([x, y, z], mode="coords")
@@ -195,7 +233,8 @@ def raw_rotate_gripper(angle_range: int = 45, speed: int = 40) -> str:
     mc.send_angle(6, j6 - angle_range, speed)
     time.sleep(2.0)
     mc.send_angle(6, j6, speed)
-    mc.wait_for_arrival(current, mode="angles")
+    if current and len(current) == 6:
+        mc.wait_for_arrival(current, mode="angles")
         
     print(f"✅ <SYSTEM>: DONE TASK - Rotated")
     return {"status": "DONE TASK"}

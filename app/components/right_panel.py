@@ -221,11 +221,11 @@ class RightPanel(tk.Frame):
         import speech_recognition as sr
         
         r = sr.Recognizer()
-        r.energy_threshold = 200          # Low threshold so quiet initial consonants ('ส', 'ค', 'ต') are not dropped
-        r.dynamic_energy_threshold = False# Disable dynamic jumping so sensitivity stays constant
-        r.pause_threshold = 2.0           # 2.0s silence tolerance to prevent cutting off trailing words
-        r.phrase_threshold = 0.1          # Fast 0.1s speech onset detection
-        r.non_speaking_duration = 0.8     # 0.8s padding buffer around speech to keep head & tail syllables
+        r.energy_threshold = 250          # Low threshold so quiet initial consonants ('ส', 'ค', 'ต') are captured
+        r.dynamic_energy_threshold = False# Keep fixed sensitivity so room noise doesn't delay cutoff
+        r.pause_threshold = 0.8           # Fast 0.8s silence threshold — stops listening immediately after speaking
+        r.phrase_threshold = 0.1          # Instant 0.1s speech onset detection
+        r.non_speaking_duration = 0.4     # 0.4s buffer around speech to keep head & tail syllables
         
         audio = None
         try:
@@ -233,7 +233,7 @@ class RightPanel(tk.Frame):
                 self.after(0, lambda: self.input_entry.delete(0, tk.END))
                 self.after(0, lambda: self.input_entry.insert(0, "🎙️ กำลังฟัง... (พูดได้เลย)"))
                 
-                audio = r.listen(source, timeout=8, phrase_time_limit=20)
+                audio = r.listen(source, timeout=5, phrase_time_limit=15)
         except sr.WaitTimeoutError:
             print("Listening timed out.")
         except Exception as e:

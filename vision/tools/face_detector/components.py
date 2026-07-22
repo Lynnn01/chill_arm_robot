@@ -14,7 +14,10 @@ _FACE_PHRASES = [
     "มองหน้าข่อยเฮ็ดหยัง สนใจข่อยตี้",
     "หน้าคุ้นๆ เน๊าะ สบายดีบ่",
     "ฮั่นแน่ รู้นะว่าแอบมองข่อยอยู่",
-    "เห็นหน้าแจ่มๆ แบบนี้ ข่อยมีแฮงทำงานเลย"
+    "เห็นหน้าแจ่มๆ แบบนี้ ข่อยมีแฮงทำงานเลย",
+    "มองข่อยบ่อยๆ ระวังตกหลุมรักเด้อ",
+    "ปาดโธ่ หน้าตาดีแท้ๆ หน้าใครน้อ",
+    "หน้าตาดีแบบนี้ มีแฟนหรือยังเด้อ"
 ]
 
 def get_model():
@@ -43,9 +46,9 @@ def detect_and_track(img, target_angles, last_send_time):
     if len(results) > 0:
         boxes = results[0].boxes
         if len(boxes) > 0:
-            # Voice Announcement (cooldown 15 seconds)
+            # Voice Announcement (cooldown 4 seconds for higher speech frequency)
             current_time = time.time()
-            if current_time - _last_speak_time > 15:
+            if current_time - _last_speak_time > 4:
                 phrase = random.choice(_FACE_PHRASES)
                 play_voice_async(phrase, f"face_{int(current_time)}.mp3")
                 _last_speak_time = current_time
