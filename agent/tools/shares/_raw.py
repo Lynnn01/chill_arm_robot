@@ -169,14 +169,14 @@ def raw_show_object(object_name: str) -> str:
 # ── move ─────────────────────────────────────────────────────────────────────
 
 def raw_move(x: float, y: float, z: float, speed: int = 40) -> str:
-    x = max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, float(x)))
-    y = max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, float(y)))
-    z = max(armconfig.COORD_Z_MIN, min(armconfig.COORD_Z_MAX, float(z)))
-    print(f"🤖 <SYSTEM>: กำลังขยับแขนกลไปที่ (X:{x}, Y:{y}, Z:{z}) ด้วยความเร็ว {speed}...")
+    from modules.robot_arm.domain.coordinates import TargetCoordinate
+    target = TargetCoordinate(x, y, z)
+    x, y, z = target.x, target.y, target.z
+    print(f"🤖 <SYSTEM>: กำลังขยับแขนกลไปที่ (X:{x:.1f}, Y:{y:.1f}, Z:{z:.1f}) ด้วยความเร็ว {speed}...")
     mc.send_coords([x, y, z] + armconfig.WRIST_PLACE, speed)
     mc.wait_for_arrival([x, y, z], mode="coords")
         
-    print(f"✅ <SYSTEM>: DONE TASK - Moved to {x}, {y}, {z}")
+    print(f"✅ <SYSTEM>: DONE TASK - Moved to {x:.1f}, {y:.1f}, {z:.1f}")
     return {"status": "DONE TASK"}
 
 
