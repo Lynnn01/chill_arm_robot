@@ -193,18 +193,34 @@ def raw_move_to(target_coord: list = None, target_name: str = None, target_heigh
 
     # Auto-adjust height for stacking if target_height is default 110
     if target_height == 110:
-        stack_count = 0
+        stacked_entities = set()
+        
+        # Helper to extract base color/entity from key for deduplication
+        def get_entity_base(k: str) -> str:
+            k = k.lower()
+            if "red" in k or "แดง" in k: return "red"
+            if "green" in k or "เขียว" in k: return "green"
+            if "blue" in k or "น้ำเงิน" in k or "ฟ้า" in k: return "blue"
+            if "yellow" in k or "เหลือง" in k: return "yellow"
+            return k
+            
         for obj_name, coord in init.known_objects.items():
             if isinstance(coord, list) and len(coord) >= 2:
+                # Exclude flat areas from adding vertical height!
+                if "area" in obj_name.lower() or "พื้นที่" in obj_name or "zone" in obj_name.lower():
+                    continue
+                    
                 # Check if coordinates are close (within proximity threshold)
                 dx = abs(coord[0] - target_coord[0])
                 dy = abs(coord[1] - target_coord[1])
                 if dx < armconfig.STACK_PROXIMITY_THRESHOLD and dy < armconfig.STACK_PROXIMITY_THRESHOLD:
-                    stack_count += 1
+                    stacked_entities.add(get_entity_base(obj_name))
+        
+        stack_count = len(stacked_entities)
         
         if stack_count > 0:
             target_height = armconfig.STACK_BASE_HEIGHT + (stack_count * armconfig.STACK_HEIGHT_PER_LAYER) + armconfig.STACK_SAFE_OFFSET
-            print(f"🤖 <SYSTEM>: ตรวจพบวัตถุที่พิกัดนี้ {stack_count} ชิ้น ปรับความสูงการวางเป็น {target_height} เพื่อไม่ให้กดทับรุนแรง")
+            print(f"🤖 <SYSTEM>: ตรวจพบวัตถุที่พิกัดนี้ {stack_count} ชิ้น {stacked_entities} ปรับความสูงการวางเป็น {target_height} เพื่อไม่ให้กดทับรุนแรง")
 
     tc = [max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, float(target_coord[0]) + armconfig.STACK_X_OFFSET)),
           max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, float(target_coord[1]) + armconfig.STACK_Y_OFFSET))]
