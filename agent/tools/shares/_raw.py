@@ -37,34 +37,36 @@ def raw_grab_object(object_name: str, target_coord: list = None) -> list:
     if target_coord and len(target_coord) >= 2:
         print(f"🤖 <SYSTEM>: กำลังขยับแขนกลไปหยิบของที่พิกัด {target_coord}...")
         robot_coord = [float(target_coord[0]), float(target_coord[1])]
-    elif object_name in init.known_objects and isinstance(init.known_objects[object_name], list):
-        saved = init.known_objects[object_name]
-        print(f"🤖 <SYSTEM>: ดึงพิกัด '{object_name}' จากความจำ {saved} (ข้ามสแกน)...")
-        robot_coord = [float(saved[0]), float(saved[1])]
     else:
-        yolo_coord = yolo_detector.scan_with_yolo(object_name)
-        if yolo_coord:
-            robot_coord = yolo_coord
-            print(f"🤖 <SYSTEM>: YOLO เจอแล้ว! กำลังเคลื่อนที่ไปพิกัด {robot_coord}")
+        eng_name = get_english_name(object_name)
+        if eng_name in init.known_objects and isinstance(init.known_objects[eng_name], list):
+            saved = init.known_objects[eng_name]
+            print(f"🤖 <SYSTEM>: ดึงพิกัด '{eng_name}' จากความจำ {saved} (ข้ามสแกน)...")
+            robot_coord = [float(saved[0]), float(saved[1])]
         else:
-            print(f"🤖 <SYSTEM>: กำลังใช้กล้อง Vision AI ค้นหา '{object_name}'...")
-            init.GetImage()
-            img_path = os.path.join(init.PROJECT_ROOT, "captured_image.jpg")
-            width, height = Image.open(img_path).size
-            positions = api.QwenVLRequest("a " + object_name, img_path).get("coordinates", [])
-            if positions:
-                pos = positions[0]
-                cx = (pos["x1"] + pos["x2"]) / 2
-                cy = (pos["y1"] + pos["y2"]) / 2
-                pixel = (cx / 1000 * width, cy / 1000 * height)
-                np_coord = eyeonhand.pixel_to_arm(pixel)
-                robot_coord = [float(np_coord[0]) + x_offset, float(np_coord[1]) + y_offset]
-                if robot_coord[0] > 210:
-                    robot_coord[0] -= 5
-                print(f"🤖 <SYSTEM>: Vision เจอแล้ว! พิกัด {robot_coord}")
+            yolo_coord = yolo_detector.scan_with_yolo(object_name)
+            if yolo_coord:
+                robot_coord = yolo_coord
+                print(f"🤖 <SYSTEM>: YOLO เจอแล้ว! กำลังเคลื่อนที่ไปพิกัด {robot_coord}")
             else:
-                print(f"🤖 <SYSTEM>: ไม่พบ {object_name} ในภาพ")
-                return {"status": "ERROR", "message": f"ไม่พบ {object_name} ในภาพ"}
+                print(f"🤖 <SYSTEM>: กำลังใช้กล้อง Vision AI ค้นหา '{object_name}'...")
+                init.GetImage()
+                img_path = os.path.join(init.PROJECT_ROOT, "captured_image.jpg")
+                width, height = Image.open(img_path).size
+                positions = api.QwenVLRequest("a " + object_name, img_path).get("coordinates", [])
+                if positions:
+                    pos = positions[0]
+                    cx = (pos["x1"] + pos["x2"]) / 2
+                    cy = (pos["y1"] + pos["y2"]) / 2
+                    pixel = (cx / 1000 * width, cy / 1000 * height)
+                    np_coord = eyeonhand.pixel_to_arm(pixel)
+                    robot_coord = [float(np_coord[0]) + x_offset, float(np_coord[1]) + y_offset]
+                    if robot_coord[0] > 210:
+                        robot_coord[0] -= 5
+                    print(f"🤖 <SYSTEM>: Vision เจอแล้ว! พิกัด {robot_coord}")
+                else:
+                    print(f"🤖 <SYSTEM>: ไม่พบ {object_name} ในภาพ")
+                    return {"status": "ERROR", "message": f"ไม่พบ {object_name} ในภาพ"}
 
     # Check radius limits to prevent joint IK singularity near base
     radius = math.hypot(robot_coord[0], robot_coord[1])
@@ -99,9 +101,10 @@ def raw_grab_object(object_name: str, target_coord: list = None) -> list:
     init.close_gripper()
     time.sleep(1)  # รอกริปเปอร์หนีบเสร็จ
 
-    init.current_held_object = object_name
+    eng_name = get_english_name(object_name)
+    init.current_held_object = eng_name
     init.current_held_coord = [robot_coord[0], robot_coord[1]]
-    init.known_objects[object_name] = "in gripper"
+    init.known_objects[eng_name] = "in gripper"
 
     # Clean up any alias keys in init.known_objects matching this grabbed location
     for k, v in list(init.known_objects.items()):
@@ -123,6 +126,29 @@ def raw_grab_object(object_name: str, target_coord: list = None) -> list:
 
 
 # ── move_to ──────────────────────────────────────────────────────────────────
+
+def get_english_name(name: str) -> str:
+    if not name: return ""
+    name = name.lower()
+    if "พื้นที่ 1" in name or "โซน 1" in name or "พื้นที่1" in name: return "one_area"
+    if "พื้นที่ 2" in name or "โซน 2" in name or "พื้นที่2" in name: return "two_area"
+    if "พื้นที่ 3" in name or "โซน 3" in name or "พื้นที่3" in name: return "three_area"
+    if "พื้นที่ 4" in name or "โซน 4" in name or "พื้นที่4" in name: return "four_area"
+    if "รีไซเคิล" in name: return "recycle_area"
+    if "อันตราย" in name: return "danger_area"
+    if "เปียก" in name: return "wet_area"
+    if "ว่าง" in name: return "blank_area"
+    if "ทั่วไป" in name: return "general_araa"
+    if "พื้นที่" in name or "โซน" in name or "area" in name:
+        if "แดง" in name or "red" in name: return "red_area"
+        if "เขียว" in name or "green" in name: return "green_area"
+        if "ฟ้า" in name or "น้ำเงิน" in name or "blue" in name: return "blue_area"
+        if "เหลือง" in name or "yellow" in name: return "yellow_area"
+    if "แดง" in name or "red" in name: return "red_cube"
+    if "เขียว" in name or "green" in name: return "green_cube"
+    if "ฟ้า" in name or "น้ำเงิน" in name or "blue" in name: return "blue_cube"
+    if "เหลือง" in name or "yellow" in name: return "yellow_cube"
+    return name
 
 def raw_move_to(target_coord: list = None, target_name: str = None, target_height: int = 110) -> str:
     """Move and place current object at target_coord or on top of target_name."""
@@ -156,10 +182,12 @@ def raw_move_to(target_coord: list = None, target_name: str = None, target_heigh
 
     if is_invalid_coord and target_name:
         target_coord = None
-        # Check matching key in init.known_objects memory (excluding "in gripper")
+        eng_name = get_english_name(target_name)
+        
+        # Check matching key in init.known_objects memory (using English name)
         found_key = None
         for k, v in init.known_objects.items():
-            if v != "in gripper" and isinstance(v, list) and (target_name.lower() in k.lower() or k.lower() in target_name.lower()):
+            if v != "in gripper" and isinstance(v, list) and (eng_name.lower() in k.lower() or k.lower() in eng_name.lower()):
                 found_key = k
                 break
         
@@ -172,7 +200,8 @@ def raw_move_to(target_coord: list = None, target_name: str = None, target_heigh
             found_coord = yolo_detector.scan_with_yolo(target_name)
             if found_coord:
                 target_coord = found_coord
-                init.known_objects[target_name] = [target_coord[0], target_coord[1]]
+                eng_target = get_english_name(target_name)
+                init.known_objects[eng_target] = [target_coord[0], target_coord[1]]
                 print(f"🤖 <SYSTEM>: สแกนพบพื้นที่ '{target_name}' ที่พิกัด {target_coord} และจดจำพิกัดเรียบร้อยแล้ว!")
             else:
                 # SAFETY STOP & HOLD OBJECT IN GRIPPER!
@@ -248,7 +277,8 @@ def raw_move_to(target_coord: list = None, target_name: str = None, target_heigh
         # Save exact physical placed position for subsequent stacking layers to snap cleanly
         init.known_objects[init.current_held_object] = [round(tc[0], 2), round(tc[1], 2), th]
         if target_name:
-            init.known_objects[target_name] = [round(tc[0], 2), round(tc[1], 2), th - armconfig.STACK_HEIGHT_PER_LAYER]
+            eng_target = get_english_name(target_name)
+            init.known_objects[eng_target] = [round(tc[0], 2), round(tc[1], 2), th - armconfig.STACK_HEIGHT_PER_LAYER]
         init.current_held_object = None
 
     print(f"✅ <SYSTEM>: DONE TASK - Placed at {tc}")
@@ -417,7 +447,8 @@ def raw_scan_object(object_name: str) -> str:
     from vision import yolo_detector
     yolo_coord = yolo_detector.scan_with_yolo(object_name)
     if yolo_coord:
-        init.known_objects[object_name] = yolo_coord
+        eng_name = get_english_name(object_name)
+        init.known_objects[eng_name] = yolo_coord
         print(f"✅ <SYSTEM>: DONE TASK - Scan {object_name}")
         return {"status": "DONE TASK", "message": f"Found '{object_name}' at {yolo_coord}. Memory updated."}
     return {"status": "ERROR", "message": f"'{object_name}' not found."}

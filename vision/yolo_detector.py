@@ -110,8 +110,20 @@ def scan_with_yolo(object_name: str):
     obj_lower = object_name.lower().replace("_", " ")
     for th, en in area_thai_map.items():
         if th in object_name:
-            obj_lower = en
+            obj_lower = en.replace("_", " ")
             break
+            
+    thai_map = {
+        "แดง": "red", "เขียว": "green", "น้ำเงิน": "blue",
+        "ฟ้า": "blue", "เหลือง": "yellow", "ส้ม": "orange",
+        "กล่อง": "cube", "บล็อก": "cube", "สี": "",
+    }
+    for th, en in thai_map.items():
+        obj_lower = obj_lower.replace(th, f" {en} ")
+        
+    obj_words = set(obj_lower.split())
+    colors = {'red', 'green', 'blue', 'yellow', 'orange'}
+    obj_colors = obj_words.intersection(colors)
 
     for j1 in scan_angles:
         print(f"🤖 <SYSTEM>: YOLO ({primary_type}) หันกล้องไปที่มุม {j1} องศา...")
@@ -153,20 +165,7 @@ def scan_with_yolo(object_name: str):
                     name = model.names[cls]
 
                     name_lower = name.lower().replace("_", " ")
-
-                    thai_map = {
-                        "แดง": "red", "เขียว": "green", "น้ำเงิน": "blue",
-                        "ฟ้า": "blue", "เหลือง": "yellow", "ส้ม": "orange",
-                        "กล่อง": "cube", "บล็อก": "cube", "สี": "",
-                    }
-                    for th, en in thai_map.items():
-                        obj_lower = obj_lower.replace(th, f" {en} ")
-
-                    obj_words = set(obj_lower.split())
                     name_words = set(name_lower.split())
-
-                    colors = {'red', 'green', 'blue', 'yellow', 'orange'}
-                    obj_colors = obj_words.intersection(colors)
                     name_colors = name_words.intersection(colors)
 
                     if obj_colors and name_colors and not obj_colors.intersection(name_colors):
@@ -205,14 +204,17 @@ def scan_with_yolo(object_name: str):
                         mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
                         time.sleep(1.0)
 
-                        # Remember coordinate in global memory init.known_objects
-                        init.known_objects[object_name] = saved_coord
+                        # Remember coordinate in global memory init.known_objects (English only)
                         init.known_objects[name] = saved_coord
                         return saved_coord
 
             time.sleep(0.1)
+        
+        # Wait 1.5s before turning to the next angle, EXCEPT 0 degrees
+        if j1 != 0:
+            time.sleep(1.5)
 
-    print(f"🤖 <SYSTEM>: YOLO สแกนครบ 5 มุมแล้ว ไม่พบ '{object_name}'")
+    print(f"🤖 <SYSTEM>: YOLO สแกนครบ {len(scan_angles)} มุมแล้ว ไม่พบ '{object_name}'")
     mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
     time.sleep(1.0)
     return None
