@@ -142,9 +142,6 @@ def scan_with_yolo(object_name):
                     robot_coord[0] = x_world
                     robot_coord[1] = y_world
 
-                    if robot_coord[0] > 210:
-                        robot_coord[0] = robot_coord[0] - 5
-
                     robot_coord[0] = max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, robot_coord[0]))
                     robot_coord[1] = max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, robot_coord[1]))
 

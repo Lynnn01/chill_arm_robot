@@ -151,10 +151,11 @@ class RoundedButton(tk.Canvas):
     def set_colors(self, bg=None, fg=None, hover_bg=None):
         if bg:
             self._bg_normal = bg
+            self._bg_hover = hover_bg or bg
             if not self._disabled:
                 self._bg_current = bg
+        elif hover_bg:
+            self._bg_hover = hover_bg
         if fg:
             self._fg = fg
-        if hover_bg:
-            self._bg_hover = hover_bg
         self._redraw()

@@ -93,6 +93,10 @@ def raw_grab_object(object_name: str, target_coord: list = None) -> list:
 
 def raw_move_to(target_coord: list = None, target_name: str = None, target_height: int = 110) -> str:
     """Move and place current object at target_coord or on top of target_name."""
+    if not init.current_held_object:
+        print(f"⚠️ <SYSTEM>: กริปเปอร์ไม่ได้ถือวัตถุอยู่! ยกเลิก move_to เพื่อป้องกันแขนกลขยับเปล่า (ต้องสั่ง grab_object ก่อน)")
+        return {"status": "ERROR", "message": "No object held in gripper. Call grab_object first."}
+
     if target_name and not target_coord:
         if target_name in init.known_objects and isinstance(init.known_objects[target_name], list):
             target_coord = init.known_objects[target_name]

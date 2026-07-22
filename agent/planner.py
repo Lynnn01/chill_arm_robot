@@ -37,6 +37,9 @@ async def plan_tasks(contextual_input: str) -> dict:
         )
         raw = response.choices[0].message.content.strip()
 
+        raw = re.sub(r"^```[a-zA-Z]*\n?", "", raw, flags=re.MULTILINE)
+        raw = re.sub(r"\n?```$", "", raw, flags=re.MULTILINE).strip()
+
         # More robust JSON extraction
         match = re.search(r'\{.*\}', raw, re.DOTALL)
         if match:
