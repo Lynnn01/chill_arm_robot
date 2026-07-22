@@ -21,71 +21,79 @@ from agent.tts import play_voice_async
 def detect_user_gesture(img) -> str:
     """
     Detect user hand gesture (rock, paper, scissors) from camera image.
-    Uses MediaPipe Hands if available, or robust OpenCV contour analysis fallback.
+    Uses MediaPipe Hands if available, or skin-color + contour solidity analysis.
     """
+    if img is None:
+        return random.choice(["rock", "paper", "scissors"])
+
+    # 1. MediaPipe Hands Detection
     try:
         import mediapipe as mp
         mp_hands = mp.solutions.hands
-        with mp_hands.Hands(static_image_mode=True, max_num_hands=1, min_detection_confidence=0.5) as hands:
+        with mp_hands.Hands(static_image_mode=True, max_num_hands=1, min_detection_confidence=0.4) as hands:
             img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             results = hands.process(img_rgb)
             if results.multi_hand_landmarks:
                 landmarks = results.multi_hand_landmarks[0].landmark
-                index_open = landmarks[8].y < landmarks[6].y
-                middle_open = landmarks[12].y < landmarks[10].y
-                ring_open = landmarks[16].y < landmarks[14].y
-                pinky_open = landmarks[20].y < landmarks[18].y
+                wrist = np.array([landmarks[0].x, landmarks[0].y])
+                
+                # Check extended fingers by distance to wrist
+                index_ext = np.linalg.norm(np.array([landmarks[8].x, landmarks[8].y]) - wrist) > np.linalg.norm(np.array([landmarks[6].x, landmarks[6].y]) - wrist)
+                middle_ext = np.linalg.norm(np.array([landmarks[12].x, landmarks[12].y]) - wrist) > np.linalg.norm(np.array([landmarks[10].x, landmarks[10].y]) - wrist)
+                ring_ext = np.linalg.norm(np.array([landmarks[16].x, landmarks[16].y]) - wrist) > np.linalg.norm(np.array([landmarks[14].x, landmarks[14].y]) - wrist)
+                pinky_ext = np.linalg.norm(np.array([landmarks[20].x, landmarks[20].y]) - wrist) > np.linalg.norm(np.array([landmarks[18].x, landmarks[18].y]) - wrist)
 
-                open_count = sum([index_open, middle_open, ring_open, pinky_open])
-                if open_count >= 3:
-                    return "paper"
-                elif index_open and middle_open and not ring_open and not pinky_open:
-                    return "scissors"
-                elif open_count == 0:
+                ext_count = sum([index_ext, middle_ext, ring_ext, pinky_ext])
+                
+                if ext_count <= 1:
                     return "rock"
+                elif ext_count >= 3:
+                    return "paper"
+                elif index_ext and middle_ext and not ring_ext and not pinky_ext:
+                    return "scissors"
                 else:
                     return "scissors"
     except Exception:
         pass
 
-    # Fallback Contour Analysis
+    # 2. Skin Color + Contour Solidity Fallback
     try:
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        blur = cv2.GaussianBlur(gray, (15, 15), 0)
-        ret, thresh = cv2.threshold(blur, 100, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-        res = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        ycrcb = cv2.cvtColor(img, cv2.COLOR_BGR2YCrCb)
+        lower_skin = np.array([0, 133, 77], dtype=np.uint8)
+        upper_skin = np.array([255, 173, 127], dtype=np.uint8)
+        mask = cv2.inRange(ycrcb, lower_skin, upper_skin)
+        
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+        mask = cv2.erode(mask, kernel, iterations=1)
+        mask = cv2.dilate(mask, kernel, iterations=2)
+        mask = cv2.GaussianBlur(mask, (7, 7), 0)
+
+        res = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         contours = res[0] if len(res) == 2 else res[1]
 
         if contours:
             max_c = max(contours, key=cv2.contourArea)
             area = cv2.contourArea(max_c)
-            if area > 3000:
-                hull = cv2.convexHull(max_c, returnPoints=False)
-                if len(hull) > 3:
-                    defects = cv2.convexityDefects(max_c, hull)
-                    if defects is not None and hasattr(defects, "shape") and len(defects.shape) == 3:
-                        finger_count = 0
-                        for i in range(defects.shape[0]):
-                            row = defects[i, 0]
-                            s, e, f, d = int(row[0]), int(row[1]), int(row[2]), float(row[3])
-                            start = max_c[s][0]
-                            end = max_c[e][0]
-                            far = max_c[f][0]
-                            a = np.linalg.norm(np.array(start) - np.array(far))
-                            b = np.linalg.norm(np.array(end) - np.array(far))
-                            c = np.linalg.norm(np.array(start) - np.array(end))
-                            if a * b > 0:
-                                angle = np.arccos(np.clip((a**2 + b**2 - c**2) / (2 * a * b), -1.0, 1.0))
-                                if angle <= np.pi / 2 and d > 8000:
-                                    finger_count += 1
-                        if finger_count >= 3:
-                            return "paper"
-                        elif finger_count in (1, 2):
+            if area > 1500:
+                hull = cv2.convexHull(max_c)
+                hull_area = cv2.contourArea(hull)
+                solidity = float(area) / hull_area if hull_area > 0 else 0
+                
+                # A fist (ค้อน) has very high solidity (> 0.80)
+                # An open hand (กระดาษ) has lower solidity (< 0.72)
+                if solidity > 0.80:
+                    return "rock"
+                elif solidity < 0.72:
+                    hull_pts = cv2.convexHull(max_c, returnPoints=False)
+                    if len(hull_pts) > 3:
+                        defects = cv2.convexityDefects(max_c, hull_pts)
+                        if defects is not None and len(defects.shape) == 3 and defects.shape[0] in (1, 2):
                             return "scissors"
-                        else:
-                            return "rock"
-    except Exception:
-        pass
+                    return "paper"
+                else:
+                    return "scissors"
+    except Exception as ex:
+        print(f"⚠️ <SYSTEM>: Skin contour gesture note: {ex}")
 
     return random.choice(["rock", "paper", "scissors"])
 
