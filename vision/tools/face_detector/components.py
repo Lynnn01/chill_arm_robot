@@ -9,6 +9,8 @@ from agent.tts import play_voice_async
 _model = None
 _last_speak_time = 0
 
+_last_phrase = ""
+
 _FACE_PHRASES = [
     "อุ้ย เจอหน้าคนหล่อๆ สวยๆ อีกแล้วเด้อ",
     "มองหน้าข่อยเฮ็ดหยัง สนใจข่อยตี้",
@@ -17,7 +19,24 @@ _FACE_PHRASES = [
     "เห็นหน้าแจ่มๆ แบบนี้ ข่อยมีแฮงทำงานเลย",
     "มองข่อยบ่อยๆ ระวังตกหลุมรักเด้อ",
     "ปาดโธ่ หน้าตาดีแท้ๆ หน้าใครน้อ",
-    "หน้าตาดีแบบนี้ มีแฟนหรือยังเด้อ"
+    "หน้าตาดีแบบนี้ มีแฟนหรือยังเด้อ",
+    "ยิ้มหน่อยเร็วคนดี อารมณ์ดีแท้ๆ มื้อนี้",
+    "อย่าเพ่งข่อยเขินเด้อ หัวกริปเปอร์สั่นหมดแล้ว",
+    "ล็อกเป้าใบหน้าเรียบร้อย หล่อสวยออร่าจับมาก!",
+    "มาใกล้ๆ แท้ มีอะไรให้แขนกลช่วยบ่เด้อ",
+    "เบิ่งหน้าข่อยคักแท้ อยากได้ข่อยไปอยู่บ้านตี้",
+    "หลบสายตาข่อยบ่พ้นดอก เรดาร์ข่อยไวแท้ๆ",
+    "ปาดโธ่ ออร่าจับแท้ๆ สดใสปานดวงอาทิตย์",
+    "จ้องข่อยนานแท้ ข่อยบ่อยากสิคุยว่าเขินเป็นเด้อ",
+    "หน้าตาน่ารักปานนี้ มีงานให้ข่อยทำบ่หล่า",
+    "ล็อกตำแหน่งใบหน้าเนียนๆ เล็งไว้แน่นหนาเด้อ",
+    "สายตาคมกริบ มองเห็นหน้าแจ่มๆ ชัดเจน 100 เปอร์เซ็นต์",
+    "แอบจ้องข่อยอยู่แม่นบ่ ข่อยฮู้ข่อยเห็นเด้อ",
+    "สวัสดีครับคนสวยคนหล่อ พร้อมรับคำสั่งแล้วเด้อ",
+    "แน่ะ ยิ้มแล้ว! ยิ้มแบบนี้แสดงว่าชอบข่อยแม่นบ่",
+    "หน้าตาดีมีสไตล์ แบบนี้ต้องกดไลก์ให้เลยเด้อ",
+    "เล็งหน้าไว้เน้นๆ ห้ามหันหนีไปไหนเด้อฮะ",
+    "เห็นหน้าใสๆ แล้วใจฟู ขอยักย้ายสายสะโพกโชว์สักนิด"
 ]
 
 def get_model():
@@ -35,7 +54,7 @@ def get_model():
     return _model
 
 def detect_and_track(img, target_angles, last_send_time):
-    global _last_speak_time
+    global _last_speak_time, _last_phrase
     model = get_model()
     if not model:
         return img, target_angles, last_send_time
@@ -46,10 +65,12 @@ def detect_and_track(img, target_angles, last_send_time):
     if len(results) > 0:
         boxes = results[0].boxes
         if len(boxes) > 0:
-            # Voice Announcement (cooldown 4 seconds for higher speech frequency)
+            # Voice Announcement (cooldown 7 seconds, non-repeating choice)
             current_time = time.time()
-            if current_time - _last_speak_time > 4:
-                phrase = random.choice(_FACE_PHRASES)
+            if current_time - _last_speak_time > 7:
+                choices = [p for p in _FACE_PHRASES if p != _last_phrase]
+                phrase = random.choice(choices) if choices else random.choice(_FACE_PHRASES)
+                _last_phrase = phrase
                 play_voice_async(phrase, f"face_{int(current_time)}.mp3")
                 _last_speak_time = current_time
 

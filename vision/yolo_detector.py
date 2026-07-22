@@ -95,16 +95,24 @@ def scan_with_yolo(object_name: str):
     time.sleep(0.5)
 
     area_thai_map = {
-        "พื้นที่ 1": "one_area", "พื้นที่1": "one_area", "โซน 1": "one_area", "โซน1": "one_area",
-        "พื้นที่ 2": "two_area", "พื้นที่2": "two_area", "โซน 2": "two_area", "โซน2": "two_area",
-        "พื้นที่ 3": "three_area", "พื้นที่3": "three_area", "โซน 3": "three_area", "โซน3": "three_area",
-        "พื้นที่ 4": "four_area", "พื้นที่4": "four_area", "โซน 4": "four_area", "โซน4": "four_area",
-        "พื้นที่สีแดง": "red_area", "พื้นที่แดง": "red_area",
-        "พื้นที่สีเขียว": "green_area", "พื้นที่เขียว": "green_area",
-        "พื้นที่สีฟ้า": "blue_area", "พื้นที่สีน้ำเงิน": "blue_area", "พื้นที่ฟ้า": "blue_area",
-        "พื้นที่สีเหลือง": "yellow_area", "พื้นที่เหลือง": "yellow_area",
-        "พื้นที่รีไซเคิล": "recycle_area", "พื้นที่อันตราย": "danger_area",
-        "พื้นที่เปียก": "wet_area", "พื้นที่ว่าง": "blank_area", "พื้นที่ทั่วไป": "general_araa",
+        # Numbers 1-4
+        "พื้นที่ 1": "one_area", "พื้นที่1": "one_area", "โซน 1": "one_area", "โซน1": "one_area", "จุด 1": "one_area", "จุด1": "one_area", "เขต 1": "one_area", "เขต1": "one_area",
+        "พื้นที่ 2": "two_area", "พื้นที่2": "two_area", "โซน 2": "two_area", "โซน2": "two_area", "จุด 2": "two_area", "จุด2": "two_area", "เขต 2": "two_area", "เขต2": "two_area",
+        "พื้นที่ 3": "three_area", "พื้นที่3": "three_area", "โซน 3": "three_area", "โซน3": "three_area", "จุด 3": "three_area", "จุด3": "three_area", "เขต 3": "three_area", "เขต3": "three_area",
+        "พื้นที่ 4": "four_area", "พื้นที่4": "four_area", "โซน 4": "four_area", "โซน4": "four_area", "จุด 4": "four_area", "จุด4": "four_area", "เขต 4": "four_area", "เขต4": "four_area",
+        
+        # Colors
+        "พื้นที่สีแดง": "red_area", "พื้นที่แดง": "red_area", "โซนสีแดง": "red_area", "โซนแดง": "red_area", "จุดสีแดง": "red_area", "จุดแดง": "red_area", "เขตแดง": "red_area",
+        "พื้นที่สีเขียว": "green_area", "พื้นที่เขียว": "green_area", "โซนสีเขียว": "green_area", "โซนเขียว": "green_area", "จุดสีเขียว": "green_area", "จุดเขียว": "green_area", "เขตเขียว": "green_area",
+        "พื้นที่สีฟ้า": "blue_area", "พื้นที่สีน้ำเงิน": "blue_area", "พื้นที่ฟ้า": "blue_area", "พื้นที่น้ำเงิน": "blue_area", "โซนสีฟ้า": "blue_area", "โซนสีน้ำเงิน": "blue_area", "โซนฟ้า": "blue_area", "โซนน้ำเงิน": "blue_area", "จุดสีฟ้า": "blue_area", "จุดสีน้ำเงิน": "blue_area", "จุดฟ้า": "blue_area", "จุดน้ำเงิน": "blue_area",
+        "พื้นที่สีเหลือง": "yellow_area", "พื้นที่เหลือง": "yellow_area", "โซนสีเหลือง": "yellow_area", "โซนเหลือง": "yellow_area", "จุดสีเหลือง": "yellow_area", "จุดเหลือง": "yellow_area", "เขตเหลือง": "yellow_area",
+        
+        # Waste & Special Areas
+        "พื้นที่รีไซเคิล": "recycle_area", "โซนรีไซเคิล": "recycle_area", "จุดรีไซเคิล": "recycle_area", "ขยะรีไซเคิล": "recycle_area", "รีไซเคิล": "recycle_area",
+        "พื้นที่อันตราย": "danger_area", "โซนอันตราย": "danger_area", "จุดอันตราย": "danger_area", "ขยะอันตราย": "danger_area", "อันตราย": "danger_area",
+        "พื้นที่เปียก": "wet_area", "โซนเปียก": "wet_area", "จุดเปียก": "wet_area", "ขยะเปียก": "wet_area", "เปียก": "wet_area",
+        "พื้นที่ว่าง": "blank_area", "โซนว่าง": "blank_area", "จุดว่าง": "blank_area", "พื้นว่าง": "blank_area", "ว่าง": "blank_area",
+        "พื้นที่ทั่วไป": "general_araa", "โซนทั่วไป": "general_araa", "จุดทั่วไป": "general_araa", "ขยะทั่วไป": "general_araa", "ทั่วไป": "general_araa",
     }
 
     obj_lower = object_name.lower().replace("_", " ")
