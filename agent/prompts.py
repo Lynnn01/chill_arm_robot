@@ -50,14 +50,13 @@ Your mission is to analyze intent, decide the smartest sequence of actions, and 
    - Rock-Paper-Scissors Mini-Game: Use when user asks to "เป่ายิงฉุบ", "เป่ายิ้งฉุบ", "เล่นเกม". Starts interactive RPS game with arm motions, camera detection, and winner banter.
 
 ## CRITICAL ACTION SEQUENCING RULES:
-- **Rule 1 (Grab Before Place/Show)**: You CANNOT `move_to` or `show_object` without first calling `grab_object`.
-- **Rule 2 (Multi-Object & Implicit Intent)**: The gripper holds ONE object at a time.
-  - If user mentions multiple objects to move/place (e.g. "กล่องสีแดง สีเหลือง และสีน้ำเงิน ไปวางบนกล่องสีเขียว"), ALWAYS infer `grab_object` -> `move_to` for each object sequentially:
-    `grab_object("กล่องสีแดง")` -> `move_to(target_name="กล่องสีเขียว")` ->
-    `grab_object("กล่องสีเหลือง")` -> `move_to(target_name="กล่องสีเขียว")` ->
-    `grab_object("กล่องสีน้ำเงิน")` -> `move_to(target_name="กล่องสีเขียว")`.
+- **Rule 1 (Grab Before Place/Show)**: You CANNOT `move_to` or `show_object` without first calling `grab_object`. A single placement requires EXACTLY ONE `move_to` call! Never output duplicate `move_to` calls!
+- **Rule 2 (Target Name for Placement Areas & Objects)**: When placing at an area or object (e.g. "นำไปวางพื้นที่สีเขียว", "วางบนพื้นที่ 4"), ALWAYS specify `target_name: "พื้นที่สีเขียว"` (or `"green_area"`, `"พื้นที่ 4"`, etc.) in `move_to`. DO NOT pass `target_coord`!
+- **Rule 3 (Multi-Object & Implicit Intent)**: The gripper holds ONE object at a time.
+  - If user mentions multiple objects to move/place (e.g. "กล่องสีแดง ไปวางบนพื้นที่สีเขียว"), ALWAYS infer `grab_object` -> `move_to(target_name="พื้นที่สีเขียว")`:
+    `grab_object("กล่องสีแดง")` -> `move_to(target_name="พื้นที่สีเขียว")`.
   - ALWAYS output `"mode": "plan"` for ANY request involving objects, colors, moving, placing, gestures, waving, bowing, dancing, rotating gripper, cleaning desk, or playing games!
-- **Rule 3 (Strict Fallback Restriction)**: Output ONLY `{"mode": "fallback"}` for non-arm conversation (e.g. "สวัสดี", "สบายดีบ่") or scene description ("อธิบายสิ่งที่เห็น"). NEVER output `fallback` for physical arm commands!
+- **Rule 4 (Strict Fallback Restriction)**: Output ONLY `{"mode": "fallback"}` for non-arm conversation (e.g. "สวัสดี", "สบายดีบ่") or scene description ("อธิบายสิ่งที่เห็น"). NEVER output `fallback` for physical arm commands!
 """
 
 SUMMARY_SYSTEM_PROMPT = """

@@ -100,7 +100,16 @@ def raw_grab_object(object_name: str, target_coord: list = None) -> list:
     time.sleep(1)  # รอกริปเปอร์หนีบเสร็จ
 
     init.current_held_object = object_name
+    init.current_held_coord = [robot_coord[0], robot_coord[1]]
     init.known_objects[object_name] = "in gripper"
+
+    # Clean up any alias keys in init.known_objects matching this grabbed location
+    for k, v in list(init.known_objects.items()):
+        if isinstance(v, list) and len(v) >= 2:
+            dx = abs(v[0] - robot_coord[0])
+            dy = abs(v[1] - robot_coord[1])
+            if dx < 35.0 and dy < 35.0:
+                init.known_objects[k] = "in gripper"
 
     mc.send_coords([robot_coord[0], robot_coord[1], armconfig.Z_SAFE_TRAVEL] + armconfig.WRIST_DOWN, armconfig.SPEED_LIFT)
     mc.wait_for_arrival([robot_coord[0], robot_coord[1], armconfig.Z_SAFE_TRAVEL], mode="coords")
@@ -121,25 +130,66 @@ def raw_move_to(target_coord: list = None, target_name: str = None, target_heigh
         print(f"⚠️ <SYSTEM>: กริปเปอร์ไม่ได้ถือวัตถุอยู่! ยกเลิก move_to เพื่อป้องกันแขนกลขยับเปล่า (ต้องสั่ง grab_object ก่อน)")
         return {"status": "ERROR", "message": "No object held in gripper. Call grab_object first."}
 
-    if target_name and not target_coord:
-        if target_name in init.known_objects and isinstance(init.known_objects[target_name], list):
-            target_coord = init.known_objects[target_name]
-            print(f"🤖 <SYSTEM>: ใช้พิกัดของ '{target_name}' จากความจำ {target_coord}")
+    # Helper: Check if target_name is an area query
+    def is_area_name(name_str: str) -> bool:
+        if not name_str:
+            return False
+        keywords = ["พื้นที่", "area", "zone", "โซน", "เขต", "recycle", "danger", "wet", "blank"]
+        return any(kw in name_str.lower() for kw in keywords)
+
+    # Check if target_coord is invalid, default [0,0], or matches the grabbed object's former location
+    is_held_coord = False
+    if hasattr(init, "current_held_coord") and init.current_held_coord and target_coord and isinstance(target_coord, list) and len(target_coord) >= 2:
+        dx = abs(target_coord[0] - init.current_held_coord[0])
+        dy = abs(target_coord[1] - init.current_held_coord[1])
+        if dx < 35.0 and dy < 35.0:
+            is_held_coord = True
+            print(f"⚠️ <SYSTEM>: target_coord {target_coord} ตรงกับตำแหน่งเดิมของวัตถุที่ถืออยู่! ยกเลิกการใช้พิกัดซ้ำ")
+
+    is_invalid_coord = (
+        not target_coord or
+        target_coord in ([0, 0], [0, 0, 0], [0.0, 0.0], [0.0, 0.0, 0.0]) or
+        (isinstance(target_coord, list) and len(target_coord) >= 2 and target_coord[0] == 0 and target_coord[1] == 0) or
+        is_held_coord or
+        (target_name and is_area_name(target_name))
+    )
+
+    if is_invalid_coord and target_name:
+        target_coord = None
+        # Check matching key in init.known_objects memory (excluding "in gripper")
+        found_key = None
+        for k, v in init.known_objects.items():
+            if v != "in gripper" and isinstance(v, list) and (target_name.lower() in k.lower() or k.lower() in target_name.lower()):
+                found_key = k
+                break
+        
+        if found_key and isinstance(init.known_objects[found_key], list):
+            target_coord = init.known_objects[found_key]
+            print(f"🤖 <SYSTEM>: ใช้พิกัดของ '{found_key}' จากความจำ {target_coord}")
         else:
             from vision import yolo_detector
-            print(f"🤖 <SYSTEM>: ไม่รู้พิกัดของ '{target_name}' กำลังใช้กล้องสแกนหา...")
+            print(f"🤖 <SYSTEM>: กำลังใช้กล้องสแกนหาพื้นที่ '{target_name}' ด้วย area.pt/YOLO...")
             found_coord = yolo_detector.scan_with_yolo(target_name)
             if found_coord:
                 target_coord = found_coord
-                init.known_objects[target_name] = [target_coord[0], target_coord[1], armconfig.STACK_BASE_HEIGHT]
-                print(f"🤖 <SYSTEM>: สแกนเจอ '{target_name}' ที่พิกัด {target_coord}")
+                init.known_objects[target_name] = [target_coord[0], target_coord[1]]
+                print(f"🤖 <SYSTEM>: สแกนพบพื้นที่ '{target_name}' ที่พิกัด {target_coord} และจดจำพิกัดเรียบร้อยแล้ว!")
             else:
-                print(f"⚠️ <SYSTEM>: หา '{target_name}' ไม่เจอ! วางไว้ที่เดิม...")
-                target_coord = init.last_coords[:2] if init.last_coords else [0, -150]
+                # SAFETY STOP & HOLD OBJECT IN GRIPPER!
+                print(f"⚠️ <SYSTEM>: สแกนหาพื้นที่ '{target_name}' ไม่พบ! ยกเลิกการวางและกำกล่องไว้เพื่อความปลอดภัย")
+                from agent.tts import play_voice_async
+                play_voice_async(f"ข่อยสแกนหาพื้นที่ {target_name} บ่เจอเด้อ! ยกเลิกการวางเพื่อความปลอดภัย ข่อยขอกำของไว้คือเก่าเด้อ", "area_not_found.mp3")
+                mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
+                mc.wait_for_arrival(armconfig.POSE_HOME, mode="angles")
+                return {"status": "ERROR", "message": f"ไม่พบพื้นที่ '{target_name}' จากการสแกนด้วย area.pt! ยกเลิกการวางกล่องเพื่อความปลอดภัย (ถือกล่องไว้ในกริปเปอร์)"}
 
-    if not target_coord:
-        print(f"⚠️ <SYSTEM>: ไม่มีพิกัดเป้าหมาย! วางไว้ที่เดิม...")
-        target_coord = init.last_coords[:2] if init.last_coords else [0, -150]
+    if not target_coord or (isinstance(target_coord, list) and len(target_coord) >= 2 and target_coord[0] == 0 and target_coord[1] == 0):
+        print(f"⚠️ <SYSTEM>: ไม่ทราบพิกัดเป้าหมายที่จะวาง! ยกเลิกการวางและกำกล่องไว้เพื่อความปลอดภัย")
+        from agent.tts import play_voice_async
+        play_voice_async("บ่รู้พิกัดพื้นที่ที่จะวางเด้อ! ยกเลิกการวางเพื่อความปลอดภัย ข่อยขอกำของไว้คือเก่าเด้อ", "no_coord.mp3")
+        mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
+        mc.wait_for_arrival(armconfig.POSE_HOME, mode="angles")
+        return {"status": "ERROR", "message": "ไม่พบพิกัดเป้าหมายที่จะวาง! ยกเลิกการวางกล่องเพื่อความปลอดภัย (ถือกล่องไว้ในกริปเปอร์)"}
 
     # Auto-adjust height for stacking if target_height is default 110
     if target_height == 110:
