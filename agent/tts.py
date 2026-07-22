@@ -8,9 +8,13 @@ def _generate_and_play_sync(text, filename):
     async def _generate_and_play():
         try:
             from hardware import init
-            mp3_path = os.path.join(init.PROJECT_ROOT, filename)
+            sounds_dir = os.path.join(init.PROJECT_ROOT, "sounds")
         except ImportError:
-            mp3_path = os.path.join(os.getcwd(), filename)
+            sounds_dir = os.path.join(os.getcwd(), "sounds")
+
+        os.makedirs(sounds_dir, exist_ok=True)
+        base_name = os.path.basename(filename)
+        mp3_path = os.path.join(sounds_dir, base_name)
 
         try:
             communicate = edge_tts.Communicate(text, "th-TH-NiwatNeural")
@@ -20,7 +24,7 @@ def _generate_and_play_sync(text, filename):
             return
 
         # Create a unique alias for MCI
-        alias = filename.replace(".wav", "").replace(".mp3", "").replace("_", "")
+        alias = base_name.replace(".wav", "").replace(".mp3", "").replace("_", "").replace("-", "")
         
         try:
             ctypes.windll.winmm.mciSendStringW(f'close {alias}', None, 0, None)
