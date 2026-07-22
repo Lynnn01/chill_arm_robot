@@ -225,13 +225,19 @@ def raw_move(x: float, y: float, z: float, speed: int = 40) -> str:
 # ── rotate_gripper ───────────────────────────────────────────────────────────
 
 def raw_rotate_gripper(angle_range: int = 45, speed: int = 40) -> str:
+    # Clamp angle_range to safe range (-90 to +90) to prevent Joint 6 limit overflow (-180..180)
+    angle_range = max(-90, min(90, int(angle_range)))
     print(f"Rotating gripper by {angle_range} degrees...")
     current = mc.get_angles()
     j6 = current[5] if current and len(current) == 6 else -45
-    mc.send_angle(6, j6 + angle_range, speed)
+    
+    target_pos = max(-165.0, min(165.0, j6 + angle_range))
+    target_neg = max(-165.0, min(165.0, j6 - angle_range))
+
+    mc.send_angle(6, target_pos, speed)
+    time.sleep(1.2)
+    mc.send_angle(6, target_neg, speed)
     time.sleep(1.5)
-    mc.send_angle(6, j6 - angle_range, speed)
-    time.sleep(2.0)
     mc.send_angle(6, j6, speed)
     if current and len(current) == 6:
         mc.wait_for_arrival(current, mode="angles")
@@ -258,8 +264,9 @@ def raw_dance_celebrate() -> str:
 
 def raw_gesture(action: str) -> str:
     action = action.lower()
-    if action not in ("yes", "no"):
-        return "Error: action must be 'yes' or 'no'."
+    valid_actions = ("yes", "no", "bow", "wave", "confused")
+    if action not in valid_actions:
+        return f"Error: action must be one of {valid_actions}."
     print(f"Gesture: {action.upper()}")
     speed = armconfig.SPEED_DANCE
     current = mc.get_angles()
@@ -272,6 +279,27 @@ def raw_gesture(action: str) -> str:
         mc.send_angle(5, j5, speed);      time.sleep(0.5)
         print(f"✅ <SYSTEM>: DONE TASK - Gesture YES")
         return {"status": "DONE TASK"}
+    elif action == "bow":
+        j2, j3 = base[1], base[2]
+        mc.send_angles([base[0], j2 + 20, j3 - 15, base[3], base[4], base[5]], speed); time.sleep(1.0)
+        mc.send_angles(base, speed); time.sleep(1.0)
+        print(f"✅ <SYSTEM>: DONE TASK - Gesture BOW")
+        return {"status": "DONE TASK"}
+    elif action == "wave":
+        j6 = base[5]
+        mc.send_angles([base[0], base[1], base[2], -80, base[4], j6 + 45], speed); time.sleep(0.6)
+        mc.send_angle(6, j6 - 45, speed); time.sleep(0.6)
+        mc.send_angle(6, j6 + 45, speed); time.sleep(0.6)
+        mc.send_angles(base, speed); time.sleep(0.8)
+        print(f"✅ <SYSTEM>: DONE TASK - Gesture WAVE")
+        return {"status": "DONE TASK"}
+    elif action == "confused":
+        j5 = base[4]
+        mc.send_angle(5, j5 + 35, speed); time.sleep(0.8)
+        mc.send_angle(5, j5 - 35, speed); time.sleep(0.8)
+        mc.send_angle(5, j5, speed);      time.sleep(0.6)
+        print(f"✅ <SYSTEM>: DONE TASK - Gesture CONFUSED")
+        return {"status": "DONE TASK"}
     else:
         j1 = base[0]
         mc.send_angle(1, j1 + 30, speed); time.sleep(0.5)
@@ -280,6 +308,41 @@ def raw_gesture(action: str) -> str:
         mc.send_angle(1, j1, speed);      time.sleep(0.5)
         print(f"✅ <SYSTEM>: DONE TASK - Gesture NO")
         return {"status": "DONE TASK"}
+
+
+# ── clean_desk ───────────────────────────────────────────────────────────────
+
+def raw_clean_desk() -> str:
+    """Scan all objects on desk and stack them neatly at corner [160, -140]."""
+    print("🤖 <SYSTEM>: เริ่มภารกิจจัดโต๊ะทำงานอัตโนมัติ — กำลังมองหาวัตถุบนโต๊ะ...")
+    objects_to_find = ["กล่องสีแดง", "กล่องสีเหลือง", "กล่องสีน้ำเงิน", "กล่องสีเขียว"]
+    found_objects = []
+
+    from vision import yolo_detector
+    for obj in objects_to_find:
+        coord = yolo_detector.scan_with_yolo(obj)
+        if coord:
+            found_objects.append((obj, coord))
+
+    if not found_objects:
+        print("⚠️ <SYSTEM>: ไม่พบวัตถุบนโต๊ะเลย!")
+        return {"status": "DONE TASK", "message": "ไม่พบวัตถุบนโต๊ะเลย"}
+
+    print(f"🤖 <SYSTEM>: เจอวัตถุทั้งหมด {len(found_objects)} ชิ้น! กำลังจัดเก็บเข้ามุม...")
+    corner_coord = [160, -140]
+
+    for idx, (obj_name, coord) in enumerate(found_objects):
+        print(f"🤖 <SYSTEM>: [{idx+1}/{len(found_objects)}] หยิบ {obj_name} ไปจัดเก็บที่มุม...")
+        res_grab = raw_grab_object(obj_name, target_coord=coord)
+        if isinstance(res_grab, dict) and res_grab.get("status") == "ERROR":
+            continue
+        raw_move_to(target_coord=corner_coord, target_height=110)
+
+# ── play_rps ─────────────────────────────────────────────────────────────────
+
+def raw_play_rps_game() -> dict:
+    from agent.tools.shares.rps_game import raw_play_rps_game as _play
+    return _play()
 
 
 # ── scan_object ──────────────────────────────────────────────────────────────

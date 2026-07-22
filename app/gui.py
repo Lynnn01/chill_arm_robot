@@ -182,11 +182,15 @@ class OneArmGUI:
                 # ── Phase 1: Plan ──────────────────────────────
                 plan = loop.run_until_complete(plan_tasks(contextual_input))
 
-                # If plan returned fallback but user clearly requested physical object movement, retry planning once with explicit prompt hint
-                arm_action_keywords = ["กล่อง", "วาง", "หยิบ", "ซ้อน", "สี", "เอา", "ย้าย", "เต้น", "โชว์", "จับ"]
+                # If plan returned fallback but user requested any arm action or gesture, retry planning with explicit prompt hint
+                arm_action_keywords = [
+                    "กล่อง", "วาง", "หยิบ", "ซ้อน", "สี", "เอา", "ย้าย", "เต้น",
+                    "โชว์", "จับ", "โบกมือ", "โค้ง", "หมุน", "เป่ายิงฉุบ", "จัดโต๊ะ",
+                    "ทำความสะอาด", "เกม", "ขยับ", "คำนับ", "ทักทาย", "สงสัย"
+                ]
                 if plan.get("mode") != "plan" and any(kw in contextual_input for kw in arm_action_keywords):
                     print("🤖 <SYSTEM>: ตรวจพบคำสั่งทำงานแขนกล — กำลังบังคับสร้างแผนงานรวดเดียว...")
-                    retry_input = f"คำสั่งผู้ใช้: {contextual_input} (โปรดสร้างรายการแผนงาน grab_object -> move_to ให้ครบทุกวัตถุอย่างถูกต้องเรียงตามลำดับ)"
+                    retry_input = f"คำสั่งผู้ใช้: {contextual_input} (โปรดสร้างรายการแผนงานสำหรับคำสั่งนี้ให้สำเร็จในแผนเดียว)"
                     plan = loop.run_until_complete(plan_tasks(retry_input))
 
                 if plan.get("mode") == "plan":

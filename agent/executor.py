@@ -31,6 +31,8 @@ def _get_raw_tool_map():
         raw_dance_celebrate,
         raw_gesture,
         raw_scan_object,
+        raw_clean_desk,
+        raw_play_rps_game,
     )
 
     return {
@@ -42,6 +44,8 @@ def _get_raw_tool_map():
         "dance_celebrate": raw_dance_celebrate,
         "gesture": raw_gesture,
         "scan_object": raw_scan_object,
+        "clean_desk": raw_clean_desk,
+        "play_rps": raw_play_rps_game,
     }
 
 
@@ -65,7 +69,7 @@ def execute_plan(tasks: list, plan_summary: str = "", speaker_on: bool = True) -
     print(f"🤖 <SYSTEM>: มี {len(tasks)} งานที่ต้องทำ ทำต่อเนื่องเลย!")
 
     for i, task in enumerate(tasks):
-        tool_name = task.get("tool", "")
+        tool_name = str(task.get("tool", "")).strip().replace("()", "").rstrip("()").strip()
         args = dict(task.get("args") or {})
         task_voice = task.get("voice", "")
 
@@ -85,6 +89,8 @@ def execute_plan(tasks: list, plan_summary: str = "", speaker_on: bool = True) -
                 "scan_object": f"กำลังมองหา {args.get('object_name', 'วัตถุ')} อยู่เด้อ รอแป๊บเดียว",
                 "rotate_gripper": "หมุนหัวกริปเปอร์โชว์แป๊บเด้อ",
                 "gesture": "ตอบรับให้แล้วเด้อครับ",
+                "clean_desk": "จัดโต๊ะทำงานให้แล้วเด้อหล่า ย้ายกล่องเก็บเข้ามุมเรียบร้อย",
+                "play_rps": "",
                 "move": "กำลังเคลื่อนขยับแขนกลเด้อ",
             }
             task_voice = default_voices.get(tool_name, "กำลังทำตามคำสั่งเด้อครับ")

@@ -109,9 +109,143 @@ class RightPanel(tk.Frame):
                                     foreground=Theme.CAPTION_FG,
                                     font=Theme.FONT_BODY)
 
+        # ── Quick Action Macro Bar Header & Collapsible Panel ──────────────
+        self.macro_visible = True
+
+        toggle_frame = tk.Frame(self, bg=Theme.BG)
+        toggle_frame.grid(row=2, column=0, sticky="ew", pady=(0, 4))
+        toggle_frame.columnconfigure(0, weight=1)
+
+        self.toggle_btn = tk.Button(
+            toggle_frame,
+            text="⚡ คำสั่งลัด (Quick Macros) ▲ พับเก็บ",
+            font=("Leelawadee UI", 10, "bold"),
+            bg=Theme.SURFACE,
+            fg=Theme.ACCENT,
+            activebackground=Theme.SURFACE_MUTED,
+            activeforeground=Theme.ACCENT,
+            relief=tk.FLAT,
+            bd=0,
+            cursor="hand2",
+            anchor="w",
+            padx=8,
+            pady=4
+        )
+        self.toggle_btn.grid(row=0, column=0, sticky="ew")
+
+        self.macro_bar = tk.Frame(self, bg=Theme.BG)
+        self.macro_bar.grid(row=3, column=0, sticky="ew", pady=(0, Theme.SP_SM))
+
+        def _toggle_macro_bar():
+            if self.macro_visible:
+                self.macro_bar.grid_remove()
+                self.toggle_btn.config(text="⚡ คำสั่งลัด (Quick Macros) ▼ ขยายออก")
+                self.macro_visible = False
+            else:
+                self.macro_bar.grid()
+                self.toggle_btn.config(text="⚡ คำสั่งลัด (Quick Macros) ▲ พับเก็บ")
+                self.macro_visible = True
+
+        self.toggle_btn.config(command=_toggle_macro_bar)
+
+        def _send_macro(cmd_text):
+            self.input_entry.delete(0, tk.END)
+            self.input_entry.insert(0, cmd_text)
+            self._on_send()
+
+        macro_font = ("Leelawadee UI", 11, "bold")
+
+        # Row 1
+        r1_frame = tk.Frame(self.macro_bar, bg=Theme.BG)
+        r1_frame.pack(side=tk.TOP, fill=tk.X, pady=(0, 6))
+
+        b1 = RoundedButton(r1_frame, text="🧹 จัดโต๊ะทำงาน",
+                           radius=Theme.RADIUS_SM,
+                           bg=Theme.SURFACE_MUTED, fg=Theme.FG,
+                           hover_bg=Theme.ACCENT,
+                           font=macro_font,
+                           command=lambda: _send_macro("จัดโต๊ะทำงานเรียงกล่องเก็บเข้ามุมให้อัตโนมัติ"),
+                           height=40)
+        b1.pack(side=tk.LEFT, padx=(0, 6), expand=True, fill=tk.X)
+
+        b2 = RoundedButton(r1_frame, text="🧱 ซ้อนกล่อง 3 ชั้น",
+                           radius=Theme.RADIUS_SM,
+                           bg=Theme.SURFACE_MUTED, fg=Theme.FG,
+                           hover_bg=Theme.ACCENT,
+                           font=macro_font,
+                           command=lambda: _send_macro("หยิบกล่องสีแดง สีเหลือง สีน้ำเงิน ซ้อนกันบนกล่องสีเขียว"),
+                           height=40)
+        b2.pack(side=tk.LEFT, expand=True, fill=tk.X)
+
+        # Row 2
+        r2_frame = tk.Frame(self.macro_bar, bg=Theme.BG)
+        r2_frame.pack(side=tk.TOP, fill=tk.X, pady=(0, 6))
+
+        b3 = RoundedButton(r2_frame, text="💃 เต้นฉลองดีใจ",
+                           radius=Theme.RADIUS_SM,
+                           bg=Theme.SURFACE_MUTED, fg=Theme.FG,
+                           hover_bg=Theme.ACCENT,
+                           font=macro_font,
+                           command=lambda: _send_macro("เต้นฉลองดีใจหน่อย"),
+                           height=40)
+        b3.pack(side=tk.LEFT, padx=(0, 6), expand=True, fill=tk.X)
+
+        b4 = RoundedButton(r2_frame, text="📦 เอาของมาโชว์",
+                           radius=Theme.RADIUS_SM,
+                           bg=Theme.SURFACE_MUTED, fg=Theme.FG,
+                           hover_bg=Theme.ACCENT,
+                           font=macro_font,
+                           command=lambda: _send_macro("หยิบกล่องสีแดงมาโชว์"),
+                           height=40)
+        b4.pack(side=tk.LEFT, expand=True, fill=tk.X)
+
+        # Row 3
+        r3_frame = tk.Frame(self.macro_bar, bg=Theme.BG)
+        r3_frame.pack(side=tk.TOP, fill=tk.X, pady=(0, 6))
+
+        b5 = RoundedButton(r3_frame, text="👋 โบกมือทักทาย",
+                           radius=Theme.RADIUS_SM,
+                           bg=Theme.SURFACE_MUTED, fg=Theme.FG,
+                           hover_bg=Theme.ACCENT,
+                           font=macro_font,
+                           command=lambda: _send_macro("โบกมือทักทายหน่อย"),
+                           height=40)
+        b5.pack(side=tk.LEFT, padx=(0, 6), expand=True, fill=tk.X)
+
+        b6 = RoundedButton(r3_frame, text="🙇‍♂️ โค้งคำนับ",
+                           radius=Theme.RADIUS_SM,
+                           bg=Theme.SURFACE_MUTED, fg=Theme.FG,
+                           hover_bg=Theme.ACCENT,
+                           font=macro_font,
+                           command=lambda: _send_macro("โค้งคำนับต้อนรับ"),
+                           height=40)
+        b6.pack(side=tk.LEFT, expand=True, fill=tk.X)
+
+        # Row 4
+        r4_frame = tk.Frame(self.macro_bar, bg=Theme.BG)
+        r4_frame.pack(side=tk.TOP, fill=tk.X)
+
+        b7 = RoundedButton(r4_frame, text="🔄 หมุนข้อมือ",
+                           radius=Theme.RADIUS_SM,
+                           bg=Theme.SURFACE_MUTED, fg=Theme.FG,
+                           hover_bg=Theme.ACCENT,
+                           font=macro_font,
+                           command=lambda: _send_macro("หมุนข้อมือโชว์แป๊บ"),
+                           height=40)
+        b7.pack(side=tk.LEFT, padx=(0, 6), expand=True, fill=tk.X)
+
+        b8 = RoundedButton(r4_frame, text="✌️ เป่ายิงฉุบ",
+                           radius=Theme.RADIUS_SM,
+                           bg=Theme.PRIMARY, fg=Theme.PRIMARY_FG,
+                           hover_bg=Theme.PRIMARY_HOVER,
+                           font=macro_font,
+                           command=lambda: _send_macro("มาเป่ายิงฉุบกัน"),
+                           height=40)
+        b8.pack(side=tk.LEFT, expand=True, fill=tk.X)
+
         # ── Input bar ──────────────────────────────────────────────────
         bar = tk.Frame(self, bg=Theme.BG)
-        bar.grid(row=2, column=0, sticky="ew")
+        bar.grid(row=4, column=0, sticky="ew")
         bar.columnconfigure(0, weight=1)
 
         # Entry wrapped in a RoundedFrame for perfect height matching

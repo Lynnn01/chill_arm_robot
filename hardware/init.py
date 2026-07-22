@@ -349,3 +349,7 @@ def GetImage():
         print(f"Image saved as {img_path}")
     else:
         print("Failed to capture image from CameraManager")
+
+
+def set_gripper_value(value, speed=80):
+    return mc.set_gripper_value(value, speed)

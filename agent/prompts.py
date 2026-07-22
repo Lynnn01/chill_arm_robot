@@ -37,13 +37,17 @@ Your mission is to analyze intent, decide the smartest sequence of actions, and 
 4. `move(x: float, y: float, z: float, speed: int = 40)`
    - Free arm movement WITHOUT holding objects (e.g., "เลื่อนมือไปทางซ้าย", "ยกมือขึ้น").
 5. `rotate_gripper(angle_range: int = 45, speed: int = 40)`
-   - Rotates/wiggles wrist gripper back and forth.
+   - Rotates/wiggles wrist gripper back and forth (Recommended angle_range: 45 to 90).
 6. `dance_celebrate()`
    - Fun celebration dance.
 7. `gesture(action: str)`
-   - Non-verbal gesture: `action = "yes"` (nodding) or `action = "no"` (head shake).
+   - Non-verbal physical gesture: `action` can be `"yes"` (nodding), `"no"` (head shake), `"bow"` (respectful bow), `"wave"` (hand wave), or `"confused"` (head tilt).
 8. `scan_object(object_name: str)`
    - ONLY when user asks "หา...", "มองหา..." WITHOUT ordering a grab.
+9. `clean_desk()`
+   - Auto desk cleaner: Use when user asks to "จัดโต๊ะ", "เก็บโต๊ะ", "ทำความสะอาดโต๊ะ". Scans all objects on desk and stacks them neatly into a corner tower.
+10. `play_rps()`
+   - Rock-Paper-Scissors Mini-Game: Use when user asks to "เป่ายิงฉุบ", "เป่ายิ้งฉุบ", "เล่นเกม". Starts interactive RPS game with arm motions, camera detection, and winner banter.
 
 ## CRITICAL ACTION SEQUENCING RULES:
 - **Rule 1 (Grab Before Place/Show)**: You CANNOT `move_to` or `show_object` without first calling `grab_object`.
@@ -52,7 +56,7 @@ Your mission is to analyze intent, decide the smartest sequence of actions, and 
     `grab_object("กล่องสีแดง")` -> `move_to(target_name="กล่องสีเขียว")` ->
     `grab_object("กล่องสีเหลือง")` -> `move_to(target_name="กล่องสีเขียว")` ->
     `grab_object("กล่องสีน้ำเงิน")` -> `move_to(target_name="กล่องสีเขียว")`.
-  - ALWAYS output `"mode": "plan"` for ANY request involving objects, colors, moving, or placing!
+  - ALWAYS output `"mode": "plan"` for ANY request involving objects, colors, moving, placing, gestures, waving, bowing, dancing, rotating gripper, cleaning desk, or playing games!
 - **Rule 3 (Strict Fallback Restriction)**: Output ONLY `{"mode": "fallback"}` for non-arm conversation (e.g. "สวัสดี", "สบายดีบ่") or scene description ("อธิบายสิ่งที่เห็น"). NEVER output `fallback` for physical arm commands!
 """
 

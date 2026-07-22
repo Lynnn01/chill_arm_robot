@@ -15,6 +15,8 @@ from modules.tts.application.ports import TTSServicePort
 class EdgeTTSAdapter(TTSServicePort):
     """Adapter implementing TTSServicePort using Microsoft Edge TTS and Windows MCI."""
 
+    _audio_lock = threading.Lock()
+
     def __init__(self, sounds_dir: str = None):
         if not sounds_dir:
             try:
@@ -26,6 +28,13 @@ class EdgeTTSAdapter(TTSServicePort):
             self._sounds_dir = sounds_dir
 
         os.makedirs(self._sounds_dir, exist_ok=True)
+
+    def stop_all_audio(self) -> None:
+        """Immediately stop all currently playing Windows MCI audio tracks."""
+        try:
+            ctypes.windll.winmm.mciSendStringW('close all', None, 0, None)
+        except Exception:
+            pass
 
     def play_voice_async(self, message: SpeechMessage, filename: str = "speech.mp3") -> None:
         t = threading.Thread(target=self._generate_and_play_sync, args=(message.text, message.voice_name, filename))
@@ -46,14 +55,16 @@ class EdgeTTSAdapter(TTSServicePort):
 
             alias = base_name.replace(".wav", "").replace(".mp3", "").replace("_", "").replace("-", "")
             
-            try:
-                ctypes.windll.winmm.mciSendStringW(f'close {alias}', None, 0, None)
-                device_type = "waveaudio" if mp3_path.endswith(".wav") else "mpegvideo"
-                ctypes.windll.winmm.mciSendStringW(f'open "{mp3_path}" type {device_type} alias {alias}', None, 0, None)
-                ctypes.windll.winmm.mciSendStringW(f'play {alias} wait', None, 0, None)
-                ctypes.windll.winmm.mciSendStringW(f'close {alias}', None, 0, None)
-            except Exception as e:
-                print(f"⚠️ <SYSTEM>: Playback Error: {e}")
+            with EdgeTTSAdapter._audio_lock:
+                try:
+                    # Stop previous tracks before playing new track to prevent audio overlapping
+                    ctypes.windll.winmm.mciSendStringW('close all', None, 0, None)
+                    device_type = "waveaudio" if mp3_path.endswith(".wav") else "mpegvideo"
+                    ctypes.windll.winmm.mciSendStringW(f'open "{mp3_path}" type {device_type} alias {alias}', None, 0, None)
+                    ctypes.windll.winmm.mciSendStringW(f'play {alias} wait', None, 0, None)
+                    ctypes.windll.winmm.mciSendStringW(f'close {alias}', None, 0, None)
+                except Exception as e:
+                    print(f"⚠️ <SYSTEM>: Playback Error: {e}")
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
