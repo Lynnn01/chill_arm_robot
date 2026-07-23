@@ -134,7 +134,7 @@ GRAB_BASE_HEIGHT = 110
 STACK_BASE_HEIGHT = 90
 
 # ความสูงเพิ่มต่อชั้น (mm) — ปรับให้สูงขึ้นเพื่อไม่ให้กดทับ
-STACK_HEIGHT_PER_LAYER = 35
+STACK_HEIGHT_PER_LAYER = 30
 
 # ระยะเผื่อความสูงตอนวางซ้อน (mm) — ช่วยให้ปล่อยของกลางอากาศเล็กน้อย
 STACK_SAFE_OFFSET = 25
