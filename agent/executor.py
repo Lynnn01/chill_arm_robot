@@ -33,6 +33,7 @@ def _get_raw_tool_map():
         raw_scan_object,
         raw_clean_desk,
         raw_play_rps_game,
+        raw_unstack_and_grab,
     )
 
     return {
@@ -46,6 +47,7 @@ def _get_raw_tool_map():
         "scan_object": raw_scan_object,
         "clean_desk": raw_clean_desk,
         "play_rps": raw_play_rps_game,
+        "unstack_and_grab": raw_unstack_and_grab,
     }
 
 

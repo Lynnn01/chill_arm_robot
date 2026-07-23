@@ -441,6 +441,60 @@ def raw_play_rps_game() -> dict:
     return _play()
 
 
+# ── unstack_and_grab ─────────────────────────────────────────────────────────
+
+def raw_unstack_and_grab(object_name: str, safe_area: str = "blank_area") -> dict:
+    """Check if object is blocked by stacked items, unstack them to safe_area, then grab the target object."""
+    eng_name = get_english_name(object_name)
+    
+    if eng_name in init.known_objects and isinstance(init.known_objects[eng_name], list):
+        target_coord = init.known_objects[eng_name]
+    else:
+        from vision import yolo_detector
+        target_coord = yolo_detector.scan_with_yolo(object_name)
+        if target_coord:
+            init.known_objects[eng_name] = target_coord
+        else:
+            return raw_grab_object(object_name)
+            
+    tx, ty = float(target_coord[0]), float(target_coord[1])
+    tz = float(target_coord[2]) if len(target_coord) >= 3 else armconfig.GRAB_BASE_HEIGHT
+    
+    blocking_objects = []
+    for k, v in init.known_objects.items():
+        if k == eng_name or v == "in gripper" or not isinstance(v, list) or len(v) < 2:
+            continue
+            
+        dx = abs(v[0] - tx)
+        dy = abs(v[1] - ty)
+        vz = v[2] if len(v) >= 3 else armconfig.GRAB_BASE_HEIGHT
+        
+        if dx < armconfig.STACK_PROXIMITY_THRESHOLD and dy < armconfig.STACK_PROXIMITY_THRESHOLD:
+            if vz > tz + 10:
+                blocking_objects.append((k, vz))
+                
+    blocking_objects.sort(key=lambda x: x[1], reverse=True)
+    
+    if blocking_objects:
+        print(f"🤖 <SYSTEM>: ตรวจพบวัตถุทับอยู่บน '{object_name}' จำนวน {len(blocking_objects)} ชิ้น! เริ่มกระบวนการแกะออก...")
+        for b_name, b_z in blocking_objects:
+            print(f"🤖 <SYSTEM>: [Unstack] กำลังหยิบ '{b_name}' ออกไปวางที่ '{safe_area}'...")
+            res_grab = raw_grab_object(b_name)
+            if isinstance(res_grab, dict) and res_grab.get("status") == "ERROR":
+                print(f"⚠️ <SYSTEM>: ล้มเหลวขณะพยายามหยิบ '{b_name}' ออก")
+                return res_grab
+            
+            res_move = raw_move_to(target_name=safe_area, target_height=110)
+            if isinstance(res_move, dict) and res_move.get("status") == "ERROR":
+                print(f"⚠️ <SYSTEM>: ล้มเหลวขณะพยายามวาง '{b_name}' ลงพื้นที่ปลอดภัย")
+                return res_move
+    else:
+        print(f"🤖 <SYSTEM>: ไม่มีวัตถุทับอยู่บน '{object_name}' สามารถหยิบได้ทันที")
+        
+    print(f"🤖 <SYSTEM>: พื้นที่เปิดทางแล้ว! กำลังหยิบเป้าหมายหลัก '{object_name}'...")
+    return raw_grab_object(object_name)
+
+
 # ── scan_object ──────────────────────────────────────────────────────────────
 
 def raw_scan_object(object_name: str) -> str:
