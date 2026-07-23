@@ -157,17 +157,8 @@ class OneArmGUI:
         self.input_queue.put(user_input)
 
     def _agent_loop(self):
-        """Single persistent background thread with its own asyncio event loop.
-
-        Two-Phase Multitask Execution:
-        - Phase 1: planner.plan_tasks() → LLM returns JSON task list (1 roundtrip only)
-        - Phase 2: executor.execute_plan() → runs all tasks sequentially, zero LLM roundtrips
-        - Fallback: if planner returns mode=fallback, uses legacy Runner (free-form queries)
-        """
-        from agent.agent import get_agent, get_contextual_input, _process_and_print_result
-        from agent.planner import plan_tasks, summarize_results
-        from agent.executor import execute_plan
-        from agents import Runner
+        """Single persistent background thread with its own asyncio event loop."""
+        from agent.agent import get_agent, process_user_input
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -176,49 +167,8 @@ class OneArmGUI:
         while True:
             user_input = self.input_queue.get()
             try:
-                contextual_input = get_contextual_input(user_input)
                 speaker_on = self.right_panel.speaker_on
-
-                # ── Phase 1: Plan ──────────────────────────────
-                plan = loop.run_until_complete(plan_tasks(contextual_input))
-
-                # If plan returned fallback but user requested any arm action or gesture, retry planning with explicit prompt hint
-                arm_action_keywords = [
-                    "กล่อง", "วาง", "หยิบ", "ซ้อน", "สี", "เอา", "ย้าย", "เต้น",
-                    "โชว์", "จับ", "โบกมือ", "โค้ง", "หมุน", "เป่ายิงฉุบ", "จัดโต๊ะ",
-                    "ทำความสะอาด", "เกม", "ขยับ", "คำนับ", "ทักทาย", "สงสัย"
-                ]
-                if plan.get("mode") != "plan" and any(kw in contextual_input for kw in arm_action_keywords):
-                    print("🤖 <SYSTEM>: ตรวจพบคำสั่งทำงานแขนกล — กำลังบังคับสร้างแผนงานรวดเดียว...")
-                    retry_input = f"คำสั่งผู้ใช้: {contextual_input} (โปรดสร้างรายการแผนงานสำหรับคำสั่งนี้ให้สำเร็จในแผนเดียว)"
-                    plan = loop.run_until_complete(plan_tasks(retry_input))
-
-                if plan.get("mode") == "plan":
-                    # ── Phase 2: Execute (zero roundtrips) ─────
-                    results = execute_plan(
-                        tasks=plan.get("tasks", []),
-                        plan_summary=plan.get("plan_summary", ""),
-                        speaker_on=speaker_on,
-                    )
-                    
-                    # ── Phase 3: Summarize ─────────────────────
-                    print("🤖 <SYSTEM>: กำลังสรุปผลการทำงาน...")
-                    final_summary = loop.run_until_complete(
-                        summarize_results(contextual_input, results)
-                    )
-                    print("\n", end="")
-                    _process_and_print_result(final_summary, speaker_on=speaker_on)
-                    print("\n", end="")
-                else:
-                    # ── Fallback: legacy Runner ─────────────────
-                    print("🤖 <SYSTEM>: ใช้ Runner ปกติ (fallback mode)...")
-                    result = loop.run_until_complete(
-                        Runner.run(agent, input=contextual_input)
-                    )
-                    print("\n", end="")
-                    _process_and_print_result(result.final_output, speaker_on=speaker_on)
-                    print("\n", end="")
-
+                loop.run_until_complete(process_user_input(user_input, agent, speaker_on=speaker_on))
             except Exception as e:
                 import traceback
                 print(f"\n⚠️ <ERROR>: {e}\n")

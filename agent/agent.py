@@ -94,6 +94,49 @@ def get_contextual_input(raw_input):
     return raw_input
 
 
+async def process_user_input(user_input: str, agent, speaker_on: bool = True):
+    from agent.planner import plan_tasks, summarize_results
+    from agent.executor import execute_plan
+    
+    contextual_input = get_contextual_input(user_input)
+    
+    # ── Phase 1: Plan ──────────────────────────────
+    plan = await plan_tasks(contextual_input)
+
+    # If plan returned fallback but user requested any arm action or gesture, retry
+    arm_action_keywords = [
+        "กล่อง", "วาง", "หยิบ", "ซ้อน", "สี", "เอา", "ย้าย", "เต้น",
+        "โชว์", "จับ", "โบกมือ", "โค้ง", "หมุน", "เป่ายิงฉุบ", "จัดโต๊ะ",
+        "ทำความสะอาด", "เกม", "ขยับ", "คำนับ", "ทักทาย", "สงสัย"
+    ]
+    if plan.get("mode") != "plan" and any(kw in contextual_input for kw in arm_action_keywords):
+        print("🤖 <SYSTEM>: ตรวจพบคำสั่งทำงานแขนกล — กำลังบังคับสร้างแผนงานรวดเดียว...")
+        retry_input = f"คำสั่งผู้ใช้: {contextual_input} (โปรดสร้างรายการแผนงานสำหรับคำสั่งนี้ให้สำเร็จในแผนเดียว)"
+        plan = await plan_tasks(retry_input)
+
+    if plan.get("mode") == "plan":
+        # ── Phase 2: Execute (zero roundtrips) ─────
+        results = execute_plan(
+            tasks=plan.get("tasks", []),
+            plan_summary=plan.get("plan_summary", ""),
+            speaker_on=speaker_on,
+        )
+        
+        # ── Phase 3: Summarize ─────────────────────
+        print("🤖 <SYSTEM>: กำลังสรุปผลการทำงาน...")
+        final_summary = await summarize_results(contextual_input, results)
+        print("\n", end="")
+        _process_and_print_result(final_summary, speaker_on=speaker_on)
+        print("\n", end="")
+    else:
+        # ── Fallback: legacy Runner ─────────────────
+        print("🤖 <SYSTEM>: ใช้ Runner ปกติ (fallback mode)...")
+        result = await Runner.run(agent, input=contextual_input)
+        print("\n", end="")
+        _process_and_print_result(result.final_output, speaker_on=speaker_on)
+        print("\n", end="")
+
+
 async def main():
     args = parse_arguments()
     robotic_arm_agent = get_agent()
@@ -102,9 +145,7 @@ async def main():
         if args.user_input and not args.interactive:
             user_input = " ".join(args.user_input)
             print(f"<USER>: {user_input}")
-            contextual_input = get_contextual_input(user_input)
-            result = await Runner.run(robotic_arm_agent, input=contextual_input)
-            _process_and_print_result(result.final_output)
+            await process_user_input(user_input, robotic_arm_agent)
         else:
             print("Entering interactive mode...")
             while True:
@@ -112,9 +153,7 @@ async def main():
                     user_input = input("<USER>: ")
                     if user_input.lower() in ["exit", "quit"]:
                         break
-                    contextual_input = get_contextual_input(user_input)
-                    result = await Runner.run(robotic_arm_agent, input=contextual_input)
-                    _process_and_print_result(result.final_output)
+                    await process_user_input(user_input, robotic_arm_agent)
                 except EOFError:
                     break
     finally:
@@ -144,6 +183,7 @@ def _process_and_print_result(final_output, speaker_on=True):
 
     if voice_text and speaker_on:
         threading.Thread(target=_play_voice, args=(voice_text,), daemon=True).start()
+
 
 
 if __name__ == "__main__":
