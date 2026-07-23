@@ -58,8 +58,7 @@ def preload_model():
 
 
 # Start preloading immediately when module is imported
-preload_model()
-
+# preload_model() # REMOVED: Causes Segmentation fault on Jetson due to concurrent Torch CUDA + OpenCV Camera initialization
 
 def is_area_query(object_name: str) -> bool:
     """Check if object_name is requesting a target placement area."""
