@@ -1,0 +1,42 @@
+# ============================================================
+# requirements-mac.txt
+# สำหรับรันบน Mac (เครื่อง Dev / ไม่มี Jetson GPIO)
+# ใช้: pip install -r requirements-mac.txt
+# ============================================================
+
+# --- Core ---
+numpy
+PyYAML
+python-dotenv
+Requests
+httpx
+
+# --- OpenAI / Agent ---
+openai
+openai-agents
+
+# --- Vision ---
+opencv_contrib_python
+Pillow
+scipy
+transforms3d
+matplotlib
+
+# --- Robotic Arm ---
+pymycobot
+
+# --- Speech ---
+SpeechRecognition
+edge-tts
+# PyAudio           # ❌ บน Mac ต้องติดตั้ง portaudio ก่อนติดตั้ง PyAudio:
+#                   #    brew install portaudio
+#                   #    pip install PyAudio
+
+# --- GUI ---
+customtkinter
+
+# ============================================================
+# หมายเหตุ: packages เหล่านี้ไม่รวมเพราะใช้เฉพาะ Jetson/Linux:
+#   - Jetson.GPIO  → ใช้เฉพาะ Jetson Nano / Orin
+#   - dt_apriltags → ไม่มี Mac wheel อย่างเป็นทางการ
+# ============================================================

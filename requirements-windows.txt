@@ -1,42 +1,16 @@
-# ============================================================
-# requirements-windows.txt
-# สำหรับรันบน Windows (เครื่อง Dev / ไม่มี Jetson GPIO)
-# ใช้: pip install -r requirements-windows.txt
-# ============================================================
-
-# --- Core ---
 numpy
 PyYAML
 python-dotenv
 Requests
 httpx
-
-# --- OpenAI / Agent ---
 openai
 openai-agents
-
-# --- Vision ---
 opencv_contrib_python
 Pillow
 scipy
 transforms3d
 matplotlib
-
-# --- Robotic Arm (pymycobot รองรับ Windows ผ่าน COM port) ---
 pymycobot
-
-# --- Speech ---
 SpeechRecognition
 edge-tts
-# PyAudio           # ❌ ต้องติดตั้ง binary wheel บน Windows ด้วยมือ:
-#                   #    pip install pipwin && pipwin install pyaudio
-#                   #    หรือดาวน์โหลด .whl จาก https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyaudio
-
-# --- GUI ---
 customtkinter
-
-# ============================================================
-# หมายเหตุ: packages เหล่านี้ไม่รวมเพราะใช้เฉพาะ Jetson/Linux:
-#   - Jetson.GPIO  → ใช้เฉพาะ Jetson Nano / Orin
-#   - dt_apriltags → ไม่มี Windows wheel อย่างเป็นทางการ
-# ============================================================
