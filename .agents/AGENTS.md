@@ -4,6 +4,7 @@ This file is intended to help subsequent collaborators quickly and safely take o
 
 ## ⚡ Critical Rules
 - 🎨 UI/UX styling must follow the [Style Rules](rule/style.md).
+- 🗜️ **Catlazy Compression (Always On)**: ระบบนี้วิ่งผ่าน Headroom Docker Proxy เสมอ ห้ามใช้ MCP Tools ใดๆ ในการบีบอัดข้อมูล ให้สั่งอ่านไฟล์ใหญ่ๆ หรือดึง Logs ตามปกติได้เลย (Transparent Compression) เพื่อประหยัด Token สูงสุด
 
 ## 📚 Rule Index
 - [UI and Styling Rules](rule/style.md)

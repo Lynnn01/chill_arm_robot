@@ -11,44 +11,20 @@ import time
 
 def _get_raw_tool_map():
     """Import the raw (unwrapped) Python functions from each tool module."""
-    import importlib, sys
-
-    # Import each module directly and grab the raw function before @function_tool wraps it.
-    # Since @function_tool replaces the name in-module, we need the wrapped object's underlying fn.
-    # FunctionTool stores the original on `on_invoke_tool` but that's async + needs context.
-    # Easiest: re-import modules in a fresh namespace so we can grab the originals.
-    #
-    # Strategy: each tool module only has one real function. We collect it by name
-    # and call asyncio.run(on_invoke_tool(None, json_args)) would need context.
-    # Instead we store callables that directly call the raw logic.
-
-    from agent.tools.shares._raw import (
-        raw_grab_object,
-        raw_move_to,
-        raw_show_object,
-        raw_move,
-        raw_rotate_gripper,
-        raw_dance_celebrate,
-        raw_gesture,
-        raw_scan_object,
-        raw_clean_desk,
-        raw_play_rps_game,
-        raw_unstack_and_grab,
-    )
-
-    return {
-        "grab_object": raw_grab_object,
-        "move_to": raw_move_to,
-        "show_object": raw_show_object,
-        "move": raw_move,
-        "rotate_gripper": raw_rotate_gripper,
-        "dance_celebrate": raw_dance_celebrate,
-        "gesture": raw_gesture,
-        "scan_object": raw_scan_object,
-        "clean_desk": raw_clean_desk,
-        "play_rps": raw_play_rps_game,
-        "unstack_and_grab": raw_unstack_and_grab,
-    }
+    import inspect
+    from agent.tools.shares import _raw as raw_module
+    
+    # catlazy: แมปชื่อฟังก์ชัน raw_* เป็นชื่อ tool อัตโนมัติด้วย inspect ประหยัดไป 30 บรรทัด
+    mapping = {}
+    for name, func in inspect.getmembers(raw_module, inspect.isfunction):
+        if name.startswith("raw_"):
+            tool_name = name[4:] # ตัด 'raw_' ออก
+            mapping[tool_name] = func
+            
+    # รองรับ alias เก่าที่ชื่อไม่ตรงกันเป๊ะๆ
+    mapping["play_rps"] = mapping.get("play_rps_game")
+    
+    return mapping
 
 
 def execute_plan(tasks: list, plan_summary: str = "", speaker_on: bool = True) -> list:
@@ -83,58 +59,8 @@ def execute_plan(tasks: list, plan_summary: str = "", speaker_on: bool = True) -
             continue
 
         if not task_voice:
-            import random
-            obj = args.get('object_name', 'วัตถุ')
-            target = args.get('target_name', 'เป้าหมาย')
-
-            voice_options = {
-                "grab_object": [
-                    f"กำลังพุ่งเล็งลงไปคว้า {obj} เด้อหล่า คอยเบิ่งให้ดีๆ",
-                    f"จัดไป! กำลังหนีบ {obj} ขึ้นมาแบบเนียนๆ เลยเด้อ",
-                    f"สายตาแม่นยำ ล็อกเป้า {obj} แล้วพุ่งเข้าจับทันที!",
-                    f"บ่อยากสิคุย! กำลังดิ่งลงไปดึง {obj} ขึ้นมาเน้นๆ",
-                ],
-                "move_to": [
-                    f"กำลังย้ายไปวางตรง {target} ให้เรียบร้อยเนียนๆ เด้อ",
-                    f"จัดวางบน {target} ให้แน่นหนา ปานจับวางเลยเด้อหล่า",
-                    f"พาพาไปส่งถึง {target} เรียบร้อย สวยงามตามสั่งเลย",
-                    f"ย้ายมาประดิษฐานไว้ที่ {target} เนียนๆ แล้วเด้อ",
-                ],
-                "show_object": [
-                    f"ยก {obj} ขึ้นมาโชว์ให้เห็นกันจะๆ สภาพสวยงามเด้อ!",
-                    f"ชู {obj} ขึ้นฟ้าโชว์ความเท่ให้เบิ่งกันเต็มตา!",
-                    f"อวด {obj} ให้ดูใกล้ๆ แม่นปานจับวางบ่ล่ะ",
-                ],
-                "dance_celebrate": [
-                    "เซิ้งฉลองความสำเร็จหน่อยเร็ว ม่วนแท้เด้อฮะ!",
-                    "งานเสร็จเนียนกริ๊บ ขอยักย้ายสายสะโพกฉลองหน่อยเด้อ!",
-                    "ม่วนซื่นโฮแซว! เต้นโชว์ความสำเร็จสักนิดหน่อยเด้อ",
-                ],
-                "scan_object": [
-                    f"กำลังกวาดสายตามองหา {obj} อยู่เด้อ รอแป๊บเดียว",
-                    f"สแกนหา {obj} ทั่วบริเวณ แป๊บเดียวเจอแน่นอน!",
-                    f"เพ่งสายตาเรดาร์หา {obj} แป๊บเด้อหล่า",
-                ],
-                "rotate_gripper": [
-                    "ควงหัวกริปเปอร์โชว์ลีลาแป๊บเด้อ!",
-                    "หมุนข้อมือโชว์ความพริ้วไหวหน่อยเป็นไง!",
-                ],
-                "gesture": [
-                    "ตอบรับคำสั่งเรียบร้อย จัดให้ตามขอเด้อ!",
-                    "รับทราบข้อความและแสดงท่าทางตอบรับแล้วเด้อ!",
-                ],
-                "clean_desk": [
-                    "จัดโต๊ะทำงานให้เนียนกริ๊บ ย้ายกล่องเก็บเข้ามุมเรียบร้อย!",
-                    "คลีนโต๊ะสะอาดตา เก็บของเข้าที่เข้าทางแบบโปรเด้อหล่า!",
-                ],
-                "play_rps": [],
-                "move": [
-                    "ขยับแขนกลไปตามตำแหน่งเป้าหมายแล้วเด้อ",
-                    "เคลื่อนแขนกลเข้าจุดตำแหน่งเรียบร้อย!",
-                ],
-            }
-            options = voice_options.get(tool_name, [f"กำลังทำตามคำสั่ง {tool_name} เด้อครับ"])
-            task_voice = random.choice(options) if options else ""
+            # catlazy: Fallback ง่ายๆ แทนการ hardcode ดิกชันนารี 50 บรรทัด
+            task_voice = f"กำลังทำตามคำสั่ง {tool_name} เด้อครับ"
 
         # เล่นเสียงบรรยายของ task นี้ (แบบ background)
         if task_voice and speaker_on:
