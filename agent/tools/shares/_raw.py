@@ -314,11 +314,28 @@ def raw_show_object(object_name: str) -> str:
 # ── move ─────────────────────────────────────────────────────────────────────
 
 def raw_move(x: float, y: float, z: float, speed: int = 40) -> str:
-    from modules.robot_arm.domain.coordinates import TargetCoordinate
-    target = TargetCoordinate(x, y, z)
-    x = max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, target.x))
-    y = max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, target.y))
-    z = max(armconfig.COORD_Z_MIN, min(armconfig.COORD_Z_MAX, target.z))
+    # Clamp X, Y, Z directly instead of using over-engineered TargetCoordinate
+    x = float(x)
+    y = float(y)
+    z = float(z)
+    
+    x = max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, x))
+    y = max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, y))
+    z = max(armconfig.COORD_Z_MIN, min(armconfig.COORD_Z_MAX, z))
+    
+    # Apply base radius safety
+    import math
+    if z < 100:
+        radius = math.sqrt(x**2 + y**2)
+        if radius < armconfig.GRAB_MIN_RADIUS:
+            if radius > 0:
+                scale = armconfig.GRAB_MIN_RADIUS / radius
+                x = x * scale
+                y = y * scale
+            else:
+                x = float(armconfig.GRAB_MIN_RADIUS)
+                y = 0.0
+
     print(f"🤖 <SYSTEM>: กำลังขยับแขนกลไปที่ (X:{x:.1f}, Y:{y:.1f}, Z:{z:.1f}) ด้วยความเร็ว {speed}...")
     mc.send_coords([x, y, z] + armconfig.WRIST_PLACE, speed)
     mc.wait_for_arrival([x, y, z], mode="coords")
