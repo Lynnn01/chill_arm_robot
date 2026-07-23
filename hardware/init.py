@@ -152,7 +152,9 @@ class LockedMyCobot:
         return self._call("set_gripper_value", value, speed)
 
     def set_fresh_mode(self, mode):
-        return self._call("set_fresh_mode", mode)
+        if hasattr(self._mc, "set_fresh_mode"):
+            return self._call("set_fresh_mode", mode)
+        return None
 
     def power_on(self):
         return self._call("power_on")
@@ -262,18 +264,20 @@ class CameraManager:
         # Initialize VideoCapture in the MAIN thread to avoid OpenCV Qt plugin crashes on Jetson
         try:
             if _is_windows:
-                cap = cv2.VideoCapture(1, cv2.CAP_DSHOW)
+                cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
                 if not cap.isOpened():
-                    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+                    cap = cv2.VideoCapture(1, cv2.CAP_DSHOW)
                 if not cap.isOpened():
                     cap = cv2.VideoCapture(0)
             else:
-                # Try V4L2 first (bypasses GStreamer)
-                cap = cv2.VideoCapture(1, cv2.CAP_V4L2)
+                # Try V4L2 first (bypasses GStreamer), prefer index 0 on Jetson
+                os.environ["OPENCV_LOG_LEVEL"] = "FATAL" # Suppress OpenCV warnings temporarily
+                cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
                 if not cap.isOpened():
-                    cap = cv2.VideoCapture(1)
+                    cap = cv2.VideoCapture(1, cv2.CAP_V4L2)
                 if not cap.isOpened():
                     cap = cv2.VideoCapture(0)
+                os.environ["OPENCV_LOG_LEVEL"] = "WARNING" # Restore
 
             if not cap.isOpened():
                 print("⚠️ Camera not available. Running without camera feed.")
