@@ -159,6 +159,35 @@ def execute_plan(tasks: list, plan_summary: str = "", speaker_on: bool = True) -
                 )
                 args["target_coord"] = last_grab_coord
 
+        # --- AUTO-UNSTACK INTERCEPTOR ---
+        if tool_name == "grab_object":
+            from hardware import init
+            from agent.tools.shares._raw import get_english_name
+            import armconfig
+            
+            obj_name = args.get("object_name")
+            if obj_name:
+                eng_name = get_english_name(obj_name)
+                if eng_name in init.known_objects and isinstance(init.known_objects[eng_name], list):
+                    tx, ty = init.known_objects[eng_name][0:2]
+                    tz = init.known_objects[eng_name][2] if len(init.known_objects[eng_name]) >= 3 else armconfig.GRAB_BASE_HEIGHT
+                    
+                    is_stacked = False
+                    for k, v in init.known_objects.items():
+                        if k == eng_name or v == "in gripper" or not isinstance(v, list) or len(v) < 2:
+                            continue
+                        dx = abs(v[0] - tx)
+                        dy = abs(v[1] - ty)
+                        vz = v[2] if len(v) >= 3 else armconfig.GRAB_BASE_HEIGHT
+                        if dx < armconfig.STACK_PROXIMITY_THRESHOLD and dy < armconfig.STACK_PROXIMITY_THRESHOLD:
+                            if vz > tz + 10:
+                                is_stacked = True
+                                break
+                    if is_stacked:
+                        print(f"🤖 <SYSTEM>: ระบบตรวจพบว่า '{obj_name}' โดนทับอยู่! สลับไปใช้ unstack_and_grab อัตโนมัติ")
+                        tool_name = "unstack_and_grab"
+        # ---------------------------------
+
         # Strip null/None args
         args = {k: v for k, v in args.items() if v is not None}
 

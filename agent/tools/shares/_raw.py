@@ -37,12 +37,16 @@ def raw_grab_object(object_name: str, target_coord: list = None) -> list:
     if target_coord and len(target_coord) >= 2:
         print(f"🤖 <SYSTEM>: กำลังขยับแขนกลไปหยิบของที่พิกัด {target_coord}...")
         robot_coord = [float(target_coord[0]), float(target_coord[1])]
+        if len(target_coord) >= 3:
+            z = float(target_coord[2]) + z_offset
     else:
         eng_name = get_english_name(object_name)
         if eng_name in init.known_objects and isinstance(init.known_objects[eng_name], list):
             saved = init.known_objects[eng_name]
             print(f"🤖 <SYSTEM>: ดึงพิกัด '{eng_name}' จากความจำ {saved} (ข้ามสแกน)...")
             robot_coord = [float(saved[0]), float(saved[1])]
+            if len(saved) >= 3:
+                z = float(saved[2]) + z_offset
         else:
             yolo_coord = yolo_detector.scan_with_yolo(object_name)
             if yolo_coord:
@@ -112,6 +116,11 @@ def raw_grab_object(object_name: str, target_coord: list = None) -> list:
             dx = abs(v[0] - robot_coord[0])
             dy = abs(v[1] - robot_coord[1])
             if dx < 35.0 and dy < 35.0:
+                # ป้องกันการลบความจำของของชิ้นอื่นที่ซ้อนกันอยู่ (ความสูงต่างกัน)
+                if len(v) >= 3:
+                    dz = abs(v[2] - z)
+                    if dz > 20.0:  # ถ้าระดับความสูงต่างกันเกิน 20mm ถือว่าเป็นคนละชั้น
+                        continue
                 init.known_objects[k] = "in gripper"
 
     mc.send_coords([robot_coord[0], robot_coord[1], armconfig.Z_SAFE_TRAVEL] + armconfig.WRIST_DOWN, armconfig.SPEED_LIFT)
@@ -478,13 +487,15 @@ def raw_unstack_and_grab(object_name: str, safe_area: str = "blank_area") -> dic
     if blocking_objects:
         print(f"🤖 <SYSTEM>: ตรวจพบวัตถุทับอยู่บน '{object_name}' จำนวน {len(blocking_objects)} ชิ้น! เริ่มกระบวนการแกะออก...")
         for b_name, b_z in blocking_objects:
-            print(f"🤖 <SYSTEM>: [Unstack] กำลังหยิบ '{b_name}' ออกไปวางที่ '{safe_area}'...")
+            print(f"🤖 <SYSTEM>: [Unstack] กำลังหยิบ '{b_name}' ออกไปวางที่พื้นที่ปลอดภัย...")
             res_grab = raw_grab_object(b_name)
             if isinstance(res_grab, dict) and res_grab.get("status") == "ERROR":
                 print(f"⚠️ <SYSTEM>: ล้มเหลวขณะพยายามหยิบ '{b_name}' ออก")
                 return res_grab
             
-            res_move = raw_move_to(target_name=safe_area, target_height=110)
+            # ใช้พิกัดจริงแทน target_name ลอยๆ เพื่อให้หุ่นเอาไปวางได้สำเร็จ
+            safe_coord = [160.0, -150.0]
+            res_move = raw_move_to(target_coord=safe_coord, target_height=110)
             if isinstance(res_move, dict) and res_move.get("status") == "ERROR":
                 print(f"⚠️ <SYSTEM>: ล้มเหลวขณะพยายามวาง '{b_name}' ลงพื้นที่ปลอดภัย")
                 return res_move
