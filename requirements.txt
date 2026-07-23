@@ -17,3 +17,4 @@ openai-agents
 SpeechRecognition
 PyAudio
 customtkinter
+ultralytics>=8.3.0
