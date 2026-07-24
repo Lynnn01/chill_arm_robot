@@ -50,25 +50,31 @@ def _generate_and_play_sync(text: str, filename: str):
 
         with _audio_lock:
             try:
-                if os.name == "nt":
+                if os.name == 'nt':
                     # Windows playback via MCI
-                    ctypes.windll.winmm.mciSendStringW("close all", None, 0, None)
-                    device_type = (
-                        "waveaudio" if mp3_path.endswith(".wav") else "mpegvideo"
-                    )
-                    ctypes.windll.winmm.mciSendStringW(
-                        f'open "{mp3_path}" type {device_type} alias {alias}',
-                        None,
-                        0,
-                        None,
-                    )
-                    ctypes.windll.winmm.mciSendStringW(
-                        f"play {alias} wait", None, 0, None
-                    )
-                    ctypes.windll.winmm.mciSendStringW(f"close {alias}", None, 0, None)
+                    ctypes.windll.winmm.mciSendStringW('close all', None, 0, None)
+                    device_type = "waveaudio" if mp3_path.endswith(".wav") else "mpegvideo"
+                    ctypes.windll.winmm.mciSendStringW(f'open "{mp3_path}" type {device_type} alias {alias}', None, 0, None)
+                    ctypes.windll.winmm.mciSendStringW(f'play {alias} wait', None, 0, None)
+                    ctypes.windll.winmm.mciSendStringW(f'close {alias}', None, 0, None)
                 else:
-                    # Linux/Jetson playback via standard mpg123
-                    os.system(f"mpg123 -q '{mp3_path}' > /dev/null 2>&1")
+                    # Linux/Jetson playback via standard CLI players (Only use pure CLI players to avoid X11 crashes with Tkinter)
+                    import subprocess
+                    players = [
+                        ["mpg123", "-q", mp3_path]
+                    ]
+                    played = False
+                    for cmd in players:
+                        try:
+                            result = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                            if result.returncode == 0:
+                                played = True
+                                break
+                        except FileNotFoundError:
+                            continue
+                    
+                    if not played:
+                        print("⚠️ <SYSTEM>: ไม่มีโปรแกรมเล่นเสียงติดตั้งอยู่ (Please run: sudo apt install mpg123)")
             except Exception as e:
                 print(f"⚠️ <SYSTEM>: Playback Error: {e}")
 
