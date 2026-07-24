@@ -144,7 +144,7 @@ STACK_SAFE_OFFSET = 25
 # หากแกน Y น้อยเกินไป (เบี้ยวไปทางขวา) ให้บวกค่า Y เพิ่ม (เช่น 5.0)
 GRAB_X_OFFSET = -20
 GRAB_Y_OFFSET = 0.0
-STACK_X_OFFSET = 0.0
+STACK_X_OFFSET = 10
 STACK_Y_OFFSET = 0.0
 
 # ระยะ XY ที่ถือว่า "พิกัดเดียวกัน" สำหรับตรวจนับ stack (mm)
