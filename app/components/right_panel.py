@@ -427,6 +427,8 @@ class RightPanel(tk.Frame):
 
     def _toggle_speaker(self):
         self.speaker_on = not self.speaker_on
+        import armconfig
+        armconfig.SPEAKER_ON = self.speaker_on
         if self.speaker_on:
             self.speaker_btn.set_text("🔊 Spk: ON")
             self.speaker_btn.set_colors(bg=Theme.SUCCESS, fg=Theme.PRIMARY_FG)

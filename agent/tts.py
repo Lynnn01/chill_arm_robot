@@ -13,6 +13,10 @@ def play_voice_async(text: str, filename: str = "speech.mp3") -> None:
     """Plays TTS in a background thread."""
     if not text or not text.strip():
         return
+        
+    import armconfig
+    if not getattr(armconfig, 'SPEAKER_ON', False):
+        return
 
     t = threading.Thread(target=_generate_and_play_sync, args=(text.strip(), filename))
     t.daemon = True

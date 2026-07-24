@@ -14,16 +14,18 @@ def calculate_and_move(cx: float, cy: float, center_x: float, center_y: float, t
     if getattr(armconfig, 'CAMERA_FLIP_HORIZONTAL', False):
         pan_error = -pan_error
     
-    if abs(pan_error) > armconfig.TRACKING_DEADZONE_PX:
+    if abs(pan_error) > armconfig.TRACKING_DEADZONE_PX or abs(tilt_error) > armconfig.TRACKING_DEADZONE_PX:
         Kp = armconfig.TRACKING_KP
         
         new_j1 = target_angles[0] + (pan_error * Kp)
-        new_j1 = max(armconfig.TRACKING_J1_MIN, min(armconfig.TRACKING_J1_MAX, new_j1))
+        new_j4 = target_angles[3] + (tilt_error * Kp)
         
-        # User requested to keep vertical (J4) at home position, so we don't track tilt
-        if abs(new_j1 - target_angles[0]) > 0.5:
+        new_j1 = max(armconfig.TRACKING_J1_MIN, min(armconfig.TRACKING_J1_MAX, new_j1))
+        new_j4 = max(armconfig.TRACKING_J4_MIN, min(armconfig.TRACKING_J4_MAX, new_j4))
+        
+        if abs(new_j1 - target_angles[0]) > 0.5 or abs(new_j4 - target_angles[3]) > 0.5:
             target_angles[0] = new_j1
-            
+            target_angles[3] = new_j4
             
             if time.time() - last_send_time > armconfig.TRACKING_SEND_INTERVAL:
                 init.mc.send_angles(target_angles, armconfig.SPEED_TRACKING)

@@ -59,7 +59,7 @@ def detect_and_track(img, target_angles, last_send_time):
     if not model:
         return img, target_angles, last_send_time
 
-    results = model(img, verbose=False, conf=getattr(armconfig, "VISION_CONFIDENCE_THRESHOLD", 0.30))
+    results = model(img, verbose=False, conf=getattr(armconfig, "FACE_CONFIDENCE_THRESHOLD", 0.80))
     ai_results = results[0] if len(results) > 0 else None
     
     if len(results) > 0:
