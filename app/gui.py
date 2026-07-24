@@ -196,6 +196,14 @@ def start_gui():
         except Exception:
             pass
         finally:
+            try:
+                # Brutally kill the resource_tracker process to prevent annoying warnings on exit
+                import os, signal
+                from multiprocessing.resource_tracker import _resource_tracker
+                if _resource_tracker._process is not None:
+                    os.kill(_resource_tracker._process.pid, signal.SIGKILL)
+            except Exception:
+                pass
             root.destroy()
             sys.exit(0)
 

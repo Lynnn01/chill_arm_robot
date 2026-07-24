@@ -22,18 +22,22 @@ if sys.platform == "win32":
 #   2. MYCOBOT_PLATFORM=linux    → ใช้ MyCobot (ttyUSB0)
 #   3. ไม่กำหนด                 → auto-detect จาก sys.platform
 # ---------------------------------------------------------------------------
+import contextlib
+
 _platform_override = os.getenv("MYCOBOT_PLATFORM", "").lower()
 _is_windows = _platform_override == "windows" or (
     _platform_override == "" and sys.platform == "win32"
 )
 
 if _is_windows:
-    from pymycobot.mycobot280 import MyCobot280 as _MyCobotClass
+    with contextlib.redirect_stdout(open(os.devnull, 'w')):
+        from pymycobot.mycobot280 import MyCobot280 as _MyCobotClass
 
     _default_port = os.getenv("MYCOBOT_PORT", "COM9")
     print("[init] Platform: Windows -> using MyCobot280")
 else:
-    from pymycobot.mycobot import MyCobot as _MyCobotClass
+    with contextlib.redirect_stdout(open(os.devnull, 'w')):
+        from pymycobot.mycobot import MyCobot as _MyCobotClass
 
     _default_port = "/dev/ttyUSB0"
     print("[init] Platform: Linux/Jetson -> using MyCobot")
@@ -50,7 +54,8 @@ class LockedMyCobot:
     """Wraps MyCobot/MyCobot280 with a global lock to prevent concurrent Serial access."""
 
     def __init__(self, port, baud):
-        self._mc = _MyCobotClass(port, baud)
+        with contextlib.redirect_stdout(open(os.devnull, 'w')):
+            self._mc = _MyCobotClass(port, baud)
 
     def _call(self, method, *args, **kwargs):
         with _mc_lock:
@@ -152,7 +157,9 @@ class LockedMyCobot:
         return self._call("set_gripper_value", value, speed)
 
     def set_fresh_mode(self, mode):
-        return self._call("set_fresh_mode", mode)
+        if hasattr(self._mc, "set_fresh_mode"):
+            return self._call("set_fresh_mode", mode)
+        return None
 
     def power_on(self):
         return self._call("power_on")
@@ -262,18 +269,20 @@ class CameraManager:
         # Initialize VideoCapture in the MAIN thread to avoid OpenCV Qt plugin crashes on Jetson
         try:
             if _is_windows:
-                cap = cv2.VideoCapture(1, cv2.CAP_DSHOW)
+                cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
                 if not cap.isOpened():
-                    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+                    cap = cv2.VideoCapture(1, cv2.CAP_DSHOW)
                 if not cap.isOpened():
                     cap = cv2.VideoCapture(0)
             else:
-                # Try V4L2 first (bypasses GStreamer)
-                cap = cv2.VideoCapture(1, cv2.CAP_V4L2)
+                # Try V4L2 first (bypasses GStreamer), prefer index 0 on Jetson
+                os.environ["OPENCV_LOG_LEVEL"] = "FATAL" # Suppress OpenCV warnings temporarily
+                cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
                 if not cap.isOpened():
-                    cap = cv2.VideoCapture(1)
+                    cap = cv2.VideoCapture(1, cv2.CAP_V4L2)
                 if not cap.isOpened():
                     cap = cv2.VideoCapture(0)
+                os.environ["OPENCV_LOG_LEVEL"] = "WARNING" # Restore
 
             if not cap.isOpened():
                 print("⚠️ Camera not available. Running without camera feed.")
