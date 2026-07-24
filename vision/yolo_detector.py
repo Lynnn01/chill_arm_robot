@@ -124,15 +124,7 @@ def scan_with_yolo(object_name: str):
 
             # 1. Try standard frame
             results = model(frame, verbose=False, conf=conf_thresh)
-            boxes_found = len(results[0].boxes) if results and len(results) > 0 else 0
 
-            # 2. If no boxes found, test horizontally un-mirrored frame (cv2.flip) to un-reverse text & numbers
-            if boxes_found == 0:
-                unmirrored_frame = cv2.flip(frame, 1)
-                results_unmirrored = model(unmirrored_frame, verbose=False, conf=conf_thresh)
-                if results_unmirrored and len(results_unmirrored) > 0 and len(results_unmirrored[0].boxes) > 0:
-                    results = results_unmirrored
-                    frame = unmirrored_frame
 
             annotated_frame = results[0].plot()
             cam_manager.set_overlay(annotated_frame, duration=1.0)

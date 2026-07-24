@@ -23,10 +23,13 @@ from openai import AsyncOpenAI
 
 def exit_function():
     """Cleanup function executed upon program exit"""
-    print(
-        "\nProgram is exiting, performing cleanup operations (e.g., returning robot arm to home position)..."
-    )
-    print("Cleanup complete. Program exited.")
+    try:
+        from hardware import init
+        print("\n🤖 <SYSTEM>: กำลังคลายล็อกเซอร์โวมอเตอร์เพื่อความปลอดภัยก่อนปิดโปรแกรม...")
+        init.mc.release_all_servos()
+    except Exception as e:
+        print(f"Cleanup error: {e}")
+    print("✅ <SYSTEM>: ออกจากโปรแกรมเรียบร้อย")
 
 
 def parse_arguments():
@@ -86,6 +89,28 @@ def get_contextual_input(raw_input):
             holding_status = "EMPTY (not holding anything)"
 
         memory_str = f"{init.known_objects}" if init.known_objects else "{}"
+        
+        # Memory Translator: Detect stacking/blocking relationships
+        import armconfig
+        blocked_relations = []
+        if init.known_objects:
+            for obj_a, coord_a in init.known_objects.items():
+                if not isinstance(coord_a, list) or len(coord_a) < 3: continue
+                if "area" in obj_a.lower() or "zone" in obj_a.lower(): continue
+                for obj_b, coord_b in init.known_objects.items():
+                    if obj_a == obj_b: continue
+                    if not isinstance(coord_b, list) or len(coord_b) < 3: continue
+                    if "area" in obj_b.lower() or "zone" in obj_b.lower(): continue
+                    
+                    dx = abs(coord_a[0] - coord_b[0])
+                    dy = abs(coord_a[1] - coord_b[1])
+                    if dx < getattr(armconfig, "STACK_PROXIMITY_THRESHOLD", 35.0) and dy < getattr(armconfig, "STACK_PROXIMITY_THRESHOLD", 35.0):
+                        if coord_b[2] > coord_a[2] + 10:
+                            blocked_relations.append(f"'{obj_a}' is blocked by '{obj_b}' (requires unstack_and_grab)")
+                            
+        rel_str = ". ".join(blocked_relations)
+        if rel_str:
+            memory_str += f" | Logical insights: {rel_str}"
 
         if coords and len(coords) >= 3:
             return f"[System: Current arm coordinates are X={coords[0]}, Y={coords[1]}, Z={coords[2]}. Gripper state: {holding_status}. Known objects in memory: {memory_str}]\nUser: {raw_input}"
@@ -103,16 +128,7 @@ async def process_user_input(user_input: str, agent, speaker_on: bool = True):
     # ── Phase 1: Plan ──────────────────────────────
     plan = await plan_tasks(contextual_input)
 
-    # If plan returned fallback but user requested any arm action or gesture, retry
-    arm_action_keywords = [
-        "กล่อง", "วาง", "หยิบ", "ซ้อน", "สี", "เอา", "ย้าย", "เต้น",
-        "โชว์", "จับ", "โบกมือ", "โค้ง", "หมุน", "เป่ายิงฉุบ", "จัดโต๊ะ",
-        "ทำความสะอาด", "เกม", "ขยับ", "คำนับ", "ทักทาย", "สงสัย"
-    ]
-    if plan.get("mode") != "plan" and any(kw in contextual_input for kw in arm_action_keywords):
-        print("🤖 <SYSTEM>: ตรวจพบคำสั่งทำงานแขนกล — กำลังบังคับสร้างแผนงานรวดเดียว...")
-        retry_input = f"คำสั่งผู้ใช้: {contextual_input} (โปรดสร้างรายการแผนงานสำหรับคำสั่งนี้ให้สำเร็จในแผนเดียว)"
-        plan = await plan_tasks(retry_input)
+
 
     if plan.get("mode") == "plan":
         # ── Phase 2: Execute (zero roundtrips) ─────

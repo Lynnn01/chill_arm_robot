@@ -139,40 +139,15 @@ def raw_grab_object(object_name: str, target_coord: list = None) -> list:
 # ── move_to ──────────────────────────────────────────────────────────────────
 
 def get_english_name(name: str) -> str:
+    """LLM should provide English names, but just in case, normalize it."""
     if not name: return ""
-    name = name.lower()
-    if any(k in name for k in ["พื้นที่ 1", "โซน 1", "จุด 1", "เขต 1", "พื้นที่1", "โซน1", "จุด1", "เขต1"]): return "one_area"
-    if any(k in name for k in ["พื้นที่ 2", "โซน 2", "จุด 2", "เขต 2", "พื้นที่2", "โซน2", "จุด2", "เขต2"]): return "two_area"
-    if any(k in name for k in ["พื้นที่ 3", "โซน 3", "จุด 3", "เขต 3", "พื้นที่3", "โซน3", "จุด3", "เขต3"]): return "three_area"
-    if any(k in name for k in ["พื้นที่ 4", "โซน 4", "จุด 4", "เขต 4", "พื้นที่4", "โซน4", "จุด4", "เขต4"]): return "four_area"
-    if "รีไซเคิล" in name: return "recycle_area"
-    if "อันตราย" in name: return "danger_area"
-    if "เปียก" in name: return "wet_area"
-    if "ว่าง" in name: return "blank_area"
-    if "ทั่วไป" in name: return "general_araa"
-    if any(k in name for k in ["พื้นที่", "โซน", "จุด", "เขต", "area", "zone"]):
-        if "แดง" in name or "red" in name: return "red_area"
-        if "เขียว" in name or "green" in name: return "green_area"
-        if "ฟ้า" in name or "น้ำเงิน" in name or "blue" in name: return "blue_area"
-        if "เหลือง" in name or "yellow" in name: return "yellow_area"
-    if "แดง" in name or "red" in name: return "red_cube"
-    if "เขียว" in name or "green" in name: return "green_cube"
-    if "ฟ้า" in name or "น้ำเงิน" in name or "blue" in name: return "blue_cube"
-    if "เหลือง" in name or "yellow" in name: return "yellow_cube"
-    return name
+    return name.lower().strip().replace(" ", "_")
 
 def raw_move_to(target_coord: list = None, target_name: str = None, target_height: int = 110) -> str:
     """Move and place current object at target_coord or on top of target_name."""
     if not init.current_held_object:
         print(f"⚠️ <SYSTEM>: กริปเปอร์ไม่ได้ถือวัตถุอยู่! ยกเลิก move_to เพื่อป้องกันแขนกลขยับเปล่า (ต้องสั่ง grab_object ก่อน)")
         return {"status": "ERROR", "message": "No object held in gripper. Call grab_object first."}
-
-    # Helper: Check if target_name is an area query
-    def is_area_name(name_str: str) -> bool:
-        if not name_str:
-            return False
-        keywords = ["พื้นที่", "area", "zone", "โซน", "เขต", "จุด", "recycle", "danger", "wet", "blank", "รีไซเคิล", "อันตราย", "เปียก", "ว่าง", "ทั่วไป", "ขยะ"]
-        return any(kw in name_str.lower() for kw in keywords)
 
     # Check if target_coord is invalid, default [0,0], or matches the grabbed object's former location
     is_held_coord = False
@@ -188,7 +163,7 @@ def raw_move_to(target_coord: list = None, target_name: str = None, target_heigh
         target_coord in ([0, 0], [0, 0, 0], [0.0, 0.0], [0.0, 0.0, 0.0]) or
         (isinstance(target_coord, list) and len(target_coord) >= 2 and target_coord[0] == 0 and target_coord[1] == 0) or
         is_held_coord or
-        (target_name and is_area_name(target_name))
+        (target_name and "area" in target_name.lower())
     )
 
     if is_invalid_coord and target_name:
