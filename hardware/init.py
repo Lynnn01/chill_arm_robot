@@ -268,20 +268,23 @@ class CameraManager:
 
         # Initialize VideoCapture in the MAIN thread to avoid OpenCV Qt plugin crashes on Jetson
         try:
+            cam_idx_env = os.getenv("CAMERA_INDEX")
+            preferred_idx = int(cam_idx_env) if cam_idx_env is not None and cam_idx_env.isdigit() else 0
+            
             if _is_windows:
-                cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-                if not cap.isOpened():
+                cap = cv2.VideoCapture(preferred_idx, cv2.CAP_DSHOW)
+                if not cap.isOpened() and preferred_idx == 0:
                     cap = cv2.VideoCapture(1, cv2.CAP_DSHOW)
                 if not cap.isOpened():
-                    cap = cv2.VideoCapture(0)
+                    cap = cv2.VideoCapture(preferred_idx)
             else:
                 # Try V4L2 first (bypasses GStreamer), prefer index 0 on Jetson
                 os.environ["OPENCV_LOG_LEVEL"] = "FATAL" # Suppress OpenCV warnings temporarily
-                cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
-                if not cap.isOpened():
+                cap = cv2.VideoCapture(preferred_idx, cv2.CAP_V4L2)
+                if not cap.isOpened() and preferred_idx == 0:
                     cap = cv2.VideoCapture(1, cv2.CAP_V4L2)
                 if not cap.isOpened():
-                    cap = cv2.VideoCapture(0)
+                    cap = cv2.VideoCapture(preferred_idx)
                 os.environ["OPENCV_LOG_LEVEL"] = "WARNING" # Restore
 
             if not cap.isOpened():
