@@ -191,6 +191,9 @@ def start_gui():
     cam_manager.start()
 
     def on_closing():
+        import traceback
+        print("🛑 <SYSTEM>: on_closing() was called! Traceback:")
+        traceback.print_stack()
         try:
             cam_manager.stop()
         except Exception:
