@@ -4,6 +4,9 @@ import sys
 # Suppress all background process warnings including multiprocessing leaked semaphores
 os.environ["PYTHONWARNINGS"] = "ignore"
 
+# Force PyTorch to use CPU on Jetson to prevent CUDA driver mismatch Segfaults
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
 # Ensure the root directory is in the sys.path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
