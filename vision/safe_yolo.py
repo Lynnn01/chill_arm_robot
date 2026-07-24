@@ -1,6 +1,7 @@
-import torch
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  # Disable CUDA completely at OS level before torch loads
 
-# Monkey-patch to prevent CUDA driver Segfault on Jetson
+import torch
 torch.cuda.is_available = lambda: False
 torch.cuda.device_count = lambda: 0
 torch.cuda.get_device_name = lambda *args: "CPU"

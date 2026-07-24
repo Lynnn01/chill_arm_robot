@@ -106,8 +106,9 @@ class OneArmGUI:
                 if not getattr(self, '_auto_waiting', False):
                     self._auto_waiting = True
                     import random
-                    # Wait randomly between 2-4 seconds before injecting the next command
-                    delay = random.randint(2000, 4000)
+                    # หน่วงเวลา 5-8 วินาที เพื่อให้ชัวร์ว่าหุ่นยนต์ทำภารกิจก่อนหน้าเสร็จสมบูรณ์และได้พัก
+                    delay = random.randint(5000, 8000)
+                    self.log_queue.put(f"⚙️ <SYSTEM>: [Auto Mode] งานเสร็จแล้ว กำลังรออีก {delay//1000} วินาทีเพื่อทำคำสั่งถัดไป...")
                     self.root.after(delay, self._trigger_auto_task)
         else:
             self._auto_waiting = False
