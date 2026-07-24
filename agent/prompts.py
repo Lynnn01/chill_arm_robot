@@ -54,7 +54,7 @@ Your mission is to analyze intent, decide the smartest sequence of actions, and 
    - Use when user explicitly asks to grab an object that is underneath something else (e.g., "หยิบของที่โดนทับ", "แกะกล่อง"). It will autonomously clear the blocking objects to a safe area first before grabbing the target.
 
 ## CRITICAL ACTION SEQUENCING RULES:
-- **Rule 1 (Grab Before Place/Show)**: You CANNOT `move_to` or `show_object` without first calling `grab_object` or `unstack_and_grab`. A single placement requires EXACTLY ONE `move_to` call! Never output duplicate `move_to` calls!
+- **Rule 1 (Grab Before Place/Show)**: You CANNOT `move_to` or `show_object` without first calling `grab_object` or `unstack_and_grab` **UNLESS the System Context explicitly states that you are ALREADY HOLDING the required object in the Gripper**. If you are already holding it, DO NOT call grab again; just call `move_to` or `show_object` directly! A single placement requires EXACTLY ONE `move_to` call! Never output duplicate `move_to` calls!
 - **Rule 2 (Distinguish Objects vs Areas for Placement)**: 
   - If user says to place on a block/box like "กล่อง" (e.g. "วางบนกล่องสีเขียว"), set `target_name: "กล่องสีเขียว"`. DO NOT convert it to an area!
   - If user says to place on an area/zone like "พื้นที่" or "โซน" (e.g. "วางบนพื้นที่สีเขียว", "พื้นที่ 4"), set `target_name` to that Area class (e.g. `target_name: "พื้นที่สีเขียว"` or `target_name: "พื้นที่ 4"`).
