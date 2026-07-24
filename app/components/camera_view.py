@@ -16,7 +16,7 @@ class CameraView(tk.Canvas):
     Rounded camera card. Draws a rounded rect background then composites the
     camera frame on top as a canvas image — so the rounded corners are visible.
     """
-    W, H = 250,250
+    W, H = 375, 375
     RADIUS = Theme.RADIUS_LG
 
     def __init__(self, parent, **kwargs):
