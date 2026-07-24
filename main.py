@@ -1,5 +1,7 @@
 import os
 import sys
+import faulthandler
+faulthandler.enable()  # Catch Segmentation Faults and print the exact line of code!
 
 # Suppress all background process warnings including multiprocessing leaked semaphores
 os.environ["PYTHONWARNINGS"] = "ignore"
