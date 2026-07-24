@@ -107,7 +107,9 @@ def scan_with_yolo(object_name: str):
         current_ready = armconfig.POSE_READY.copy()
         current_ready[0] = current_ready[0] + j1
         mc.send_angles(current_ready, armconfig.SPEED_GRAB)
-        time.sleep(1.5)
+        
+        wait_time = getattr(armconfig, 'SCAN_WAIT_PER_ANGLE', 1.5)
+        time.sleep(wait_time)
 
         found = False
         for attempt in range(3):
