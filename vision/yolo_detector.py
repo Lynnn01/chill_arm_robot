@@ -171,6 +171,10 @@ def scan_with_yolo(object_name: str):
                         x_world = x_local * math.cos(theta) - y_local * math.sin(theta)
                         y_world = x_local * math.sin(theta) + y_local * math.cos(theta)
 
+                        # Apply global World Offsets for precise grabbing alignment
+                        x_world += getattr(armconfig, 'GRAB_X_OFFSET', 0.0)
+                        y_world += getattr(armconfig, 'GRAB_Y_OFFSET', 0.0)
+
                         robot_coord[0] = max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, x_world))
                         robot_coord[1] = max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, y_world))
 

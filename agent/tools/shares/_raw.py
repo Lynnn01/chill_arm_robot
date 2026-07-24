@@ -65,6 +65,8 @@ def raw_grab_object(object_name: str, target_coord: list = None) -> list:
                     pixel = (cx / 1000 * width, cy / 1000 * height)
                     np_coord = eyeonhand.pixel_to_arm(pixel)
                     robot_coord = [float(np_coord[0]) + x_offset, float(np_coord[1]) + y_offset]
+                    robot_coord[0] += getattr(armconfig, 'GRAB_X_OFFSET', 0.0)
+                    robot_coord[1] += getattr(armconfig, 'GRAB_Y_OFFSET', 0.0)
                     if robot_coord[0] > 210:
                         robot_coord[0] -= 5
                     print(f"🤖 <SYSTEM>: Vision เจอแล้ว! พิกัด {robot_coord}")
