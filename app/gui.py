@@ -11,6 +11,7 @@ from app.theme import Theme
 # Trigger YOLO preload
 try:
     import vision.yolo_detector
+except Exception:
     pass
 
 AUTO_PROMPTS = [
