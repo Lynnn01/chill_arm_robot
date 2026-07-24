@@ -150,8 +150,11 @@ class OneArmGUI:
             self.current_speaker = "sys"
             text = text.replace("<SYSTEM>:", "").strip()
 
+        # Strip emojis (characters > 0xFFFF) to prevent Tkinter Tk_MeasureChars Segmentation Fault on Jetson!
+        safe_text = "".join(c for c in text if ord(c) <= 0xFFFF)
+
         # Insert the text with current speaker's tag
-        self.right_panel.log_text.insert(tk.END, text + "\n", self.current_speaker)
+        self.right_panel.log_text.insert(tk.END, safe_text + "\n", self.current_speaker)
 
         line_count = int(self.right_panel.log_text.index("end-1c").split(".")[0])
         if line_count > 1000:
