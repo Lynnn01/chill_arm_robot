@@ -23,7 +23,7 @@ def get_yolo_model(model_type: str = "cube"):
     if model_type == "area":
         if _area_model is None:
             try:
-                from ultralytics import YOLO
+                from vision.safe_yolo import YOLO
                 model_path = os.path.join(init.PROJECT_ROOT, "vision", "models", "area.pt")
                 if os.path.exists(model_path):
                     _area_model = YOLO(model_path)
@@ -36,7 +36,7 @@ def get_yolo_model(model_type: str = "cube"):
     else:
         if _cube_model is None:
             try:
-                from ultralytics import YOLO
+                from vision.safe_yolo import YOLO
                 model_path = os.path.join(init.PROJECT_ROOT, "vision", "models", "cube.pt")
                 if os.path.exists(model_path):
                     _cube_model = YOLO(model_path)

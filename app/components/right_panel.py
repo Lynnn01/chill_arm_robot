@@ -56,6 +56,16 @@ class RightPanel(tk.Frame):
                                          width=100, height=30)
         self.speaker_btn.pack(side=tk.RIGHT, padx=Theme.SP_SM)
 
+        self.auto_on = False
+        self.auto_btn = RoundedButton(hdr, text="🤖 Auto: OFF",
+                                      radius=Theme.RADIUS_SM,
+                                      bg=Theme.DANGER, fg=Theme.PRIMARY_FG,
+                                      hover_bg=Theme.BORDER,
+                                      font=Theme.FONT_BODY,
+                                      command=self._toggle_auto,
+                                      width=100, height=30)
+        self.auto_btn.pack(side=tk.RIGHT, padx=Theme.SP_SM)
+
         tk.Label(hdr, text="● Live",
                  font=Theme.FONT_SMALL, bg=Theme.BG, fg=Theme.SUCCESS).pack(side=tk.RIGHT, padx=Theme.SP_MD)
 
@@ -423,6 +433,15 @@ class RightPanel(tk.Frame):
         else:
             self.speaker_btn.set_text("🔈 Spk: OFF")
             self.speaker_btn.set_colors(bg=Theme.DANGER, fg=Theme.PRIMARY_FG)
+
+    def _toggle_auto(self):
+        self.auto_on = not self.auto_on
+        if self.auto_on:
+            self.auto_btn.set_text("🤖 Auto: ON")
+            self.auto_btn.set_colors(bg=Theme.SUCCESS, fg=Theme.PRIMARY_FG)
+        else:
+            self.auto_btn.set_text("🤖 Auto: OFF")
+            self.auto_btn.set_colors(bg=Theme.DANGER, fg=Theme.PRIMARY_FG)
 
     def _on_mode_change(self, new_mode):
         self.log_queue.put(f"⚙️ <SYSTEM>: Switched to {new_mode} mode")

@@ -23,7 +23,7 @@ def get_model():
     global _model
     if _model is None:
         try:
-            from ultralytics import YOLO
+            from vision.safe_yolo import YOLO
             model_path = os.path.join(init.PROJECT_ROOT, "vision", "models", "person.pt")
             if os.path.exists(model_path):
                 _model = YOLO(model_path)

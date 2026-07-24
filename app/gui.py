@@ -11,8 +11,19 @@ from app.theme import Theme
 # Trigger YOLO preload
 try:
     import vision.yolo_detector
-except Exception:
     pass
+
+AUTO_PROMPTS = [
+    "สุ่มหยิบกล่องสีอะไรก็ได้มาโชว์ให้ดูหน่อย",
+    "ส่ายหัวไปมา",
+    "โบกมือทักทาย",
+    "หากล่องสีแดงไปวางตรงพื้นที่สีฟ้า",
+    "หากล่องสีเขียวไปวางตรงพื้นที่สีแดง",
+    "หากล่องสีน้ำเงินมาโชว์ให้ดู",
+    "ทำท่าก้มหัวคำนับ",
+    "โชว์กล่องสีเหลืองหน่อย",
+    "ขยับตัวทำท่าสงสัย"
+]
 
 
 class RedirectText:
@@ -84,7 +95,28 @@ class OneArmGUI:
         except queue.Empty:
             pass
         finally:
+            self._handle_auto_mode()
             self.root.after(100, self.process_queue)
+
+    def _handle_auto_mode(self):
+        if hasattr(self, 'right_panel') and getattr(self.right_panel, 'auto_on', False):
+            # Check if idle (input is enabled and not processing anything)
+            if self.right_panel.input_entry.cget('state') == tk.NORMAL:
+                if not getattr(self, '_auto_waiting', False):
+                    self._auto_waiting = True
+                    import random
+                    # Wait randomly between 2-4 seconds before injecting the next command
+                    delay = random.randint(2000, 4000)
+                    self.root.after(delay, self._trigger_auto_task)
+        else:
+            self._auto_waiting = False
+
+    def _trigger_auto_task(self):
+        self._auto_waiting = False
+        if getattr(self.right_panel, 'auto_on', False) and self.right_panel.input_entry.cget('state') == tk.NORMAL:
+            import random
+            prompt = random.choice(AUTO_PROMPTS)
+            self.send_message(f"[AUTO] {prompt}")
 
     def _append_log(self, text):
         self.right_panel.log_text.config(state=tk.NORMAL)
