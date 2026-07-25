@@ -158,3 +158,7 @@ SPEAKER_ON = False
 
 # ความมั่นใจขั้นต่ำสำหรับการตรวจจับใบหน้าโดยเฉพาะ (ค่าเริ่มต้น 0.80)
 FACE_CONFIDENCE_THRESHOLD = 0.80
+
+# พิกัดพื้นที่ปลอดภัยสำหรับวางวัตถุชั่วคราวระหว่าง unstack (mm)
+UNSTACK_SAFE_X = float(os.getenv("UNSTACK_SAFE_X", "160.0"))
+UNSTACK_SAFE_Y = float(os.getenv("UNSTACK_SAFE_Y", "-150.0"))

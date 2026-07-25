@@ -12,8 +12,11 @@ from hardware.init import mc
 from hardware import init
 import armconfig
 
+# สีของวัตถุที่รู้จัก — ใช้ตรวจ alias cleanup
+_OBJECT_COLORS = frozenset({"red", "green", "blue", "yellow", "orange", "purple", "pink", "white", "black"})
 
-# ── grab_object ──────────────────────────────────────────────────────────────
+
+# ── grab_object ──────────────────────────────────────────────────────────────────
 
 def raw_grab_object(object_name: str, target_coord: list = None, _auto_unstack: bool = True) -> list:
     """Grab an object. Returns [x, y] robot coord."""
@@ -140,18 +143,27 @@ def raw_grab_object(object_name: str, target_coord: list = None, _auto_unstack: 
     init.current_held_coord = [robot_coord[0], robot_coord[1]]
     init.known_objects[eng_name] = "in gripper"
 
-    # Clean up any alias keys in init.known_objects matching this grabbed location
+    # ลบ alias เฉพาะ key ที่เป็นชื่อเดียวกันหรือ alias ของวัตถุที่เพิ่งหยิบ
+    # บังคับอย่าลบวัตถุสีอื่นที่อยู่ในกองเดียวกัน
+    _grabbed_color = next((c for c in _OBJECT_COLORS if c in eng_name.lower()), None)
+
     for k, v in list(init.known_objects.items()):
-        if isinstance(v, list) and len(v) >= 2:
-            dx = abs(v[0] - robot_coord[0])
-            dy = abs(v[1] - robot_coord[1])
-            if dx < 35.0 and dy < 35.0:
-                # ป้องกันการลบความจำของของชิ้นอื่นที่ซ้อนกันอยู่ (ความสูงต่างกัน)
-                if len(v) >= 3:
-                    dz = abs(v[2] - z)
-                    if dz > 20.0:  # ถ้าระดับความสูงต่างกันเกิน 20mm ถือว่าเป็นคนละชั้น
-                        continue
-                init.known_objects[k] = "in gripper"
+        if k == eng_name or not isinstance(v, list) or len(v) < 2:
+            continue
+        # ถ้า k มีชื่อสีชัดเจนและสีต่างจากที่หยิบ → ข้าม (ไม่ใช่ alias)
+        _k_color = next((c for c in _OBJECT_COLORS if c in k.lower()), None)
+        if _grabbed_color and _k_color and _k_color != _grabbed_color:
+            continue
+        dx = abs(v[0] - robot_coord[0])
+        dy = abs(v[1] - robot_coord[1])
+        if dx < 35.0 and dy < 35.0:
+            # ตรวจว่าอยู่ชั้นเดียวกันที่ Z
+            if len(v) >= 3:
+                dz = abs(v[2] - z)
+                if dz > 20.0:  # ต่างชั้นกันเกิน 20mm → ข้าม (คนละชิ้น)
+                    continue
+            init.known_objects[k] = "in gripper"
+
 
     mc.send_coords([robot_coord[0], robot_coord[1], armconfig.Z_SAFE_TRAVEL] + armconfig.WRIST_DOWN, armconfig.SPEED_LIFT)
     mc.wait_for_arrival([robot_coord[0], robot_coord[1], armconfig.Z_SAFE_TRAVEL], mode="coords")
@@ -254,7 +266,8 @@ def raw_move_to(target_coord: list = None, target_name: str = None, target_heigh
             if found_coord:
                 target_coord = found_coord
                 eng_target = get_english_name(target_name)
-                init.known_objects[eng_target] = [target_coord[0], target_coord[1]]
+                # พื้นที่ (area) ไม่มี Z — ใช้ -1.0 เป็น sentinel (ค่าติดลบที่เป็นไปไม่ได้ในงานจริง) เพื่อให้ dz check ทำงานได้ถูกต้อง
+                init.known_objects[eng_target] = [target_coord[0], target_coord[1], -1.0]
                 print(f"🤖 <SYSTEM>: สแกนพบพื้นที่ '{eng_name}' ที่พิกัด {target_coord} และจดจำพิกัดเรียบร้อยแล้ว!")
             else:
                 # SAFETY STOP & HOLD OBJECT IN GRIPPER!
@@ -550,8 +563,8 @@ def raw_unstack_and_grab(object_name: str, safe_area: str = "blank_area") -> dic
                 return res_grab
             
             # ใช้พิกัดจริงแทน target_name ลอยๆ เพื่อให้หุ่นเอาไปวางได้สำเร็จ
-            safe_coord = [160.0, -150.0]
-            res_move = raw_move_to(target_coord=safe_coord, target_height=110)
+            safe_coord = [armconfig.UNSTACK_SAFE_X, armconfig.UNSTACK_SAFE_Y]
+            res_move = raw_move_to(target_coord=safe_coord)  # target_height=None → auto-adjust
             if isinstance(res_move, dict) and res_move.get("status") == "ERROR":
                 print(f"⚠️ <SYSTEM>: ล้มเหลวขณะพยายามวาง '{b_name}' ลงพื้นที่ปลอดภัย")
                 return res_move
