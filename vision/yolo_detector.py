@@ -139,8 +139,11 @@ def scan_with_yolo(object_name: str):
                     name_words = set(name_lower.split())
                     name_colors = name_words.intersection(colors)
 
-                    if obj_colors and name_colors and not obj_colors.intersection(name_colors):
-                        continue
+                    # STRONGER COLOR ENFORCEMENT
+                    if obj_colors:
+                        # If query has a color, the detected object MUST have that exact color
+                        if not name_colors or not obj_colors.intersection(name_colors):
+                            continue
 
                     # Check match between query and detected class name
                     if obj_words.intersection(name_words) or any(w in name_lower for w in obj_words if len(w) > 2):
