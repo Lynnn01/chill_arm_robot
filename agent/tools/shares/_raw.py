@@ -15,7 +15,7 @@ import armconfig
 
 # ── grab_object ──────────────────────────────────────────────────────────────
 
-def raw_grab_object(object_name: str, target_coord: list = None) -> list:
+def raw_grab_object(object_name: str, target_coord: list = None, _auto_unstack: bool = True) -> list:
     """Grab an object. Returns [x, y] robot coord."""
     from vision import eyeonhand, yolo_detector, api
     from PIL import Image
@@ -33,6 +33,7 @@ def raw_grab_object(object_name: str, target_coord: list = None) -> list:
     y_offset = cfg.get("y", 0)
     z_offset = cfg.get("z", 0)
     z = armconfig.GRAB_BASE_HEIGHT + z_offset
+    eng_name = get_english_name(object_name)
 
     if target_coord and len(target_coord) >= 2:
         print(f"🤖 <SYSTEM>: กำลังขยับแขนกลไปหยิบของที่พิกัด {target_coord}...")
@@ -51,7 +52,22 @@ def raw_grab_object(object_name: str, target_coord: list = None) -> list:
             yolo_coord = yolo_detector.scan_with_yolo(eng_name)
             if yolo_coord:
                 robot_coord = yolo_coord
-                print(f"🤖 <SYSTEM>: YOLO เจอแล้ว! กำลังเคลื่อนที่ไปพิกัด {robot_coord}")
+                
+                # SAFETY: Auto-adjust Z if camera spots it sitting on top of a known object
+                max_z_at_xy = armconfig.GRAB_BASE_HEIGHT
+                for k, v in init.known_objects.items():
+                    if isinstance(v, list) and len(v) >= 3 and k != eng_name and "area" not in k.lower():
+                        dx, dy = abs(v[0] - robot_coord[0]), abs(v[1] - robot_coord[1])
+                        if dx < armconfig.STACK_PROXIMITY_THRESHOLD and dy < armconfig.STACK_PROXIMITY_THRESHOLD:
+                            if v[2] > max_z_at_xy:
+                                max_z_at_xy = v[2]
+                                
+                if max_z_at_xy > armconfig.GRAB_BASE_HEIGHT:
+                    z = max_z_at_xy + getattr(armconfig, 'STACK_HEIGHT_PER_LAYER', 28)
+                    print(f"🤖 <SYSTEM>: กล้องเจอวัตถุที่ซ้อนกันอยู่! ยกตัวหยิบขึ้นเป็น Z={z}")
+                else:
+                    print(f"🤖 <SYSTEM>: YOLO เจอแล้ว! กำลังเคลื่อนที่ไปพิกัด {robot_coord}")
+                    
             else:
                 print(f"🤖 <SYSTEM>: กำลังใช้กล้อง Vision AI ค้นหา '{eng_name}'...")
                 init.GetImage()
@@ -73,6 +89,17 @@ def raw_grab_object(object_name: str, target_coord: list = None) -> list:
                 else:
                     print(f"🤖 <SYSTEM>: ไม่พบ {object_name} ในภาพ")
                     return {"status": "ERROR", "message": f"ไม่พบ {object_name} ในภาพ"}
+
+    # SAFETY: Auto-detect buried objects and unstack them!
+    if _auto_unstack and not target_coord:
+        tx, ty = robot_coord[0], robot_coord[1]
+        for k, v in init.known_objects.items():
+            if isinstance(v, list) and len(v) >= 3 and k != eng_name and "area" not in k.lower():
+                dx, dy = abs(v[0] - tx), abs(v[1] - ty)
+                if dx < armconfig.STACK_PROXIMITY_THRESHOLD and dy < armconfig.STACK_PROXIMITY_THRESHOLD:
+                    if v[2] > z + 10:
+                        print(f"⚠️ <SYSTEM>: ตรวจพบวัตถุทับอยู่บน '{eng_name}'! เปลี่ยนไปใช้กระบวนการแกะกล่อง (unstack) อัตโนมัติ...")
+                        return raw_unstack_and_grab(object_name)
 
     # Check radius limits to prevent joint IK singularity near base
     radius = math.hypot(robot_coord[0], robot_coord[1])
