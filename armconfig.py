@@ -1,6 +1,8 @@
 # armconfig.py — ค่าคงที่ส่วนกลางของระบบแขนกล
 # แก้ไขที่นี่จุดเดียว มีผลกับทุกระบบ
 
+import os
+
 # =============================================================================
 # POSE LIBRARY (ท่าทางมาตรฐาน) — [J1, J2, J3, J4, J5, J6] หน่วย: องศา
 # =============================================================================
@@ -127,25 +129,26 @@ SCAN_WAIT_PER_ANGLE = 1
 # STACKING (ค่าสำหรับวางซ้อน)
 # =============================================================================
 
+
 # ความสูงพื้นฐานสำหรับลงไปหยิบของ (mm) — ต่ำลงมาถึงระดับโต๊ะ
-GRAB_BASE_HEIGHT = 110
+GRAB_BASE_HEIGHT = float(os.getenv("GRAB_BASE_HEIGHT", "110"))
 
 # ความสูงพื้นฐานสำหรับวางของชั้นแรก (mm)
-STACK_BASE_HEIGHT = 90
+STACK_BASE_HEIGHT = float(os.getenv("STACK_BASE_HEIGHT", "90"))
 
 # ความสูงเพิ่มต่อชั้น (mm) — ปรับให้สูงขึ้นเพื่อไม่ให้กดทับ
-STACK_HEIGHT_PER_LAYER = 30
+STACK_HEIGHT_PER_LAYER = float(os.getenv("STACK_HEIGHT_PER_LAYER", "30"))
 
 # ระยะเผื่อความสูงตอนวางซ้อน (mm) — ช่วยให้ปล่อยของกลางอากาศเล็กน้อย
-STACK_SAFE_OFFSET = 25
+STACK_SAFE_OFFSET = float(os.getenv("STACK_SAFE_OFFSET", "25"))
 
 # ชดเชยพิกัดตอนหยิบ/วาง (mm)
 # หากแขนกลยื่นไปข้างหน้ามากเกินไป ให้ลบค่า X ออก (เช่น -15.0)
 # หากแกน Y น้อยเกินไป (เบี้ยวไปทางขวา) ให้บวกค่า Y เพิ่ม (เช่น 5.0)
-GRAB_X_OFFSET = -15
-GRAB_Y_OFFSET = -5
-STACK_X_OFFSET = 0
-STACK_Y_OFFSET = 5
+GRAB_X_OFFSET = float(os.getenv("GRAB_X_OFFSET", "-15"))
+GRAB_Y_OFFSET = float(os.getenv("GRAB_Y_OFFSET", "-5"))
+STACK_X_OFFSET = float(os.getenv("STACK_X_OFFSET", "0"))
+STACK_Y_OFFSET = float(os.getenv("STACK_Y_OFFSET", "5"))
 
 # ระยะ XY ที่ถือว่า "พิกัดเดียวกัน" สำหรับตรวจนับ stack (mm)
 STACK_PROXIMITY_THRESHOLD = 15
