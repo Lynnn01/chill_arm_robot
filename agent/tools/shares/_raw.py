@@ -25,8 +25,11 @@ def raw_grab_object(object_name: str, target_coord: list = None, _auto_unstack: 
     import os
 
     if init.current_held_object:
-        print(f"⚠️ <SYSTEM>: กริปเปอร์กำลังถือ '{init.current_held_object}' อยู่แล้ว! ป้องกันการหยิบซ้อนโดยไม่วางก่อน")
-        return {"status": "ERROR", "message": f"Already holding {init.current_held_object}. Place it first with move_to."}
+        print(f"⚠️ <SYSTEM>: กริปเปอร์ถือ '{init.current_held_object}' อยู่ → วางลง safe area อัตโนมัติก่อนแล้วค่อยหยิบใหม่...")
+        res = raw_move_to(target_coord=[armconfig.UNSTACK_SAFE_X, armconfig.UNSTACK_SAFE_Y])
+        if isinstance(res, dict) and res.get("status") == "ERROR":
+            return {"status": "ERROR", "message": f"วาง '{init.current_held_object}' ลง safe area ไม่สำเร็จ! {res.get('message', '')}"}
+
 
     init.BotInit(mc)
 
@@ -139,6 +142,19 @@ def raw_grab_object(object_name: str, target_coord: list = None, _auto_unstack: 
     time.sleep(1)  # รอกริปเปอร์หนีบเสร็จ
 
     eng_name = get_english_name(object_name)
+
+    # ถ้าชื่อที่หยิบเป็น generic (ไม่มีสี) ให้ค้นหาชื่อจริงจาก known_objects ที่ชี้พิกัดเดียวกัน
+    _eng_has_color = any(c in eng_name.lower() for c in _OBJECT_COLORS)
+    if not _eng_has_color:
+        for k, v in init.known_objects.items():
+            if k == eng_name or not isinstance(v, list) or len(v) < 2:
+                continue
+            if any(c in k.lower() for c in _OBJECT_COLORS):
+                if abs(v[0] - robot_coord[0]) < 15.0 and abs(v[1] - robot_coord[1]) < 15.0:
+                    print(f"🤖 <SYSTEM>: แก้ชื่อจาก '{eng_name}' → '{k}' (เจอชื่อจริงได้จากความจำ)")
+                    eng_name = k
+                    break
+
     init.current_held_object = eng_name
     init.current_held_coord = [robot_coord[0], robot_coord[1]]
     init.known_objects[eng_name] = "in gripper"
