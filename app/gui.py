@@ -171,10 +171,17 @@ class OneArmGUI:
     def _run_reset(self):
         try:
             import time
-            from hardware.init import mc
+            from hardware import init
             import armconfig
 
-            mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_RESET)
+            init.mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_RESET)
+            
+            # Clear memory
+            init.known_objects.clear()
+            init.current_held_object = None
+            init.current_held_coord = None
+            print("🧠 <SYSTEM>: เคลียร์ความจำพิกัดของหุ่นยนต์เรียบร้อยแล้ว")
+            
             time.sleep(2)
             print("✅ <SYSTEM>: รีเซ็ตเสร็จสมบูรณ์!")
         except Exception as e:
