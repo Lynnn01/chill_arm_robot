@@ -15,14 +15,14 @@ except Exception:
     pass
 
 AUTO_PROMPTS = [
-    "สุ่มหยิบกล่องสักใบมาโชว์ให้ดูหน่อย",
+    "หยิบกล่องสี{color}มาโชว์ให้ดูหน่อย",
     "แยกสีของบนโต๊ะให้เป็นระเบียบที",
     "อธิบายหน่อยว่าตอนนี้บนโต๊ะมีอะไรบ้าง",
     "ส่ายกล้องสำรวจรอบๆ โต๊ะหน่อย",
     "อธิบายหน่อยว่ามีกล่องอะไรซ้อนทับกันอยู่บ้างบนโต๊ะ",
     "ทำท่าพยักหน้าและโบกมือทักทายแบบอีสานม่วนๆ",
     "หมุนมือซ้ายขวาโชว์ท่าหน่อย",
-    "หากล่องสีแดงไปวางตรงพื้นที่ว่างๆ ที",
+    "หากล่องสี{color}ไปวางตรงพื้นที่ว่างๆ ที",
     "เต้นฉลองโชว์สเต็ปหน่อย!"
 ]
 
@@ -118,6 +118,11 @@ class OneArmGUI:
         if getattr(self.right_panel, 'auto_on', False) and self.right_panel.input_entry.cget('state') == tk.NORMAL:
             import random
             prompt = random.choice(AUTO_PROMPTS)
+            
+            if "{color}" in prompt:
+                colors = ["แดง", "เขียว", "น้ำเงิน", "เหลือง"]
+                prompt = prompt.replace("{color}", random.choice(colors))
+                
             self.send_message(f"[AUTO] {prompt}")
 
     def _append_log(self, text):
