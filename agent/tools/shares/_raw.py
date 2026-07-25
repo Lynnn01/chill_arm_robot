@@ -210,7 +210,7 @@ def get_english_name(name: str) -> str:
         
     return translated.replace(" ", "_")
 
-def raw_move_to(target_coord: list = None, target_name: str = None, target_height: int = 110) -> str:
+def raw_move_to(target_coord: list = None, target_name: str = None, target_height: int = None) -> str:
     """Move and place current object at target_coord or on top of target_name."""
     if not init.current_held_object:
         print(f"⚠️ <SYSTEM>: กริปเปอร์ไม่ได้ถือวัตถุอยู่! ยกเลิก move_to เพื่อป้องกันแขนกลขยับเปล่า (ต้องสั่ง grab_object ก่อน)")
@@ -273,28 +273,28 @@ def raw_move_to(target_coord: list = None, target_name: str = None, target_heigh
         mc.wait_for_arrival(armconfig.POSE_HOME, mode="angles")
         return {"status": "ERROR", "message": "ไม่พบพิกัดเป้าหมายที่จะวาง! ยกเลิกการวางกล่องเพื่อความปลอดภัย (ถือกล่องไว้ในกริปเปอร์)"}
 
-    # Auto-adjust height for stacking if target_height is default 110
-    if target_height == 110:
-        max_z_at_xy = armconfig.GRAB_BASE_HEIGHT
-        found_stack = False
+    # Auto-adjust height for stacking (ถ้าไม่ได้ระบุ target_height มาจากภายนอก)
+    if target_height is None:
+        max_z_at_xy = None
         
         for obj_name, coord in init.known_objects.items():
             if isinstance(coord, list) and len(coord) >= 3:
-                # Exclude flat areas from adding vertical height!
+                # ข้ามพื้นที่แบน ไม่นับเป็นชั้น
                 if "area" in obj_name.lower() or "พื้นที่" in obj_name or "zone" in obj_name.lower():
                     continue
                     
-                # Check if coordinates are close (within proximity threshold)
                 dx = abs(coord[0] - target_coord[0])
                 dy = abs(coord[1] - target_coord[1])
                 if dx < armconfig.STACK_PROXIMITY_THRESHOLD and dy < armconfig.STACK_PROXIMITY_THRESHOLD:
-                    if coord[2] > max_z_at_xy:
+                    if max_z_at_xy is None or coord[2] > max_z_at_xy:
                         max_z_at_xy = coord[2]
-                        found_stack = True
         
-        if found_stack:
+        if max_z_at_xy is not None:
             target_height = max_z_at_xy + armconfig.STACK_HEIGHT_PER_LAYER
-            print(f"🤖 <SYSTEM>: ตรวจพบวัตถุที่พิกัดนี้ (ความสูงสูงสุด Z={max_z_at_xy}) ปรับความสูงการวางเป็น {target_height}")
+            print(f"🤖 <SYSTEM>: ตรวจพบวัตถุที่พิกัดนี้ (Z สูงสุด={max_z_at_xy}) → ปรับความสูงการวางเป็น {target_height}")
+        else:
+            target_height = armconfig.STACK_BASE_HEIGHT + armconfig.STACK_SAFE_OFFSET
+            print(f"🤖 <SYSTEM>: ไม่พบวัตถุในบริเวณนี้ → ใช้ความสูงชั้นแรก {target_height}")
 
 
     tc = [max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, float(target_coord[0]) + armconfig.STACK_X_OFFSET)),
