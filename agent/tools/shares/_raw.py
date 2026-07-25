@@ -290,8 +290,9 @@ def raw_move_to(target_coord: list = None, target_name: str = None, target_heigh
                         max_z_at_xy = coord[2]
         
         if max_z_at_xy is not None:
-            target_height = max_z_at_xy + armconfig.STACK_HEIGHT_PER_LAYER
-            print(f"🤖 <SYSTEM>: ตรวจพบวัตถุที่พิกัดนี้ (Z สูงสุด={max_z_at_xy}) → ปรับความสูงการวางเป็น {target_height}")
+            # contact_point + STACK_HEIGHT_PER_LAYER = จุดสัมผัสชั้นถัดไป, บวก STACK_SAFE_OFFSET แน่นอนทุกชั้น
+            target_height = max_z_at_xy + armconfig.STACK_HEIGHT_PER_LAYER + armconfig.STACK_SAFE_OFFSET
+            print(f"🤖 <SYSTEM>: ตรวจพบวัตถุที่พิกัดนี้ (contact_z={max_z_at_xy}) → วางที่ Z={target_height}")
         else:
             target_height = armconfig.STACK_BASE_HEIGHT + armconfig.STACK_SAFE_OFFSET
             print(f"🤖 <SYSTEM>: ไม่พบวัตถุในบริเวณนี้ → ใช้ความสูงชั้นแรก {target_height}")
@@ -320,8 +321,9 @@ def raw_move_to(target_coord: list = None, target_name: str = None, target_heigh
     mc.wait_for_arrival(armconfig.POSE_HOME, mode="angles")
 
     if init.current_held_object:
-        # Save exact physical placed position for subsequent stacking layers to snap cleanly
-        init.known_objects[init.current_held_object] = [round(tc[0], 2), round(tc[1], 2), th]
+        # เก็บเป็น contact_point (th - STACK_SAFE_OFFSET) เพื่อให้ชั้นถัดไปคำนวณ target_height ได้ถูกต้อง
+        contact_z = th - armconfig.STACK_SAFE_OFFSET
+        init.known_objects[init.current_held_object] = [round(tc[0], 2), round(tc[1], 2), round(contact_z, 2)]
         if target_name:
             eng_target = get_english_name(target_name)
             init.known_objects[eng_target] = [round(tc[0], 2), round(tc[1], 2), th - armconfig.STACK_HEIGHT_PER_LAYER]
