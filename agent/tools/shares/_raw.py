@@ -48,16 +48,16 @@ def raw_grab_object(object_name: str, target_coord: list = None) -> list:
             if len(saved) >= 3:
                 z = float(saved[2]) + z_offset
         else:
-            yolo_coord = yolo_detector.scan_with_yolo(object_name)
+            yolo_coord = yolo_detector.scan_with_yolo(eng_name)
             if yolo_coord:
                 robot_coord = yolo_coord
                 print(f"🤖 <SYSTEM>: YOLO เจอแล้ว! กำลังเคลื่อนที่ไปพิกัด {robot_coord}")
             else:
-                print(f"🤖 <SYSTEM>: กำลังใช้กล้อง Vision AI ค้นหา '{object_name}'...")
+                print(f"🤖 <SYSTEM>: กำลังใช้กล้อง Vision AI ค้นหา '{eng_name}'...")
                 init.GetImage()
                 img_path = os.path.join(init.PROJECT_ROOT, "captured_image.jpg")
                 width, height = Image.open(img_path).size
-                positions = api.QwenVLRequest("a " + object_name, img_path).get("coordinates", [])
+                positions = api.QwenVLRequest("a " + eng_name, img_path).get("coordinates", [])
                 if positions:
                     pos = positions[0]
                     cx = (pos["x1"] + pos["x2"]) / 2
@@ -139,9 +139,48 @@ def raw_grab_object(object_name: str, target_coord: list = None) -> list:
 # ── move_to ──────────────────────────────────────────────────────────────────
 
 def get_english_name(name: str) -> str:
-    """LLM should provide English names, but just in case, normalize it."""
+    """Fallback translator in case LLM outputs Thai instead of English."""
     if not name: return ""
-    return name.lower().strip().replace(" ", "_")
+    name_lower = name.lower().strip()
+    
+    # Translation mapping
+    translate_map = {
+        "แดง": "red",
+        "เขียว": "green",
+        "น้ำเงิน": "blue",
+        "ฟ้า": "blue",
+        "เหลือง": "yellow",
+        "กล่อง": "cube",
+        "บล็อก": "cube",
+        "พื้นที่": "area",
+        "โซน": "area"
+    }
+    
+    # Explicit exact matches for common terms
+    exact_map = {
+        "กล่องสีแดง": "red_cube",
+        "กล่องสีเขียว": "green_cube",
+        "กล่องสีน้ำเงิน": "blue_cube",
+        "กล่องสีฟ้า": "blue_cube",
+        "กล่องสีเหลือง": "yellow_cube",
+        "พื้นที่สีแดง": "red_area",
+        "พื้นที่สีเขียว": "green_area",
+        "พื้นที่สีฟ้า": "blue_area",
+        "พื้นที่สีน้ำเงิน": "blue_area",
+        "พื้นที่สีเหลือง": "yellow_area"
+    }
+    
+    # 1. Check exact map first
+    for th, en in exact_map.items():
+        if th in name_lower:
+            return en
+            
+    # 2. Check piece-by-piece translation if no exact match
+    translated = name_lower
+    for th, en in translate_map.items():
+        translated = translated.replace(th, en)
+        
+    return translated.replace(" ", "_")
 
 def raw_move_to(target_coord: list = None, target_name: str = None, target_height: int = 110) -> str:
     """Move and place current object at target_coord or on top of target_name."""
@@ -182,21 +221,21 @@ def raw_move_to(target_coord: list = None, target_name: str = None, target_heigh
             print(f"🤖 <SYSTEM>: ใช้พิกัดของ '{found_key}' จากความจำ {target_coord}")
         else:
             from vision import yolo_detector
-            print(f"🤖 <SYSTEM>: กำลังใช้กล้องสแกนหาพื้นที่ '{target_name}' ด้วย area.pt/YOLO...")
-            found_coord = yolo_detector.scan_with_yolo(target_name)
+            print(f"🤖 <SYSTEM>: กำลังใช้กล้องสแกนหาพื้นที่ '{eng_name}' ด้วย area.pt/YOLO...")
+            found_coord = yolo_detector.scan_with_yolo(eng_name)
             if found_coord:
                 target_coord = found_coord
                 eng_target = get_english_name(target_name)
                 init.known_objects[eng_target] = [target_coord[0], target_coord[1]]
-                print(f"🤖 <SYSTEM>: สแกนพบพื้นที่ '{target_name}' ที่พิกัด {target_coord} และจดจำพิกัดเรียบร้อยแล้ว!")
+                print(f"🤖 <SYSTEM>: สแกนพบพื้นที่ '{eng_name}' ที่พิกัด {target_coord} และจดจำพิกัดเรียบร้อยแล้ว!")
             else:
                 # SAFETY STOP & HOLD OBJECT IN GRIPPER!
-                print(f"⚠️ <SYSTEM>: สแกนหาพื้นที่ '{target_name}' ไม่พบ! ยกเลิกการวางและกำกล่องไว้เพื่อความปลอดภัย")
+                print(f"⚠️ <SYSTEM>: สแกนหาพื้นที่ '{eng_name}' ไม่พบ! ยกเลิกการวางและกำกล่องไว้เพื่อความปลอดภัย")
                 from agent.tts import play_voice_async
-                play_voice_async(f"ข่อยสแกนหาพื้นที่ {target_name} บ่เจอเด้อ! ยกเลิกการวางเพื่อความปลอดภัย ข่อยขอกำของไว้คือเก่าเด้อ", "area_not_found.mp3")
+                play_voice_async(f"ข่อยสแกนหาพื้นที่ {eng_name} บ่เจอเด้อ! ยกเลิกการวางเพื่อความปลอดภัย ข่อยขอกำของไว้คือเก่าเด้อ", "area_not_found.mp3")
                 mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
                 mc.wait_for_arrival(armconfig.POSE_HOME, mode="angles")
-                return {"status": "ERROR", "message": f"ไม่พบพื้นที่ '{target_name}' จากการสแกนด้วย area.pt! ยกเลิกการวางกล่องเพื่อความปลอดภัย (ถือกล่องไว้ในกริปเปอร์)"}
+                return {"status": "ERROR", "message": f"ไม่พบพื้นที่ '{eng_name}' จากการสแกนด้วย area.pt! ยกเลิกการวางกล่องเพื่อความปลอดภัย (ถือกล่องไว้ในกริปเปอร์)"}
 
     if not target_coord or (isinstance(target_coord, list) and len(target_coord) >= 2 and target_coord[0] == 0 and target_coord[1] == 0):
         print(f"⚠️ <SYSTEM>: ไม่ทราบพิกัดเป้าหมายที่จะวาง! ยกเลิกการวางและกำกล่องไว้เพื่อความปลอดภัย")
