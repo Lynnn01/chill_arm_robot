@@ -234,7 +234,7 @@ last_coords = [0, 0, 200, -175, 0, -45]
 
 # --- Gripper ---
 def open_gripper():
-    global is_holding_object
+    global is_holding_object, current_held_object
     print("🤖 <SYSTEM>: กำลังเปิดกริปเปอร์เพื่อปล่อยวัตถุ...")
     for attempt in range(3):
         try:
@@ -261,6 +261,7 @@ def open_gripper():
         time.sleep(0.2)
 
     is_holding_object = False
+    current_held_object = None
     time.sleep(0.4)
 
 

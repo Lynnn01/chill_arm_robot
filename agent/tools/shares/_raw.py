@@ -354,11 +354,11 @@ def raw_smart_place(prefer_stack: bool = True) -> dict:
     - If prefer_stack=True and other objects exist in memory -> Stack on one of them
     - If no objects to stack on or prefer_stack=False -> Find a verified safe empty spot
     """
-    if not init.current_held_object:
+    if not init.current_held_object and not init.is_holding_object:
         print(f"⚠️ <SYSTEM>: กริปเปอร์ไม่ได้ถือวัตถุอยู่! ยกเลิก smart_place")
         return {"status": "ERROR", "message": "No object held in gripper. Call grab_object first."}
 
-    held = init.current_held_object
+    held = init.current_held_object or "held_object"
     held_coord = getattr(init, "current_held_coord", None)
 
     if prefer_stack:
@@ -391,9 +391,11 @@ def raw_smart_place(prefer_stack: bool = True) -> dict:
 
 def raw_move_to(target_coord: list = None, target_name: str = None, target_height: int = None, smart_place: bool = False) -> dict:
     """Move and place current object at target_coord, on top of target_name, or smart place."""
-    if not init.current_held_object:
+    if not init.current_held_object and not init.is_holding_object:
         print(f"⚠️ <SYSTEM>: กริปเปอร์ไม่ได้ถือวัตถุอยู่! ยกเลิก move_to เพื่อป้องกันแขนกลขยับเปล่า (ต้องสั่ง grab_object ก่อน)")
         return {"status": "ERROR", "message": "No object held in gripper. Call grab_object first."}
+
+    held_obj_name = init.current_held_object or "held_object"
 
     # If explicit smart_place requested or generic target without specific coords
     if smart_place or (target_name and any(term in target_name.lower() for term in ("smart", "auto", "random", "stack", "safe", "any", "table", "พื้นที่ว่าง")) and not target_coord):
@@ -504,13 +506,13 @@ def raw_move_to(target_coord: list = None, target_name: str = None, target_heigh
     mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
     mc.wait_for_arrival(armconfig.POSE_HOME, mode="angles")
 
-    if init.current_held_object:
-        # บันทึกความสูงจริงของวัตถุที่วางลงในความจำ
-        init.known_objects[init.current_held_object] = [round(tc[0], 2), round(tc[1], 2), round(th, 2)]
-        if target_name:
-            eng_target = get_english_name(target_name)
-            init.known_objects[eng_target] = [round(tc[0], 2), round(tc[1], 2), round(th - armconfig.STACK_HEIGHT_PER_LAYER, 2)]
-        init.current_held_object = None
+    # บันทึกความสูงจริงของวัตถุที่วางลงในความจำ
+    init.known_objects[held_obj_name] = [round(tc[0], 2), round(tc[1], 2), round(th, 2)]
+    if target_name:
+        eng_target = get_english_name(target_name)
+        init.known_objects[eng_target] = [round(tc[0], 2), round(tc[1], 2), round(th - armconfig.STACK_HEIGHT_PER_LAYER, 2)]
+    init.current_held_object = None
+    init.is_holding_object = False
 
     print(f"✅ <SYSTEM>: DONE TASK - Placed at {tc} (Z={th})")
     return {"status": "DONE TASK", "message": "Placed successfully."}
@@ -569,6 +571,12 @@ def raw_move(x: float, y: float, z: float, speed: int = 40) -> str:
 # ── rotate_gripper ───────────────────────────────────────────────────────────
 
 def raw_rotate_gripper(angle_range: int = 45, speed: int = 40) -> str:
+    if init.is_holding_object or init.current_held_object:
+        held = init.current_held_object or "held_object"
+        print(f"⚠️ <SYSTEM>: กริปเปอร์ถือ '{held}' อยู่ → วางลงตำแหน่งที่ปลอดภัยอัตโนมัติก่อน...")
+        safe_spot = raw_find_safe_spot()
+        raw_move_to(target_coord=safe_spot)
+
     # Clamp angle_range to safe range (-90 to +90) to prevent Joint 6 limit overflow (-180..180)
     angle_range = max(-90, min(90, int(angle_range)))
     print(f"Rotating gripper by {angle_range} degrees...")
@@ -593,6 +601,12 @@ def raw_rotate_gripper(angle_range: int = 45, speed: int = 40) -> str:
 # ── dance_celebrate ──────────────────────────────────────────────────────────
 
 def raw_dance_celebrate() -> str:
+    if init.is_holding_object or init.current_held_object:
+        held = init.current_held_object or "held_object"
+        print(f"⚠️ <SYSTEM>: กริปเปอร์ถือ '{held}' อยู่ → วางลงตำแหน่งที่ปลอดภัยอัตโนมัติก่อนเต้น...")
+        safe_spot = raw_find_safe_spot()
+        raw_move_to(target_coord=safe_spot)
+
     print("Dancing! 💃")
     speed = armconfig.SPEED_DANCE
     mc.send_angles([-45, 0, -20, 0, 0, -45], speed); time.sleep(1)
@@ -611,6 +625,13 @@ def raw_gesture(action: str) -> str:
     valid_actions = ("yes", "no", "bow", "wave", "confused")
     if action not in valid_actions:
         return f"Error: action must be one of {valid_actions}."
+
+    if init.is_holding_object or init.current_held_object:
+        held = init.current_held_object or "held_object"
+        print(f"⚠️ <SYSTEM>: กริปเปอร์ถือ '{held}' อยู่ → วางลงตำแหน่งที่ปลอดภัยอัตโนมัติก่อนทำท่าทาง...")
+        safe_spot = raw_find_safe_spot()
+        raw_move_to(target_coord=safe_spot)
+
     print(f"Gesture: {action.upper()}")
     speed = armconfig.SPEED_DANCE
     current = mc.get_angles()
@@ -686,6 +707,12 @@ def raw_clean_desk() -> str:
 # ── play_rps ─────────────────────────────────────────────────────────────────
 
 def raw_play_rps_game() -> dict:
+    if init.is_holding_object or init.current_held_object:
+        held = init.current_held_object or "held_object"
+        print(f"⚠️ <SYSTEM>: กริปเปอร์ถือ '{held}' อยู่ → วางลงตำแหน่งที่ปลอดภัยอัตโนมัติก่อนเล่นเกม...")
+        safe_spot = raw_find_safe_spot()
+        raw_move_to(target_coord=safe_spot)
+
     from agent.tools.shares.rps_game import raw_play_rps_game as _play
     return _play()
 

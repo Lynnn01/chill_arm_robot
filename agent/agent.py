@@ -84,7 +84,7 @@ def get_contextual_input(raw_input):
                 if init.current_held_object
                 else "an object"
             )
-            holding_status = f"HOLDING {held_str} (Notice: If user orders grabbing another object, insert move_to(smart_place=true) first to release this item)"
+            holding_status = f"HOLDING {held_str} (Notice: Gripper is currently holding an item. If user asks to place/release it, OR orders ANY action requiring free hands such as grabbing another object, gestures, dancing, rock-paper-scissors, or sorting, you MUST insert move_to(smart_place=true) as the FIRST step to place down what is in hand before performing that action)"
         else:
             holding_status = "EMPTY (not holding anything)"
 
