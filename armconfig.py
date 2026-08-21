@@ -131,13 +131,13 @@ SCAN_WAIT_PER_ANGLE = 1
 
 
 # ความสูงพื้นฐานสำหรับลงไปหยิบของ (mm) — ต่ำลงมาถึงระดับโต๊ะ
-GRAB_BASE_HEIGHT = float(os.getenv("GRAB_BASE_HEIGHT", "110"))
+GRAB_BASE_HEIGHT = float(os.getenv("GRAB_BASE_HEIGHT", "85"))
 
 # ความสูงพื้นฐานสำหรับวางของชั้นแรก (mm)
-STACK_BASE_HEIGHT = float(os.getenv("STACK_BASE_HEIGHT", "110"))
+STACK_BASE_HEIGHT = float(os.getenv("STACK_BASE_HEIGHT", "85"))
 
-# ความสูงเพิ่มต่อชั้น (mm) — ปรับให้สูงขึ้นเพื่อไม่ให้กดทับ
-STACK_HEIGHT_PER_LAYER = float(os.getenv("STACK_HEIGHT_PER_LAYER", "30"))
+# ความสูงเพิ่มต่อชั้น (mm) — ปรับให้พอดีกับความสูงของบล็อกกล่อง (25mm)
+STACK_HEIGHT_PER_LAYER = float(os.getenv("STACK_HEIGHT_PER_LAYER", "25"))
 
 # ระยะเผื่อความสูงตอนวางซ้อน (mm) — 0mm เพื่อให้วางแตะพื้นผิวพอดี ไม่หล่นจากอากาศ
 STACK_SAFE_OFFSET = float(os.getenv("STACK_SAFE_OFFSET", "0"))

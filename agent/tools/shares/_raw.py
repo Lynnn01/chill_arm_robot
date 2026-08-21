@@ -443,8 +443,8 @@ def raw_move_to(target_coord: list = None, target_name: str = None, target_heigh
             target_height = max_z_at_xy + armconfig.STACK_HEIGHT_PER_LAYER + getattr(armconfig, "STACK_SAFE_OFFSET", 0.0)
             print(f"🤖 <SYSTEM>: [Stack Placement] ตรวจพบวัตถุ '{stack_target_name}' (Z={max_z_at_xy}) → วางซ้อนที่ระดับ Z={target_height}")
         else:
-            # วางลงบนพื้นโต๊ะโดยตรง: ใช้ระดับ GRAB_BASE_HEIGHT (110)
-            target_height = armconfig.GRAB_BASE_HEIGHT
+            # วางลงบนพื้นโต๊ะโดยตรง: ใช้ระดับ STACK_BASE_HEIGHT (85)
+            target_height = armconfig.STACK_BASE_HEIGHT
             print(f"🤖 <SYSTEM>: [Ground Placement] วางลงบนพื้นโต๊ะที่ระดับ Z={target_height}")
 
 
