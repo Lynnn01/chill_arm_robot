@@ -137,6 +137,7 @@ COLOR_TO_THAI = {
 _auto_mission_state = {
     "mode": "mission",             # "mission" (Tower Building) or "normal" (Casual Play)
     "normal_steps_left": 0,        # Count of casual commands before returning to mission
+    "auto_command_count": 0,       # Counter for periodic 10-command memory verification
 }
 
 # 1. Empty Memory Pool: Explore and scan desk first to discover real blocks
@@ -293,6 +294,7 @@ def get_auto_prompt(
     """
     free_cubes, towers, all_colors = _analyze_cubes_and_towers(known_objects)
     candidates = []
+    _auto_mission_state["auto_command_count"] = _auto_mission_state.get("auto_command_count", 0) + 1
 
     # Scenario 1: Holding an object (Always prioritize safe placement / stacking)
     if holding_object:
@@ -310,7 +312,12 @@ def get_auto_prompt(
     elif not all_colors:
         candidates = list(AUTO_PROMPTS_EMPTY_SCAN)
 
-    # Scenario 3: In Normal Mode (Cooldown period: 5-10 casual commands between missions)
+    # Scenario 3: Periodic 10-Command Memory Verification (Only when NO boxes are stacked)
+    elif _auto_mission_state.get("auto_command_count", 0) >= 10 and not towers:
+        _auto_mission_state["auto_command_count"] = 0
+        candidates = list(AUTO_PROMPTS_EMPTY_SCAN)
+
+    # Scenario 4: In Normal Mode (Cooldown period: 5-10 casual commands between missions)
     elif _auto_mission_state["mode"] == "normal":
         _auto_mission_state["normal_steps_left"] -= 1
         if _auto_mission_state["normal_steps_left"] <= 0:

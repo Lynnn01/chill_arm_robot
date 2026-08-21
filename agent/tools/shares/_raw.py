@@ -834,13 +834,19 @@ def raw_unstack_and_grab(object_name: str, safe_area: str = "blank_area") -> dic
 
 def raw_scan_object(object_name: str) -> str:
     eng_name = get_english_name(object_name)
+    from vision import yolo_detector
+
+    # หากเป็นการสั่งสแกนภาพรวม / ตรวจสอบความจำทั้งหมดบนโต๊ะ
+    if not eng_name or eng_name in ["cube", "block", "all", "all_objects", "box", ""]:
+        verified = yolo_detector.verify_and_calibrate_memory()
+        return {"status": "DONE TASK", "message": f"Memory verified 100%. Current known objects: {verified}"}
+
     # Memory First: check known_objects with strict color matching
     found_key, coord = _find_in_memory(eng_name)
     if found_key and coord:
         print(f"✅ <SYSTEM>: [Memory-First] พบ '{object_name}' ({found_key}) ในความจำแล้ว ที่ {coord}")
         return {"status": "DONE TASK", "message": f"Found '{object_name}' in memory at {coord}."}
         
-    from vision import yolo_detector
     yolo_coord = yolo_detector.scan_with_yolo(eng_name or object_name)
     if yolo_coord:
         init.known_objects[eng_name] = yolo_coord

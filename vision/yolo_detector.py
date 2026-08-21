@@ -399,6 +399,59 @@ def quick_scan_desk_objects(angles: list = None) -> dict:
     return found_all
 
 
+def verify_and_calibrate_memory() -> dict:
+    """
+    Scans the desk across all angles and verifies known_objects memory against physical reality 100%.
+    - If a cube is moved or displaced (>15mm): Updates its coordinates in known_objects.
+    - If a new cube is found: Adds it to known_objects.
+    - If a previously remembered cube is missing from the table: Removes it from known_objects.
+    Returns:
+        dict of verified known_objects
+    """
+    print("🤖 <SYSTEM>: [Memory Check] เริ่มต้นการตรวจสอบความถูกต้องของความจำเทียบกับตำแหน่งจริง 100%...")
+    
+    # 1. Quick scan across key desk angles to find all physical cubes
+    detected = quick_scan_desk_objects(angles=armconfig.SCAN_ANGLES)
+    
+    # Track physical cubes found in this scan
+    found_cubes = {}
+    for obj_name, coord in detected.items():
+        if "cube" in obj_name.lower():
+            # Standardize key name (e.g. "red_cube_1" -> "red_cube")
+            std_color = obj_name.split("_")[0].lower()
+            std_name = f"{std_color}_cube"
+            found_cubes[std_name] = coord
+
+    # 2. Check each previously known cube
+    old_cube_keys = [k for k in list(init.known_objects.keys()) if "cube" in k.lower()]
+    
+    # Update or add verified cubes
+    for cube_name, coord in found_cubes.items():
+        old_val = init.known_objects.get(cube_name)
+        if old_val and isinstance(old_val, list) and len(old_val) >= 2 and old_val != "in gripper":
+            dist = math.hypot(coord[0] - old_val[0], coord[1] - old_val[1])
+            if dist > 15.0:
+                print(f"🔄 <SYSTEM>: [Memory Check] '{cube_name}' ขยับตำแหน่ง {dist:.1f}mm! ปรับพิกัดจาก {old_val[:2]} -> {coord}")
+                init.known_objects[cube_name] = [coord[0], coord[1], armconfig.GRAB_BASE_HEIGHT]
+            else:
+                print(f"✅ <SYSTEM>: [Memory Check] พิกัด '{cube_name}' ถูกต้อง 100% ตรงกับความเป็นจริง ({coord})")
+        else:
+            print(f"✨ <SYSTEM>: [Memory Check] พบ '{cube_name}' ใหม่บนโต๊ะ! บันทึกพิกัด {coord}")
+            init.known_objects[cube_name] = [coord[0], coord[1], armconfig.GRAB_BASE_HEIGHT]
+
+    # Remove stale cubes that were not seen anywhere in the scan (except currently held object)
+    held_obj = init.current_held_object if (init.is_holding_object or init.current_held_object) else None
+    for old_k in old_cube_keys:
+        if held_obj and (old_k == held_obj or held_obj in old_k or old_k in held_obj):
+            continue
+        if old_k not in found_cubes:
+            print(f"🗑️ <SYSTEM>: [Memory Check] ไม่พบ '{old_k}' บนโต๊ะแล้ว → ลบออกจากความจำเพื่อความถูกต้อง 100%")
+            init.known_objects.pop(old_k, None)
+
+    print(f"✅ <SYSTEM>: [Memory Check] ตรวจสอบความจำสมบูรณ์ 100%: {init.known_objects}")
+    return init.known_objects
+
+
 def scan_all_objects():
     """
     Scans environment across multiple angles and returns a dictionary of all detected objects and placement areas.
