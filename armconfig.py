@@ -131,16 +131,16 @@ SCAN_WAIT_PER_ANGLE = 1
 
 
 # ความสูงพื้นฐานสำหรับลงไปหยิบของ (mm) — ต่ำลงมาถึงระดับโต๊ะ
-GRAB_BASE_HEIGHT = float(os.getenv("GRAB_BASE_HEIGHT", "85"))
+GRAB_BASE_HEIGHT = 85.0
 
 # ความสูงพื้นฐานสำหรับวางของชั้นแรก (mm)
-STACK_BASE_HEIGHT = float(os.getenv("STACK_BASE_HEIGHT", "85"))
+STACK_BASE_HEIGHT = 85.0
 
-# ความสูงเพิ่มต่อชั้น (mm) — ปรับให้สูงขึ้นเป็น 30mm เพื่อไม่ให้กดทับกล่องล่างแรงเกินไป
-STACK_HEIGHT_PER_LAYER = float(os.getenv("STACK_HEIGHT_PER_LAYER", "30"))
+# ความสูงเพิ่มต่อชั้น (mm) — 30mm ป้องกันการกดทับกล่องชั้นล่าง
+STACK_HEIGHT_PER_LAYER = 30.0
 
 # ระยะเผื่อความสูงตอนวางซ้อน (mm) — 0mm เพื่อให้วางแตะพื้นผิวพอดี ไม่หล่นจากอากาศ
-STACK_SAFE_OFFSET = float(os.getenv("STACK_SAFE_OFFSET", "0"))
+STACK_SAFE_OFFSET = 0.0
 
 # ชดเชยพิกัดตอนหยิบ/วาง (mm)
 # หากแขนกลยื่นไปข้างหน้ามากเกินไป ให้ลบค่า X ออก (เช่น -15.0)
