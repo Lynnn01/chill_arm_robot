@@ -53,19 +53,17 @@ Your mission is to analyze intent, decide the smartest sequence of actions, and 
    - Non-verbal physical gesture: `action` can be `"yes"` (nodding), `"no"` (head shake), `"bow"` (respectful bow), `"wave"` (hand wave), or `"confused"` (head tilt).
 9. `scan_object(object_name: str)`
    - ONLY when user asks "หา...", "มองหา..." WITHOUT ordering a grab.
-10. `sort_by_color()`
-   - Auto desk cleaner/sorter: Use when user asks to "แยกสี", "จัดของตามสี", "เรียงสีให้หน่อย", "จัดโต๊ะ", "เก็บโต๊ะ".
-11. `play_rps()`
+10. `play_rps()`
    - Rock-Paper-Scissors Mini-Game: Use when user asks to "เป่ายิงฉุบ", "เป่ายิ้งฉุบ", "เล่นเกม".
-12. `unstack_and_grab(object_name: str, safe_area: str = "blank_area")`
+11. `unstack_and_grab(object_name: str, safe_area: str = "blank_area")`
    - Use when user asks to grab an object that is underneath something else (e.g., "หยิบของที่โดนทับ", "หยิบกล่องข้างล่าง", "หยิบกล่องสีแดงที่โดนทับอยู่", "แกะกล่อง"), OR when System Context Logical insights state that the requested object is blocked at the bottom.
-13. `describe_scene(question: str)`
+12. `describe_scene(question: str)`
    - Use when user asks "เห็นอะไรบ้าง", "มีอะไรอยู่บนโต๊ะ", "อธิบายสิ่งที่อยู่ตรงหน้า" or asks a general question about the scene. The robot automatically looks down at the table before taking a photo.
-14. `move_around(speed: int = 40)`
+13. `move_around(speed: int = 40)`
    - Use when user asks to "ส่ายกล้อง", "สำรวจรอบๆ", "มองไปรอบๆ". Performs a scanning animation to look around.
-15. `give_to_person()`
+14. `give_to_person()`
    - Hands over currently held object to the user in front of the robot and releases gripper after 4 seconds.
-16. `execute_python_code(code: str)`
+15. `execute_python_code(code: str)`
    - Executes Python code for complex logic. The code MUST store the final result in a variable named 'Result'.
 
 ## CRITICAL ACTION SEQUENCING RULES:
@@ -87,7 +85,7 @@ Your mission is to analyze intent, decide the smartest sequence of actions, and 
   - When System Context indicates Gripper state is `HOLDING ...` (whether it is a known cube like `red_cube` or an unidentified `an object`):
     1. **User asks to place/release/put down what's in hand** (e.g. "วางของ", "เอาของไปวาง", "วางลงที่โต๊ะ", "ปล่อยของ", "วางของในมือ"):
        Output `move_to(smart_place=true)` or `smart_place(prefer_stack=false)` (or `move_to(target_name="<target_cube>")` if stacking requested). You DO NOT need to know the specific name of the object in hand!
-    2. **User orders ANY action that requires an empty hand** (e.g. grabbing another item `grab_object`/`unstack_and_grab`, gestures `gesture`, dancing `dance_celebrate`, rock-paper-scissors `play_rps`, desk sorting `sort_by_color`, or moving wrist `rotate_gripper`):
+    2. **User orders ANY action that requires an empty hand** (e.g. grabbing another item `grab_object`/`unstack_and_grab`, gestures `gesture`, dancing `dance_celebrate`, rock-paper-scissors `play_rps`, or moving wrist `rotate_gripper`):
        You MUST insert `move_to(smart_place=true)` (or `smart_place(prefer_stack=false)`) as the FIRST step in the plan to safely place down what is currently in hand before executing the requested action!
        - Example 1: Gripper is `HOLDING an object` and user says "หยิบกล่องสีเหลือง":
          Plan tasks: `[{"tool": "move_to", "args": {"smart_place": true}}, {"tool": "grab_object", "args": {"object_name": "yellow_cube"}}]`
@@ -126,80 +124,245 @@ You are an ultra-smart, creative 6-axis robotic arm assistant with autonomous de
 5. **Response Formatting**: Plain Thai text + bullet points + Emojis (NO markdown like ** or *). Wrap final voice summary inside `<VOICE>ภาษาอีสานม่วนๆ</VOICE>` at the end.
 """
 
-# ── Auto Mode Prompt Pools (Centralized) ──────────────────────────────────────
+# ── Auto Mode Prompt Pools (Centralized & Memory-Aware) ─────────────────────────
 
-AUTO_PROMPTS_DEFAULT = [
-    # ── วัตถุและการจัดวาง (Safe Pick, Place & Stacking) ──
-    "หยิบกล่องสี{color}มาโชว์ให้ดูหน่อย",
-    "หยิบกล่องสี{color_a}แล้วนำไปวางซ้อนบนกล่องสี{color_b}",
-    "หยิบกล่องสี{color}แล้วย้ายไปวางในตำแหน่งที่ปลอดภัย",
-    "หยิบกล่องสี{color_a}ขึ้นมาโชว์ แล้วเอาไปวางซ้อนบนกล่องสี{color_b}",
-    "หยิบกล่องสี{color}ไปวางที่ปลอดภัยแล้วเต้นฉลองหน่อย",
+COLOR_TO_THAI = {
+    "red": "แดง",
+    "green": "เขียว",
+    "blue": "น้ำเงิน",
+    "yellow": "เหลือง",
+}
 
-    # ── วิสัยทัศน์และการสำรวจ (Vision & Safe Inspection) ──
-    "อธิบายหน่อยว่าตอนนี้บนโต๊ะมีอะไรบ้าง",
+# Auto Mode Mission & Normal Mode State Tracking
+_auto_mission_state = {
+    "mode": "mission",             # "mission" (Tower Building) or "normal" (Casual Play)
+    "normal_steps_left": 0,        # Count of casual commands before returning to mission
+}
+
+# 1. Empty Memory Pool: Explore and scan desk first to discover real blocks
+AUTO_PROMPTS_EMPTY_SCAN = [
+    "สแกนหาตำแหน่งของกล่องบนโต๊ะ",
+    "สแกนสำรวจกล่องบนโต๊ะว่ามีสีอะไรบ้าง",
+    "อธิบายหน่อยว่าตอนนี้บนโต๊ะมีกล่องอะไรบ้าง",
     "ส่ายกล้องสำรวจรอบๆ โต๊ะหน่อย",
-    "มองหากล่องสี{color}ให้หน่อยว่าอยู่ตรงไหน",
-    "อธิบายหน่อยว่ามีกล่องอะไรซ้อนทับกันอยู่บ้างบนโต๊ะ",
-    "สแกนหาตำแหน่งของกล่องสี{color}บนโต๊ะ",
+]
 
-    # ── ท่าทางและการโต้ตอบ (Gestures & Entertainment) ──
+# 2. Holding Pool: Manage currently held item
+AUTO_PROMPTS_HOLDING = [
+    "นำกล่องที่ถืออยู่ในมือไปวางในพื้นที่ปลอดภัย",
+    "เอากล่องที่ถืออยู่ไปวางซ้อนบนกล่องสี{color}",
+    "โชว์กล่องที่กำลังถืออยู่ในมือให้ดูหน่อย แล้วนำไปวางที่ปลอดภัย",
+    "เอากล่องที่กำลังถืออยู่ไปวางในตำแหน่งที่ปลอดภัยแล้วพยักหน้าทักทาย",
+    "วางกล่องในมือลงในที่ปลอดภัยแล้วเต้นฉลองหน่อย",
+    "นำกล่องในมือไปวางซ้อนต่อยอดบนกล่องสี{color}",
+]
+
+# 3. Tower Mission: Start stacking ground cubes
+AUTO_PROMPTS_TOWER_START = [
+    "หยิบกล่องสี{color_a}แล้วนำไปวางซ้อนบนกล่องสี{color_b}",
+    "หยิบกล่องสี{color_a}ขึ้นมาโชว์ แล้วเอาไปวางซ้อนบนกล่องสี{color_b}",
+    "เริ่มสร้างหอคอยกล่อง โดยหยิบกล่องสี{color_a}ไปวางซ้อนบนกล่องสี{color_b}",
+]
+
+# 4. Tower Mission: Stack remaining free cube onto existing tower
+AUTO_PROMPTS_TOWER_GROW = [
+    "หยิบกล่องสี{free_color}แล้วนำไปวางซ้อนบนกล่องสี{top_color}",
+    "หยิบกล่องสี{free_color}ขึ้นมาโชว์ แล้วนำไปวางซ้อนเพิ่มบนกล่องสี{top_color}",
+    "ต่อยอดหอคอยกล่อง โดยหยิบกล่องสี{free_color}ไปวางซ้อนบนกล่องสี{top_color}",
+    "หยิบกล่องสี{free_color}ไปวางซ้อนบนยอดหอคอยกล่องสี{top_color}",
+]
+
+# 5. Tower Mission: Celebration when tower is complete (Upward Gestures Only)
+AUTO_PROMPTS_TOWER_COMPLETE = [
+    "เต้นฉลองให้กับหอคอยกล่องสุดยอด!",
+    "ทำท่าพยักหน้าและโบกมือชื่นชมหอคอยกล่อง",
+    "หมุนมือซ้ายขวาโชว์ความสำเร็จของหอคอยกล่อง",
+    "ชูมือโบกทักทายอย่างภาคภูมิใจหลังจากสร้างหอคอยกล่องเสร็จ",
+]
+
+# 6. Tower Mission: Unstack & Cycle
+AUTO_PROMPTS_TOWER_UNSTACK = [
+    "แกะกล่องที่โดนซ้อนทับอยู่แล้วนำไปวางในตำแหน่งที่ปลอดภัย",
+    "ช่วยแยกกล่องที่ซ้อนกันอยู่ออกมาวางในที่ปลอดภัยให้หน่อย",
+    "หยิบกล่องชั้นล่างที่โดนทับอยู่ขึ้นมาโชว์แล้ววางที่ปลอดภัย",
+]
+
+# 7. Single Cube Actions
+AUTO_PROMPTS_SINGLE_CUBE = [
+    "หยิบกล่องสี{color}มาโชว์ให้ดูหน่อย",
+    "หยิบกล่องสี{color}แล้วย้ายไปวางในตำแหน่งที่ปลอดภัย",
+    "หยิบกล่องสี{color}ไปวางที่ปลอดภัยแล้วเต้นฉลองหน่อย",
+    "หยิบกล่องสี{color}มาโชว์ให้ดู แล้วพยักหน้าทักทาย",
+    "สแกนหาตำแหน่งของกล่องบนโต๊ะเพิ่มเติม",
+]
+
+# 8. Normal Casual Play Pool (5-10 commands between missions)
+AUTO_PROMPTS_NORMAL_PLAY = [
+    "หยิบกล่องสี{color}มาโชว์ให้ดูหน่อย แล้ววางที่ปลอดภัย",
+    "หยิบกล่องสี{color}ไปวางในตำแหน่งที่ปลอดภัยแล้วพยักหน้าทักทาย",
+    "ย้ายกล่องสี{color}ไปวางในพื้นที่ว่างบนโต๊ะ",
+    "โชว์กล่องสี{color}ให้ดูหน่อยแล้วเต้นฉลอง",
+    "หยิบกล่องสี{color}มาโชว์ให้ดูหน่อย",
+    "ส่ายกล้องสำรวจรอบๆ โต๊ะหน่อย",
     "ทำท่าพยักหน้าและโบกมือทักทายแบบอีสานม่วนๆ",
     "โค้งคำนับทักทายอย่างสุภาพหน่อย",
     "ทำท่าส่ายหน้าแบบงงๆ ให้ดูหน่อย",
     "หมุนมือซ้ายขวาโชว์ท่าหน่อย",
     "เต้นฉลองโชว์สเต็ปหน่อย!",
     "เล่นเป่ายิ้งฉุบโชว์สักตาหน่อย",
-    "ส่ายกล้องสำรวจรอบๆ แล้วทำท่าพยักหน้าทักทาย",
-    "ขยับปลายมือหมุนซ้ายขวาพร้อมโบกมือทักทาย"
-]
-
-AUTO_PROMPTS_HOLDING = [
-    "นำกล่องที่ถืออยู่ในมือไปวางในพื้นที่ปลอดภัย",
-    "เอากล่องที่ถืออยู่ไปวางซ้อนบนกล่องสี{color}",
-    "โชว์กล่องที่กำลังถืออยู่ในมือให้ดูหน่อย แล้วนำไปวางที่ปลอดภัย",
-    "เอากล่องที่กำลังถืออยู่ไปวางในตำแหน่งที่ปลอดภัยแล้วพยักหน้าทักทาย"
-]
-
-AUTO_PROMPTS_STACKED = [
-    "หยิบกล่องที่โดนวางทับอยู่ขึ้นมาโชว์หน่อย",
-    "แกะกล่องที่โดนซ้อนทับอยู่แล้วนำไปวางในตำแหน่งที่ปลอดภัย",
-    "ช่วยแยกกล่องที่ซ้อนกันอยู่ออกมาวางในที่ปลอดภัยให้หน่อย",
-    "หยิบกล่องชั้นล่างที่โดนทับอยู่ขึ้นมาโชว์แล้วเต้นฉลอง"
 ]
 
 # Combined pool for compatibility
-AUTO_PROMPTS = AUTO_PROMPTS_DEFAULT + AUTO_PROMPTS_HOLDING + AUTO_PROMPTS_STACKED
+AUTO_PROMPTS = (
+    AUTO_PROMPTS_EMPTY_SCAN
+    + AUTO_PROMPTS_HOLDING
+    + AUTO_PROMPTS_TOWER_START
+    + AUTO_PROMPTS_TOWER_GROW
+    + AUTO_PROMPTS_TOWER_COMPLETE
+    + AUTO_PROMPTS_TOWER_UNSTACK
+    + AUTO_PROMPTS_SINGLE_CUBE
+    + AUTO_PROMPTS_NORMAL_PLAY
+)
 
 
-def get_auto_prompt(holding_object: str = None, has_stacked: bool = False) -> str:
+def _analyze_cubes_and_towers(known_objects: dict):
     """
-    Selects a context-aware prompt for Auto Mode based on robot's current physical state.
-    
-    Args:
-        holding_object: Name of object currently held in gripper (or None if empty).
-        has_stacked: Whether stacked/blocking object relationship is detected in memory.
-        
+    Analyzes cubes in memory to identify ground cubes and existing tower stacks.
     Returns:
-        A formatted natural language command string.
+        free_cubes: list of (obj_name, thai_color) on ground not in stack
+        towers: list of lists of (obj_name, thai_color, z) sorted by z ascending
+        all_colors: list of unique thai_color strings found
     """
+    if not known_objects:
+        return [], [], []
+
+    import math
+    cubes = []
+    for k, v in known_objects.items():
+        if not isinstance(v, list) or len(v) < 2 or v == "in gripper" or "area" in k.lower():
+            continue
+        k_lower = k.lower()
+        for color_en, color_th in COLOR_TO_THAI.items():
+            if color_en in k_lower:
+                z = float(v[2]) if len(v) >= 3 and v[2] > 0 else 110.0
+                cubes.append({"name": k, "color": color_th, "x": float(v[0]), "y": float(v[1]), "z": z})
+                break
+
+    if not cubes:
+        return [], [], []
+
+    # Cluster cubes by XY proximity (< 35mm)
+    clusters = []
+    visited = set()
+    for i, c1 in enumerate(cubes):
+        if i in visited:
+            continue
+        cluster = [c1]
+        visited.add(i)
+        for j, c2 in enumerate(cubes):
+            if j not in visited:
+                if math.hypot(c1["x"] - c2["x"], c1["y"] - c2["y"]) < 35.0:
+                    cluster.append(c2)
+                    visited.add(j)
+        cluster.sort(key=lambda item: item["z"])
+        clusters.append(cluster)
+
+    free_cubes = []
+    towers = []
+    all_colors = list(dict.fromkeys(c["color"] for c in cubes))
+
+    for cl in clusters:
+        if len(cl) == 1:
+            free_cubes.append((cl[0]["name"], cl[0]["color"]))
+        else:
+            towers.append([(item["name"], item["color"], item["z"]) for item in cl])
+
+    return free_cubes, towers, all_colors
+
+
+def get_auto_prompt(
+    holding_object: str = None,
+    has_stacked: bool = False,
+    known_objects: dict = None,
+    recent_prompts: list = None,
+) -> str:
+    """
+    Selects a context-aware prompt for Auto Mode based on actual objects in memory,
+    tower building progress, holding state, and transitions to normal mode for 5-10
+    commands after mission completion before returning to mission mode.
+    """
+    free_cubes, towers, all_colors = _analyze_cubes_and_towers(known_objects)
+    candidates = []
+
+    # Scenario 1: Holding an object (Always prioritize safe placement / stacking)
     if holding_object:
-        pool = AUTO_PROMPTS_HOLDING
-    elif has_stacked:
-        pool = AUTO_PROMPTS_STACKED
+        top_color = None
+        if towers:
+            top_color = towers[0][-1][1]  # Color of top of highest tower
+        elif free_cubes:
+            top_color = free_cubes[0][1]
+
+        target_color = top_color or (all_colors[0] if all_colors else random.choice(list(COLOR_TO_THAI.values())))
+        for p in AUTO_PROMPTS_HOLDING:
+            candidates.append(p.replace("{color}", target_color))
+
+    # Scenario 2: Memory is Empty (No cubes found yet) -> Scan desk first
+    elif not all_colors:
+        candidates = list(AUTO_PROMPTS_EMPTY_SCAN)
+
+    # Scenario 3: In Normal Mode (Cooldown period: 5-10 casual commands between missions)
+    elif _auto_mission_state["mode"] == "normal":
+        _auto_mission_state["normal_steps_left"] -= 1
+        if _auto_mission_state["normal_steps_left"] <= 0:
+            _auto_mission_state["mode"] = "mission"
+
+        chosen_color = random.choice(all_colors) if all_colors else random.choice(list(COLOR_TO_THAI.values()))
+        for p in AUTO_PROMPTS_NORMAL_PLAY:
+            candidates.append(p.replace("{color}", chosen_color))
+
+    # Scenario 4: Mission Mode — Only 1 cube on desk
+    elif len(free_cubes) == 1 and not towers:
+        single_color = free_cubes[0][1]
+        for p in AUTO_PROMPTS_SINGLE_CUBE:
+            candidates.append(p.replace("{color}", single_color))
+
+    # Scenario 5: Mission Mode — Multiple free cubes on ground, no tower yet -> START TOWER
+    elif len(free_cubes) >= 2 and not towers:
+        import itertools
+        for c_pair in itertools.permutations(free_cubes[:3], 2):
+            ca, cb = c_pair[0][1], c_pair[1][1]
+            for p in AUTO_PROMPTS_TOWER_START:
+                candidates.append(p.replace("{color_a}", ca).replace("{color_b}", cb))
+
+    # Scenario 6: Mission Mode — Tower exists + Free cubes remain on ground -> GROW TOWER
+    elif towers and free_cubes:
+        top_color = towers[0][-1][1]
+        for fc in free_cubes:
+            free_color = fc[1]
+            for p in AUTO_PROMPTS_TOWER_GROW:
+                candidates.append(p.replace("{free_color}", free_color).replace("{top_color}", top_color))
+
+    # Scenario 7: Mission Mode — Tower is Complete (All cubes stacked)
+    # -> Trigger Celebration and switch to Normal Mode for next 5-10 commands!
+    elif towers and not free_cubes:
+        candidates = list(AUTO_PROMPTS_TOWER_COMPLETE)
+        # Switch to Normal Mode for 5-10 normal commands
+        _auto_mission_state["mode"] = "normal"
+        _auto_mission_state["normal_steps_left"] = random.randint(5, 10)
+
     else:
-        pool = AUTO_PROMPTS_DEFAULT
+        candidates = list(AUTO_PROMPTS_EMPTY_SCAN)
 
-    colors = ["แดง", "เขียว", "น้ำเงิน", "เหลือง"]
-    prompt = random.choice(pool)
+    # Anti-Repetition Filter (LRU - Least Recently Used)
+    if recent_prompts and len(candidates) > 1:
+        unseen = [c for c in candidates if c not in recent_prompts]
+        if unseen:
+            candidates = unseen
+        else:
+            def _last_seen(c):
+                indices = [i for i, r in enumerate(recent_prompts) if r == c]
+                return max(indices) if indices else -1
+            min_seen = min(_last_seen(c) for c in candidates)
+            candidates = [c for c in candidates if _last_seen(c) == min_seen]
 
-    # Handle {color_a} and {color_b} — must be different colors
-    if "{color_a}" in prompt or "{color_b}" in prompt:
-        shuffled = random.sample(colors, 2)
-        prompt = prompt.replace("{color_a}", shuffled[0]).replace("{color_b}", shuffled[1])
-
-    # Handle single {color}
-    if "{color}" in prompt:
-        prompt = prompt.replace("{color}", random.choice(colors))
-
-    return prompt
+    return random.choice(candidates) if candidates else "สแกนหาตำแหน่งของกล่องบนโต๊ะ"

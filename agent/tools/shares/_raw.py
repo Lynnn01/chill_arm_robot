@@ -607,14 +607,21 @@ def raw_dance_celebrate() -> str:
         safe_spot = raw_find_safe_spot()
         raw_move_to(target_coord=safe_spot)
 
-    print("Dancing! 💃")
+    print("Dancing! 💃 (Upright Victory Dance)")
     speed = armconfig.SPEED_DANCE
-    mc.send_angles([-45, 0, -20, 0, 0, -45], speed); time.sleep(1)
-    mc.send_angles([45,  0, -20, 0, 0, -45], speed); time.sleep(1)
-    mc.send_angles([-45, 0,  30, -30, 0, -45], speed); time.sleep(1)
-    mc.send_angles([45,  0,  30, -30, 0, -45], speed); time.sleep(1)
-    mc.send_angles(armconfig.POSE_HOME, speed); time.sleep(1.5)
-    print(f"✅ <SYSTEM>: DONE TASK - Dance")
+    # 1. ยกแขนขึ้นตั้งตรงระดับสูงสุด (POSE_HOME) ก่อนเสมอ
+    mc.send_angles(armconfig.POSE_HOME, speed)
+    mc.wait_for_arrival(armconfig.POSE_HOME, mode="angles")
+    time.sleep(0.3)
+
+    # 2. ท่าเต้นชูมือฉลองขึ้นฟ้า (เอนถอยหลัง J2<=0, ข้อศอกยกสูง J3<=0, เงยข้อมือขึ้นฟ้า J4=+60° ถึง +75°)
+    # มั่นใจ 100% ไม่มีการก้มตัวลงหาพื้นโต๊ะหรือหอคอยกล่อง
+    mc.send_angles([35, -5, -15, 60, 20, 45], speed); time.sleep(0.8)
+    mc.send_angles([-35, -5, -15, 60, -20, -45], speed); time.sleep(0.8)
+    mc.send_angles([30, 0, -20, 75, 0, 90], speed); time.sleep(0.8)
+    mc.send_angles([-30, 0, -20, 75, 0, -90], speed); time.sleep(0.8)
+    mc.send_angles(armconfig.POSE_HOME, speed); time.sleep(1.0)
+    print(f"✅ <SYSTEM>: DONE TASK - Dance (Victory)")
     return {"status": "DONE TASK"}
 
 

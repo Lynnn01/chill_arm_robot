@@ -14,9 +14,8 @@ from .dance import dance_celebrate
 from .gesture import gesture
 from .scan_object import scan_object
 from .give_to_person import give_to_person
-from .sort_by_color import sort_by_color
 from .unstack_and_grab import unstack_and_grab
 from .smart_place import smart_place
 
-agent_tools = [move_to, grab_object, move_around, show_object, execute_python_code, move, rotate_gripper, describe_scene, dance_celebrate, gesture, scan_object, give_to_person, sort_by_color, unstack_and_grab, smart_place]
+agent_tools = [move_to, grab_object, move_around, show_object, execute_python_code, move, rotate_gripper, describe_scene, dance_celebrate, gesture, scan_object, give_to_person, unstack_and_grab, smart_place]
 

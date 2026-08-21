@@ -110,26 +110,21 @@ class OneArmGUI:
             from hardware import init as hw_init
             holding_obj = hw_init.current_held_object if (hw_init.is_holding_object or hw_init.current_held_object) else None
             
-            # Detect if there are stacked/blocking relationships in memory
-            has_stacked = False
-            if hw_init.known_objects:
-                import armconfig
-                for obj_a, coord_a in hw_init.known_objects.items():
-                    if not isinstance(coord_a, list) or len(coord_a) < 2 or coord_a == "in gripper" or "area" in obj_a.lower():
-                        continue
-                    za = float(coord_a[2]) if len(coord_a) >= 3 and coord_a[2] > 0 else armconfig.GRAB_BASE_HEIGHT
-                    for obj_b, coord_b in hw_init.known_objects.items():
-                        if obj_a == obj_b or not isinstance(coord_b, list) or len(coord_b) < 2 or coord_b == "in gripper" or "area" in obj_b.lower():
-                            continue
-                        zb = float(coord_b[2]) if len(coord_b) >= 3 and coord_b[2] > 0 else armconfig.GRAB_BASE_HEIGHT
-                        if abs(coord_a[0] - coord_b[0]) < getattr(armconfig, "STACK_PROXIMITY_THRESHOLD", 35.0) and abs(coord_a[1] - coord_b[1]) < getattr(armconfig, "STACK_PROXIMITY_THRESHOLD", 35.0):
-                            if zb > za + 10:
-                                has_stacked = True
-                                break
-                    if has_stacked:
-                        break
-                        
-            prompt = get_auto_prompt(holding_object=holding_obj, has_stacked=has_stacked)
+            if not hasattr(self, '_recent_auto_prompts'):
+                self._recent_auto_prompts = []
+
+            from agent.prompts import get_auto_prompt
+            prompt = get_auto_prompt(
+                holding_object=holding_obj,
+                known_objects=hw_init.known_objects,
+                recent_prompts=self._recent_auto_prompts,
+            )
+
+            # Record history (keep last 4)
+            self._recent_auto_prompts.append(prompt)
+            if len(self._recent_auto_prompts) > 4:
+                self._recent_auto_prompts.pop(0)
+
             self.send_message(f"[AUTO] {prompt}")
 
     def _append_log(self, text):
