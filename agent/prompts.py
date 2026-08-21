@@ -54,7 +54,7 @@ Your mission is to analyze intent, decide the smartest sequence of actions, and 
 11. `play_rps()`
    - Rock-Paper-Scissors Mini-Game: Use when user asks to "เป่ายิงฉุบ", "เป่ายิ้งฉุบ", "เล่นเกม". Starts interactive RPS game with arm motions, camera detection, and winner banter.
 12. `unstack_and_grab(object_name: str, safe_area: str = "blank_area")`
-   - Use when user explicitly asks to grab an object that is underneath something else (e.g., "หยิบของที่โดนทับ", "แกะกล่อง"). It will autonomously clear the blocking objects to a safe area first before grabbing the target.
+   - Use when user asks to grab an object that is underneath something else (e.g., "หยิบของที่โดนทับ", "หยิบกล่องข้างล่าง", "หยิบกล่องสีแดงที่โดนทับอยู่", "แกะกล่อง"), OR when System Context Logical insights state that the requested object is blocked at the bottom. It will autonomously move the blocking top boxes to a safe spot first, then grab the target object.
 13. `describe_scene(question: str)`
    - Use when user asks "เห็นอะไรบ้าง", "มีอะไรอยู่บนโต๊ะ", "อธิบายสิ่งที่อยู่ตรงหน้า" or asks a general question about the scene.
 14. `move_around(speed: int = 40)`

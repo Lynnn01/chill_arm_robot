@@ -48,36 +48,34 @@ def raw_grab_object(object_name: str, target_coord: list = None, _auto_unstack: 
         if len(target_coord) >= 3:
             z = float(target_coord[2]) + z_offset
     else:
-        eng_name = get_english_name(object_name)
+        # 1. MEMORY FIRST: Check known_objects (exact and fuzzy)
+        found_key = None
         if eng_name in init.known_objects and isinstance(init.known_objects[eng_name], list):
-            saved = init.known_objects[eng_name]
-            print(f"🤖 <SYSTEM>: ดึงพิกัด '{eng_name}' จากความจำ {saved} (ข้ามสแกน)...")
-            robot_coord = [float(saved[0]), float(saved[1])]
-            if len(saved) >= 3:
-                z = float(saved[2]) + z_offset
+            found_key = eng_name
         else:
+            for k, v in init.known_objects.items():
+                if isinstance(v, list) and v != "in gripper" and "area" not in k.lower():
+                    if eng_name.lower() in k.lower() or k.lower() in eng_name.lower():
+                        found_key = k
+                        break
+
+        if found_key and isinstance(init.known_objects[found_key], list):
+            saved = init.known_objects[found_key]
+            print(f"🤖 <SYSTEM>: [Memory-First] ดึงพิกัด '{found_key}' จากความจำ {saved} (เริ่มจากความทรงจำก่อน ข้ามการสแกน)...")
+            robot_coord = [float(saved[0]), float(saved[1])]
+            if len(saved) >= 3 and saved[2] > 0:
+                z = float(saved[2]) + z_offset
+            eng_name = found_key
+        else:
+            # 2. SCAN IF NOT IN MEMORY
+            print(f"🤖 <SYSTEM>: ไม่พบ '{eng_name}' ในความจำ → เริ่มสแกนค้นหาด้วย YOLO...")
             yolo_coord = yolo_detector.scan_with_yolo(eng_name)
             if yolo_coord:
                 robot_coord = yolo_coord
-                
-                # SAFETY: Auto-adjust Z if camera spots it sitting on top of a known object
-                max_z_at_xy = armconfig.GRAB_BASE_HEIGHT
-                for k, v in init.known_objects.items():
-                    if isinstance(v, list) and len(v) >= 3 and k != eng_name and "area" not in k.lower():
-                        dx, dy = abs(v[0] - robot_coord[0]), abs(v[1] - robot_coord[1])
-                        if dx < armconfig.STACK_PROXIMITY_THRESHOLD and dy < armconfig.STACK_PROXIMITY_THRESHOLD:
-                            if v[2] > max_z_at_xy:
-                                max_z_at_xy = v[2]
-                                
-                if max_z_at_xy > armconfig.GRAB_BASE_HEIGHT:
-                    # กล้องเห็นแค่วัตถุบนสุด — ใช้ Z ของความจำตรงๆ ได้เลย
-                    z = max_z_at_xy
-                    print(f"🤖 <SYSTEM>: กล้องเจอวัตถุที่ซ้อนกันอยู่! ยกตัวหยิบขึ้นเป็น Z={z} ตามความจำสูงสุด")
-                else:
-                    print(f"🤖 <SYSTEM>: YOLO เจอแล้ว! กำลังเคลื่อนที่ไปพิกัด {robot_coord}")
-                    
+                init.known_objects[eng_name] = [round(robot_coord[0], 2), round(robot_coord[1], 2), round(z, 2)]
+                print(f"🤖 <SYSTEM>: YOLO เจอแล้วที่ {robot_coord} และบันทึกลงความจำ")
             else:
-                print(f"🤖 <SYSTEM>: กำลังใช้กล้อง Vision AI ค้นหา '{eng_name}'...")
+                print(f"🤖 <SYSTEM>: YOLO สแกนไม่พบ → กำลังใช้กล้อง Vision AI (QwenVL) ค้นหา '{eng_name}'...")
                 init.GetImage()
                 img_path = os.path.join(init.PROJECT_ROOT, "captured_image.jpg")
                 width, height = Image.open(img_path).size
@@ -93,6 +91,7 @@ def raw_grab_object(object_name: str, target_coord: list = None, _auto_unstack: 
                     robot_coord[1] += getattr(armconfig, 'GRAB_Y_OFFSET', 0.0)
                     if robot_coord[0] > 210:
                         robot_coord[0] -= 5
+                    init.known_objects[eng_name] = [round(robot_coord[0], 2), round(robot_coord[1], 2), round(z, 2)]
                     print(f"🤖 <SYSTEM>: Vision เจอแล้ว! พิกัด {robot_coord}")
                 else:
                     print(f"🤖 <SYSTEM>: ไม่พบ {object_name} ในภาพ")
@@ -102,11 +101,12 @@ def raw_grab_object(object_name: str, target_coord: list = None, _auto_unstack: 
     if _auto_unstack and not target_coord:
         tx, ty = robot_coord[0], robot_coord[1]
         for k, v in init.known_objects.items():
-            if isinstance(v, list) and len(v) >= 3 and k != eng_name and "area" not in k.lower():
+            if isinstance(v, list) and len(v) >= 2 and k != eng_name and "area" not in k.lower() and v != "in gripper":
                 dx, dy = abs(v[0] - tx), abs(v[1] - ty)
                 if dx < armconfig.STACK_PROXIMITY_THRESHOLD and dy < armconfig.STACK_PROXIMITY_THRESHOLD:
-                    if v[2] > z + 10:
-                        print(f"⚠️ <SYSTEM>: ตรวจพบวัตถุทับอยู่บน '{eng_name}'! เปลี่ยนไปใช้กระบวนการแกะกล่อง (unstack) อัตโนมัติ...")
+                    vz = float(v[2]) if len(v) >= 3 and v[2] > 0 else armconfig.GRAB_BASE_HEIGHT
+                    if vz > z + 10:
+                        print(f"⚠️ <SYSTEM>: ตรวจพบวัตถุ '{k}' (Z={vz}) ทับอยู่บน '{eng_name}' (Z={z})! เปลี่ยนไปใช้กระบวนการแกะกล่อง (unstack) อัตโนมัติ...")
                         return raw_unstack_and_grab(object_name)
 
     # Check radius limits to prevent joint IK singularity near base
@@ -243,15 +243,16 @@ def get_english_name(name: str) -> str:
 
 # ── find_safe_spot & smart_place ──────────────────────────────────────────────
 
-def raw_find_safe_spot(margin_mm: float = 55.0, scan_first: bool = True) -> list:
+def raw_find_safe_spot(margin_mm: float = 55.0, scan_first: bool = False) -> list:
     """
     Find a verified safe [x, y] spot on the table where NO boxes or obstacles exist.
-    Scans the desk using the camera first if scan_first=True.
+    Checks memory (known_objects) first. Only scans table if memory is empty or scan_first=True.
     """
     import random
     
-    # 1. Live Vision Scan: Look at the table to detect all actual box locations in real-time
-    if scan_first:
+    # 1. Memory First: Scan desk only if memory is completely empty or scan_first=True
+    has_valid_memory = any(isinstance(v, list) and v != "in gripper" for v in init.known_objects.values())
+    if scan_first or not has_valid_memory:
         try:
             from vision.yolo_detector import quick_scan_desk_objects
             quick_scan_desk_objects()
@@ -317,7 +318,7 @@ def raw_smart_place(prefer_stack: bool = True) -> dict:
     """
     Autonomously place the currently held object:
     - If prefer_stack=True and other objects exist in memory -> Stack on one of them
-    - If no objects to stack on or prefer_stack=False -> Scan and find a verified safe empty spot
+    - If no objects to stack on or prefer_stack=False -> Find a verified safe empty spot
     """
     if not init.current_held_object:
         print(f"⚠️ <SYSTEM>: กริปเปอร์ไม่ได้ถือวัตถุอยู่! ยกเลิก smart_place")
@@ -348,9 +349,9 @@ def raw_smart_place(prefer_stack: bool = True) -> dict:
             print(f"🤖 <SYSTEM>: [Smart Place] เลือกวางซ้อนบน '{target_name}' ที่พิกัด {target_coord[:2]}")
             return raw_move_to(target_coord=target_coord[:2], target_name=target_name)
 
-    # Fallback / Direct: Scan and find a verified safe empty spot
-    spot = raw_find_safe_spot(scan_first=True)
-    print(f"🤖 <SYSTEM>: [Smart Place] สแกนพบพื้นที่ว่างที่ปลอดภัยที่ {spot}")
+    # Fallback / Direct: Find a verified safe empty spot (Memory First)
+    spot = raw_find_safe_spot()
+    print(f"🤖 <SYSTEM>: [Smart Place] พบพื้นที่ว่างที่ปลอดภัยที่ {spot}")
     return raw_move_to(target_coord=spot)
 
 
@@ -386,17 +387,21 @@ def raw_move_to(target_coord: list = None, target_name: str = None, target_heigh
         target_coord = None
         eng_name = get_english_name(target_name)
         
-        # Check matching key in init.known_objects memory (using English name)
+        # 1. MEMORY FIRST: Check matching key in init.known_objects memory (exact and fuzzy)
         found_key = None
-        for k, v in init.known_objects.items():
-            if v != "in gripper" and isinstance(v, list) and (eng_name.lower() in k.lower() or k.lower() in eng_name.lower()):
-                found_key = k
-                break
+        if eng_name in init.known_objects and isinstance(init.known_objects[eng_name], list):
+            found_key = eng_name
+        else:
+            for k, v in init.known_objects.items():
+                if v != "in gripper" and isinstance(v, list) and (eng_name.lower() in k.lower() or k.lower() in eng_name.lower()):
+                    found_key = k
+                    break
         
         if found_key and isinstance(init.known_objects[found_key], list):
             target_coord = init.known_objects[found_key]
-            print(f"🤖 <SYSTEM>: ใช้พิกัดของ '{found_key}' จากความจำ {target_coord}")
+            print(f"🤖 <SYSTEM>: [Memory-First] ใช้พิกัดของ '{found_key}' จากความจำ {target_coord}")
         else:
+            # 2. SCAN IF NOT IN MEMORY
             if "area" not in eng_name.lower():
                 from vision import yolo_detector
                 found_coord = yolo_detector.scan_with_yolo(eng_name)
@@ -404,47 +409,41 @@ def raw_move_to(target_coord: list = None, target_name: str = None, target_heigh
                     target_coord = found_coord
             
             if not target_coord:
-                print(f"⚠️ <SYSTEM>: ไม่พบเป้าหมาย '{eng_name}' → สลับไปสแกนหาตำแหน่งที่ปลอดภัยเพื่อวางแทน")
-                target_coord = raw_find_safe_spot(scan_first=True)
+                print(f"⚠️ <SYSTEM>: ไม่พบเป้าหมาย '{eng_name}' → สลับไปหาตำแหน่งที่ปลอดภัยเพื่อวางแทน")
+                target_coord = raw_find_safe_spot()
 
     if not target_coord or (isinstance(target_coord, list) and len(target_coord) >= 2 and target_coord[0] == 0 and target_coord[1] == 0):
-        print(f"⚠️ <SYSTEM>: ไม่ได้ระบุพิกัดเป้าหมาย → สแกนหาตำแหน่งที่ปลอดภัยเพื่อวาง")
-        target_coord = raw_find_safe_spot(scan_first=True)
+        print(f"⚠️ <SYSTEM>: ไม่ได้ระบุพิกัดเป้าหมาย → หาตำแหน่งที่ปลอดภัยเพื่อวาง")
+        target_coord = raw_find_safe_spot()
 
-    # SAFETY: Check if target_coord has an unexpected obstacle underneath
-    for k, v in init.known_objects.items():
-        if k != init.current_held_object and isinstance(v, list) and len(v) >= 2 and v != "in gripper" and "area" not in k.lower():
-            dx = abs(target_coord[0] - v[0])
-            dy = abs(target_coord[1] - v[1])
-            if dx < armconfig.STACK_PROXIMITY_THRESHOLD and dy < armconfig.STACK_PROXIMITY_THRESHOLD:
-                if target_height is None:
-                    contact_z = v[2] if len(v) >= 3 and v[2] > 0 else armconfig.GRAB_BASE_HEIGHT
-                    target_height = contact_z + armconfig.STACK_HEIGHT_PER_LAYER + armconfig.STACK_SAFE_OFFSET
-                    print(f"⚠️ <SYSTEM>: [Safety Auto-Adjust] ตรวจพบกล่อง '{k}' อยู่ที่พิกัดเป้าหมาย! ปรับความสูงเป็น Z={target_height} เพื่อวางซ้อนอย่างปลอดภัย ป้องกันการชน")
-
-    # Auto-adjust height for stacking (ถ้าไม่ได้ระบุ target_height มาจากภายนอก)
+    # 3. ACCURATE HEIGHT CALCULATION FOR PLACEMENT & STACKING
     if target_height is None:
         max_z_at_xy = None
+        stack_target_name = None
         
         for obj_name, coord in init.known_objects.items():
-            if isinstance(coord, list) and len(coord) >= 3:
-                # ข้ามพื้นที่แบน ไม่นับเป็นชั้น
+            if isinstance(coord, list) and len(coord) >= 2 and coord != "in gripper":
                 if "area" in obj_name.lower() or "พื้นที่" in obj_name or "zone" in obj_name.lower():
+                    continue
+                if obj_name == init.current_held_object:
                     continue
                     
                 dx = abs(coord[0] - target_coord[0])
                 dy = abs(coord[1] - target_coord[1])
                 if dx < armconfig.STACK_PROXIMITY_THRESHOLD and dy < armconfig.STACK_PROXIMITY_THRESHOLD:
-                    if max_z_at_xy is None or coord[2] > max_z_at_xy:
-                        max_z_at_xy = coord[2]
+                    obj_z = float(coord[2]) if len(coord) >= 3 and coord[2] > 0 else armconfig.GRAB_BASE_HEIGHT
+                    if max_z_at_xy is None or obj_z > max_z_at_xy:
+                        max_z_at_xy = obj_z
+                        stack_target_name = obj_name
         
         if max_z_at_xy is not None:
-            # contact_point + STACK_HEIGHT_PER_LAYER = จุดสัมผัสชั้นถัดไป, บวก STACK_SAFE_OFFSET แน่นอนทุกชั้น
-            target_height = max_z_at_xy + armconfig.STACK_HEIGHT_PER_LAYER + armconfig.STACK_SAFE_OFFSET
-            print(f"🤖 <SYSTEM>: ตรวจพบวัตถุที่พิกัดนี้ (contact_z={max_z_at_xy}) → วางที่ Z={target_height}")
+            # วางซ้อนบนวัตถุเดิม: Z = ความสูงวัตถุเดิม + 30mm + STACK_SAFE_OFFSET
+            target_height = max_z_at_xy + armconfig.STACK_HEIGHT_PER_LAYER + getattr(armconfig, "STACK_SAFE_OFFSET", 0.0)
+            print(f"🤖 <SYSTEM>: [Stack Placement] ตรวจพบวัตถุ '{stack_target_name}' (Z={max_z_at_xy}) → วางซ้อนที่ระดับ Z={target_height}")
         else:
-            target_height = armconfig.STACK_BASE_HEIGHT + armconfig.STACK_SAFE_OFFSET
-            print(f"🤖 <SYSTEM>: ไม่พบวัตถุในบริเวณนี้ → ใช้ความสูงชั้นแรก {target_height}")
+            # วางลงบนพื้นโต๊ะโดยตรง: ใช้ระดับ GRAB_BASE_HEIGHT (110)
+            target_height = armconfig.GRAB_BASE_HEIGHT
+            print(f"🤖 <SYSTEM>: [Ground Placement] วางลงบนพื้นโต๊ะที่ระดับ Z={target_height}")
 
 
     tc = [max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, float(target_coord[0]) + armconfig.STACK_X_OFFSET)),
@@ -452,7 +451,6 @@ def raw_move_to(target_coord: list = None, target_name: str = None, target_heigh
     th = max(armconfig.COORD_Z_MIN, min(armconfig.COORD_Z_MAX, int(target_height)))
 
     # Dynamic approach and retreat heights based on actual target height
-    # Ensures arm ALWAYS approaches from ABOVE the stack and lifts STRAIGHT UP before returning Home
     z_approach = max(armconfig.Z_PRE_PLACE, th + 40)
     z_retreat = max(armconfig.Z_SAFE_TRAVEL, th + 50)
 
@@ -470,15 +468,14 @@ def raw_move_to(target_coord: list = None, target_name: str = None, target_heigh
     mc.wait_for_arrival(armconfig.POSE_HOME, mode="angles")
 
     if init.current_held_object:
-        # เก็บเป็น contact_point (th - STACK_SAFE_OFFSET) เพื่อให้ชั้นถัดไปคำนวณ target_height ได้ถูกต้อง
-        contact_z = th - armconfig.STACK_SAFE_OFFSET
-        init.known_objects[init.current_held_object] = [round(tc[0], 2), round(tc[1], 2), round(contact_z, 2)]
+        # บันทึกความสูงจริงของวัตถุที่วางลงในความจำ
+        init.known_objects[init.current_held_object] = [round(tc[0], 2), round(tc[1], 2), round(th, 2)]
         if target_name:
             eng_target = get_english_name(target_name)
-            init.known_objects[eng_target] = [round(tc[0], 2), round(tc[1], 2), th - armconfig.STACK_HEIGHT_PER_LAYER]
+            init.known_objects[eng_target] = [round(tc[0], 2), round(tc[1], 2), round(th - armconfig.STACK_HEIGHT_PER_LAYER, 2)]
         init.current_held_object = None
 
-    print(f"✅ <SYSTEM>: DONE TASK - Placed at {tc}")
+    print(f"✅ <SYSTEM>: DONE TASK - Placed at {tc} (Z={th})")
     return {"status": "DONE TASK", "message": "Placed successfully."}
 
 
@@ -662,63 +659,118 @@ def raw_unstack_and_grab(object_name: str, safe_area: str = "blank_area") -> dic
     """Check if object is blocked by stacked items, unstack them to safe_area, then grab the target object."""
     eng_name = get_english_name(object_name)
     
+    # 1. If generic target like "กล่องที่โดนทับ" or "buried_cube", find which object in memory is blocked
+    is_generic_query = any(w in object_name.lower() for w in ["โดนทับ", "ทับอยู่", "ข้างล่าง", "ชั้นล่าง", "buried", "bottom"])
+    
+    if is_generic_query or not eng_name or eng_name not in init.known_objects:
+        for obj_a, coord_a in init.known_objects.items():
+            if isinstance(coord_a, list) and len(coord_a) >= 2 and coord_a != "in gripper" and "area" not in obj_a.lower():
+                za = float(coord_a[2]) if len(coord_a) >= 3 and coord_a[2] > 0 else armconfig.GRAB_BASE_HEIGHT
+                for obj_b, coord_b in init.known_objects.items():
+                    if obj_a != obj_b and isinstance(coord_b, list) and len(coord_b) >= 2 and coord_b != "in gripper" and "area" not in obj_b.lower():
+                        zb = float(coord_b[2]) if len(coord_b) >= 3 and coord_b[2] > 0 else armconfig.GRAB_BASE_HEIGHT
+                        if abs(coord_a[0] - coord_b[0]) < armconfig.STACK_PROXIMITY_THRESHOLD and abs(coord_a[1] - coord_b[1]) < armconfig.STACK_PROXIMITY_THRESHOLD:
+                            if zb > za + 10:
+                                eng_name = obj_a
+                                print(f"🤖 <SYSTEM>: [Auto-Select Buried Object] พบ '{obj_a}' กำลังโดน '{obj_b}' ทับอยู่!")
+                                break
+                if eng_name and is_generic_query:
+                    break
+
+    # 2. MEMORY FIRST: Find target coordinates
+    target_coord = None
     if eng_name in init.known_objects and isinstance(init.known_objects[eng_name], list):
         target_coord = init.known_objects[eng_name]
     else:
+        for k, v in init.known_objects.items():
+            if isinstance(v, list) and v != "in gripper" and "area" not in k.lower():
+                if eng_name.lower() in k.lower() or k.lower() in eng_name.lower():
+                    target_coord = v
+                    eng_name = k
+                    break
+
+    # 3. SCAN IF NOT IN MEMORY
+    if not target_coord:
         from vision import yolo_detector
-        target_coord = yolo_detector.scan_with_yolo(object_name)
+        print(f"🤖 <SYSTEM>: [Unstack] ไม่พบ '{eng_name}' ในความจำ → สแกนหาด้วยกล้อง...")
+        target_coord = yolo_detector.scan_with_yolo(eng_name or object_name)
         if target_coord:
             init.known_objects[eng_name] = target_coord
         else:
             return raw_grab_object(object_name)
             
     tx, ty = float(target_coord[0]), float(target_coord[1])
-    tz = float(target_coord[2]) if len(target_coord) >= 3 else armconfig.GRAB_BASE_HEIGHT
+    tz = float(target_coord[2]) if len(target_coord) >= 3 and target_coord[2] > 0 else armconfig.GRAB_BASE_HEIGHT
     
+    # 4. Find all blocking objects stacked on top of target_coord
     blocking_objects = []
     for k, v in init.known_objects.items():
-        if k == eng_name or v == "in gripper" or not isinstance(v, list) or len(v) < 2:
+        if k == eng_name or v == "in gripper" or not isinstance(v, list) or len(v) < 2 or "area" in k.lower():
             continue
             
         dx = abs(v[0] - tx)
         dy = abs(v[1] - ty)
-        vz = v[2] if len(v) >= 3 else armconfig.GRAB_BASE_HEIGHT
+        vz = float(v[2]) if len(v) >= 3 and v[2] > 0 else armconfig.GRAB_BASE_HEIGHT
         
         if dx < armconfig.STACK_PROXIMITY_THRESHOLD and dy < armconfig.STACK_PROXIMITY_THRESHOLD:
             if vz > tz + 10:
                 blocking_objects.append((k, vz))
                 
+    # Fallback: If no blocking objects found in memory but user requested unstacking, scan desk once
+    if not blocking_objects and is_generic_query:
+        try:
+            from vision.yolo_detector import quick_scan_desk_objects
+            quick_scan_desk_objects()
+            for k, v in init.known_objects.items():
+                if k == eng_name or v == "in gripper" or not isinstance(v, list) or len(v) < 2 or "area" in k.lower():
+                    continue
+                dx = abs(v[0] - tx)
+                dy = abs(v[1] - ty)
+                vz = float(v[2]) if len(v) >= 3 and v[2] > 0 else armconfig.GRAB_BASE_HEIGHT
+                if dx < armconfig.STACK_PROXIMITY_THRESHOLD and dy < armconfig.STACK_PROXIMITY_THRESHOLD:
+                    if vz > tz + 10:
+                        blocking_objects.append((k, vz))
+        except Exception as e:
+            print(f"⚠️ <SYSTEM>: Unstack scan fallback error: {e}")
+
     blocking_objects.sort(key=lambda x: x[1], reverse=True)
     
+    # 5. Execute unstacking sequence
     if blocking_objects:
-        print(f"🤖 <SYSTEM>: ตรวจพบวัตถุทับอยู่บน '{object_name}' จำนวน {len(blocking_objects)} ชิ้น! เริ่มกระบวนการแกะออก...")
+        print(f"🤖 <SYSTEM>: ตรวจพบวัตถุทับอยู่บน '{eng_name}' จำนวน {len(blocking_objects)} ชิ้น! เริ่มกระบวนการย้ายกล่องชั้นบนออก...")
         for b_name, b_z in blocking_objects:
-            print(f"🤖 <SYSTEM>: [Unstack] กำลังหยิบ '{b_name}' ออกไปวางที่พื้นที่ปลอดภัย...")
-            res_grab = raw_grab_object(b_name)
+            print(f"🤖 <SYSTEM>: [Unstack Step] กำลังหยิบ '{b_name}' ออกไปวางที่พื้นที่ปลอดภัย...")
+            res_grab = raw_grab_object(b_name, _auto_unstack=False)
             if isinstance(res_grab, dict) and res_grab.get("status") == "ERROR":
                 print(f"⚠️ <SYSTEM>: ล้มเหลวขณะพยายามหยิบ '{b_name}' ออก")
                 return res_grab
             
-            # ใช้พิกัดปลอดภัยที่คำนวณแบบ dynamic เพื่อให้หุ่นเอาไปวางได้สำเร็จโดยไม่ชนของอื่น
+            # ย้ายไปวางในตำแหน่งที่ปลอดภัย
             safe_coord = raw_find_safe_spot()
-            res_move = raw_move_to(target_coord=safe_coord)  # target_height=None → auto-adjust
+            res_move = raw_move_to(target_coord=safe_coord)
             if isinstance(res_move, dict) and res_move.get("status") == "ERROR":
                 print(f"⚠️ <SYSTEM>: ล้มเหลวขณะพยายามวาง '{b_name}' ลงพื้นที่ปลอดภัย")
                 return res_move
     else:
-        print(f"🤖 <SYSTEM>: ไม่มีวัตถุทับอยู่บน '{object_name}' สามารถหยิบได้ทันที")
+        print(f"🤖 <SYSTEM>: ไม่มีวัตถุทับอยู่บน '{eng_name}' สามารถหยิบได้ทันที")
         
-    print(f"🤖 <SYSTEM>: พื้นที่เปิดทางแล้ว! กำลังหยิบเป้าหมายหลัก '{object_name}'...")
-    return raw_grab_object(object_name)
+    print(f"🤖 <SYSTEM>: พื้นที่เปิดทางแล้ว! กำลังหยิบเป้าหมายหลัก '{eng_name}'...")
+    return raw_grab_object(eng_name, target_coord=target_coord, _auto_unstack=False)
 
 
 # ── scan_object ──────────────────────────────────────────────────────────────
 
 def raw_scan_object(object_name: str) -> str:
+    eng_name = get_english_name(object_name)
+    # Memory First: check known_objects
+    if eng_name in init.known_objects and isinstance(init.known_objects[eng_name], list):
+        coord = init.known_objects[eng_name]
+        print(f"✅ <SYSTEM>: [Memory-First] พบ '{object_name}' ในความจำแล้ว ที่ {coord}")
+        return {"status": "DONE TASK", "message": f"Found '{object_name}' in memory at {coord}."}
+        
     from vision import yolo_detector
-    yolo_coord = yolo_detector.scan_with_yolo(object_name)
+    yolo_coord = yolo_detector.scan_with_yolo(eng_name or object_name)
     if yolo_coord:
-        eng_name = get_english_name(object_name)
         init.known_objects[eng_name] = yolo_coord
         print(f"✅ <SYSTEM>: DONE TASK - Scan {object_name}")
         return {"status": "DONE TASK", "message": f"Found '{object_name}' at {yolo_coord}. Memory updated."}

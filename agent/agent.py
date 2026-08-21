@@ -95,18 +95,19 @@ def get_contextual_input(raw_input):
         blocked_relations = []
         if init.known_objects:
             for obj_a, coord_a in init.known_objects.items():
-                if not isinstance(coord_a, list) or len(coord_a) < 3: continue
+                if not isinstance(coord_a, list) or len(coord_a) < 2 or coord_a == "in gripper": continue
                 if "area" in obj_a.lower() or "zone" in obj_a.lower(): continue
+                za = float(coord_a[2]) if len(coord_a) >= 3 and coord_a[2] > 0 else armconfig.GRAB_BASE_HEIGHT
                 for obj_b, coord_b in init.known_objects.items():
-                    if obj_a == obj_b: continue
-                    if not isinstance(coord_b, list) or len(coord_b) < 3: continue
+                    if obj_a == obj_b or not isinstance(coord_b, list) or len(coord_b) < 2 or coord_b == "in gripper": continue
                     if "area" in obj_b.lower() or "zone" in obj_b.lower(): continue
+                    zb = float(coord_b[2]) if len(coord_b) >= 3 and coord_b[2] > 0 else armconfig.GRAB_BASE_HEIGHT
                     
                     dx = abs(coord_a[0] - coord_b[0])
                     dy = abs(coord_a[1] - coord_b[1])
                     if dx < getattr(armconfig, "STACK_PROXIMITY_THRESHOLD", 35.0) and dy < getattr(armconfig, "STACK_PROXIMITY_THRESHOLD", 35.0):
-                        if coord_b[2] > coord_a[2] + 10:
-                            blocked_relations.append(f"'{obj_a}' is blocked by '{obj_b}' (requires unstack_and_grab)")
+                        if zb > za + 10:
+                            blocked_relations.append(f"'{obj_a}' is at bottom (blocked by '{obj_b}' on top, use unstack_and_grab)")
                             
         rel_str = ". ".join(blocked_relations)
         if rel_str:

@@ -134,13 +134,13 @@ SCAN_WAIT_PER_ANGLE = 1
 GRAB_BASE_HEIGHT = float(os.getenv("GRAB_BASE_HEIGHT", "110"))
 
 # ความสูงพื้นฐานสำหรับวางของชั้นแรก (mm)
-STACK_BASE_HEIGHT = float(os.getenv("STACK_BASE_HEIGHT", "90"))
+STACK_BASE_HEIGHT = float(os.getenv("STACK_BASE_HEIGHT", "110"))
 
 # ความสูงเพิ่มต่อชั้น (mm) — ปรับให้สูงขึ้นเพื่อไม่ให้กดทับ
 STACK_HEIGHT_PER_LAYER = float(os.getenv("STACK_HEIGHT_PER_LAYER", "30"))
 
-# ระยะเผื่อความสูงตอนวางซ้อน (mm) — ช่วยให้ปล่อยของกลางอากาศเล็กน้อย
-STACK_SAFE_OFFSET = float(os.getenv("STACK_SAFE_OFFSET", "25"))
+# ระยะเผื่อความสูงตอนวางซ้อน (mm) — 0mm เพื่อให้วางแตะพื้นผิวพอดี ไม่หล่นจากอากาศ
+STACK_SAFE_OFFSET = float(os.getenv("STACK_SAFE_OFFSET", "0"))
 
 # ชดเชยพิกัดตอนหยิบ/วาง (mm)
 # หากแขนกลยื่นไปข้างหน้ามากเกินไป ให้ลบค่า X ออก (เช่น -15.0)
@@ -151,7 +151,7 @@ STACK_X_OFFSET = float(os.getenv("STACK_X_OFFSET", "0"))
 STACK_Y_OFFSET = float(os.getenv("STACK_Y_OFFSET", "5"))
 
 # ระยะ XY ที่ถือว่า "พิกัดเดียวกัน" สำหรับตรวจนับ stack (mm)
-STACK_PROXIMITY_THRESHOLD = 15
+STACK_PROXIMITY_THRESHOLD = 35.0
 
 # เปิด/ปิดเสียง (ซิงค์กับปุ่ม GUI Spk)
 SPEAKER_ON = False
