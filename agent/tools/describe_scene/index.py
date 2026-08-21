@@ -1,5 +1,4 @@
-from hardware import init
-from vision import api
+from agent.tools.shares._raw import raw_describe_scene
 from agents import function_tool
 
 @function_tool
@@ -15,15 +14,8 @@ def describe_scene(question: str) -> str:
     Args:
         question: The specific question to ask about the scene. E.g., "What objects are on the table?", "Do you see a person?", "What color is the block?"
     """
-    print(f"Taking a photo to answer: '{question}'...")
-    
-    # 1. Take a picture
-    init.GetImage()
-    import os
-    image_path = os.path.join(init.PROJECT_ROOT, "captured_image.jpg")
-    
-    # 2. Call the Vision API
-    print("Analyzing image...")
-    result_text = api.QwenVLDescribe(question, image_path)
-    
-    return f"Vision Model Description:\n{result_text}"
+    res = raw_describe_scene(question)
+    if isinstance(res, dict):
+        return f"Vision Model Description:\n{res.get('result', res.get('message', ''))}"
+    return str(res)
+

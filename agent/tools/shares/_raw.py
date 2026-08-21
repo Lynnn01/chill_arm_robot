@@ -8,6 +8,7 @@ so executor.py can call them directly without going through openai-agents async 
 import time
 import json
 import math
+import os
 from hardware.init import mc
 from hardware import init
 import armconfig
@@ -24,12 +25,13 @@ def raw_grab_object(object_name: str, target_coord: list = None, _auto_unstack: 
     from PIL import Image
     import os
 
-    if init.current_held_object:
-        print(f"⚠️ <SYSTEM>: กริปเปอร์ถือ '{init.current_held_object}' อยู่ → วางลงตำแหน่งที่ปลอดภัยอัตโนมัติก่อนแล้วค่อยหยิบใหม่...")
+    if init.is_holding_object or init.current_held_object:
+        held = init.current_held_object or "held_object"
+        print(f"⚠️ <SYSTEM>: กริปเปอร์ถือ '{held}' อยู่ → วางลงตำแหน่งที่ปลอดภัยอัตโนมัติก่อนแล้วค่อยหยิบใหม่...")
         safe_spot = raw_find_safe_spot()
         res = raw_move_to(target_coord=safe_spot)
         if isinstance(res, dict) and res.get("status") == "ERROR":
-            return {"status": "ERROR", "message": f"วาง '{init.current_held_object}' ลงตำแหน่งปลอดภัยไม่สำเร็จ! {res.get('message', '')}"}
+            return {"status": "ERROR", "message": f"วาง '{held}' ลงตำแหน่งปลอดภัยไม่สำเร็จ! {res.get('message', '')}"}
 
 
     init.BotInit(mc)
@@ -657,6 +659,14 @@ def raw_play_rps_game() -> dict:
 
 def raw_unstack_and_grab(object_name: str, safe_area: str = "blank_area") -> dict:
     """Check if object is blocked by stacked items, unstack them to safe_area, then grab the target object."""
+    if init.is_holding_object or init.current_held_object:
+        held = init.current_held_object or "held_object"
+        print(f"⚠️ <SYSTEM>: [Unstack] กริปเปอร์ถือ '{held}' อยู่ → วางลงตำแหน่งที่ปลอดภัยอัตโนมัติก่อน...")
+        safe_spot = raw_find_safe_spot()
+        res = raw_move_to(target_coord=safe_spot)
+        if isinstance(res, dict) and res.get("status") == "ERROR":
+            return {"status": "ERROR", "message": f"วาง '{held}' ลงตำแหน่งปลอดภัยไม่สำเร็จ! {res.get('message', '')}"}
+
     eng_name = get_english_name(object_name)
     
     # 1. If generic target like "กล่องที่โดนทับ" or "buried_cube", find which object in memory is blocked
@@ -775,3 +785,152 @@ def raw_scan_object(object_name: str) -> str:
         print(f"✅ <SYSTEM>: DONE TASK - Scan {object_name}")
         return {"status": "DONE TASK", "message": f"Found '{object_name}' at {yolo_coord}. Memory updated."}
     return {"status": "ERROR", "message": f"'{object_name}' not found."}
+
+
+# ── describe_scene ───────────────────────────────────────────────────────────
+
+def raw_describe_scene(question: str = "มีอะไรอยู่บนโต๊ะบ้าง") -> dict:
+    """Bend down to POSE_READY to view the table clearly, take photo, and ask vision model."""
+    question = (str(question) if question is not None else "").strip() or "มีอะไรอยู่บนโต๊ะบ้าง"
+    print(f"🤖 <SYSTEM>: [Describe Scene] ก้มกล้องมองโต๊ะเพื่อตอบคำถาม: '{question}'...")
+    mc.send_angles(armconfig.POSE_READY, armconfig.SPEED_GRAB)
+    mc.wait_for_arrival(armconfig.POSE_READY, mode="angles")
+    time.sleep(1.0)
+    
+    # 1. Take a picture
+    init.GetImage()
+    image_path = os.path.join(init.PROJECT_ROOT, "captured_image.jpg")
+    
+    # 2. Return arm to home
+    mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
+    
+    # 3. Call the Vision API
+    print("🤖 <SYSTEM>: กำลังวิเคราะห์ภาพ...")
+    try:
+        from vision import api
+        result_text = api.QwenVLDescribe(question, image_path)
+    except Exception as e:
+        print(f"⚠️ <SYSTEM>: Vision API error: {e}")
+        result_text = f"เกิดข้อผิดพลาดในการวิเคราะห์ภาพ: {e}"
+    finally:
+        mc.wait_for_arrival(armconfig.POSE_HOME, mode="angles")
+
+    print(f"✅ <SYSTEM>: DONE TASK - Describe scene:\n{result_text}")
+    return {"status": "DONE TASK", "message": result_text, "result": result_text}
+
+
+
+# ── move_around ──────────────────────────────────────────────────────────────
+
+def raw_move_around(speed: int = 40) -> dict:
+    """Performs a scanning animation to look around the environment."""
+    print(f"🤖 <SYSTEM>: กำลังส่ายกล้องสำรวจรอบๆ ที่ความเร็ว {speed}...")
+    mc.send_angles(armconfig.POSE_HOME, speed)
+    time.sleep(2)
+    mc.send_angles([60, 0, 0, 0, 0, -45], speed)
+    time.sleep(2.5)
+    mc.send_angles([-60, 0, 0, 0, 0, -45], speed)
+    time.sleep(3.5)
+    mc.send_angles([0, -30, -30, 0, 0, -45], speed)
+    time.sleep(2.5)
+    mc.send_angles(armconfig.POSE_HOME, speed)
+    mc.wait_for_arrival(armconfig.POSE_HOME, mode="angles")
+    print("✅ <SYSTEM>: DONE TASK - Move around")
+    return {"status": "DONE TASK"}
+
+
+# ── give_to_person ───────────────────────────────────────────────────────────
+
+def raw_give_to_person() -> dict:
+    """Hands over currently held object to person in front of robot."""
+    if not init.is_holding_object and not init.current_held_object:
+        return {"status": "ERROR", "message": "หุ่นยนต์ไม่ได้ถืออะไรอยู่เลย"}
+        
+    print("🤖 <SYSTEM>: กำลังยื่นของไปให้ที่ด้านหน้า...")
+    target_coord = [180.0, 0.0, 150.0]
+    
+    current_coords = mc.safe_get_coords()
+    if current_coords and len(current_coords) >= 3:
+        lift_target = [current_coords[0], current_coords[1], armconfig.Z_SAFE_TRAVEL]
+        mc.send_coords(lift_target + armconfig.WRIST_PLACE, armconfig.SPEED_GRAB)
+        mc.wait_for_arrival(lift_target, mode="coords")
+        
+    xy_target = [target_coord[0], target_coord[1], armconfig.Z_SAFE_TRAVEL]
+    mc.send_coords(xy_target + armconfig.WRIST_PLACE, armconfig.SPEED_GRAB)
+    mc.wait_for_arrival(xy_target, mode="coords")
+    
+    final_target = [target_coord[0], target_coord[1], target_coord[2]]
+    mc.send_coords(final_target + armconfig.WRIST_PLACE, armconfig.SPEED_GRAB)
+    mc.wait_for_arrival(final_target, mode="coords")
+    
+    print("🤖 <SYSTEM>: มารับของไปได้เลยครับ จะปล่อยใน 4 วินาที...")
+    time.sleep(4)
+    init.open_gripper()
+    time.sleep(1)
+    
+    mc.send_coords(xy_target + armconfig.WRIST_PLACE, armconfig.SPEED_GRAB)
+    mc.wait_for_arrival(xy_target, mode="coords")
+    mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
+    mc.wait_for_arrival(armconfig.POSE_HOME, mode="angles")
+    
+    if init.current_held_object:
+        init.known_objects.pop(init.current_held_object, None)
+        init.current_held_object = None
+    init.is_holding_object = False
+    
+    print("✅ <SYSTEM>: DONE TASK - Handover to person")
+    return {"status": "DONE TASK"}
+
+
+# ── sort_by_color ────────────────────────────────────────────────────────────
+
+def raw_sort_by_color() -> dict:
+    """Automatically scans all colored blocks and sorts them into corner zones."""
+    from vision.yolo_detector import scan_all_objects
+    from agent.tools.sort_by_color.color_zones import COLOR_ZONES, DEFAULT_ZONE
+    
+    print("🤖 <SYSTEM>: เริ่มต้นโหมดแยกสี (Sort by Color)...")
+    found_objects = scan_all_objects()
+    if not found_objects:
+        return {"status": "DONE TASK", "message": "ไม่พบสิ่งของบนโต๊ะเลย"}
+        
+    success_count = 0
+    for full_name, coord in found_objects.items():
+        target_zone = DEFAULT_ZONE
+        for color, zone in COLOR_ZONES.items():
+            if color in full_name:
+                target_zone = zone
+                break
+                
+        print(f"🤖 <SYSTEM>: กำลังแยกชิ้น '{full_name}' ไปที่โซนพิกัด {target_zone}...")
+        init.known_objects[full_name] = coord
+        grab_result = raw_grab_object(full_name)
+        
+        if isinstance(grab_result, dict) and grab_result.get("status") == "ERROR":
+            print(f"⚠️ <SYSTEM>: หยิบ {full_name} ไม่สำเร็จ ข้ามไปชิ้นต่อไป...")
+            continue
+            
+        if init.is_holding_object or init.current_held_object:
+            raw_move_to(target_coord=target_zone)
+            success_count += 1
+            
+    mc.send_angles(armconfig.POSE_HOME, 40)
+    mc.wait_for_arrival(armconfig.POSE_HOME, mode="angles")
+    print(f"✅ <SYSTEM>: DONE TASK - Sort by color ({success_count}/{len(found_objects)})")
+    return {"status": "DONE TASK", "message": f"แยกสีสำเร็จ {success_count}/{len(found_objects)} ชิ้น"}
+
+
+# ── execute_python_code ──────────────────────────────────────────────────────
+
+def raw_execute_python_code(code: str) -> dict:
+    """Executes python code and extracts Result variable."""
+    try:
+        exec_globals = {}
+        exec(code, exec_globals)
+        execution_result = exec_globals.get("Result", None)
+        print(f"🤖 <SYSTEM>: Python Exec Result = {execution_result}")
+        return {"status": "DONE TASK", "result": execution_result}
+    except Exception as e:
+        print(f"⚠️ <SYSTEM>: Python Exec Error: {e}")
+        return {"status": "ERROR", "message": str(e)}
+

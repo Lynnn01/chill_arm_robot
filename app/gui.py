@@ -14,33 +14,8 @@ try:
 except Exception:
     pass
 
-AUTO_PROMPTS = [
-    # ── วัตถุและการจัดวาง (Safe Pick, Place & Stacking) ──
-    "หยิบกล่องสี{color}มาโชว์ให้ดูหน่อย",
-    "หยิบกล่องสี{color}แล้วนำไปวางซ้อนบนกล่องใบอื่น",
-    "หยิบกล่องสี{color}แล้วย้ายไปวางในตำแหน่งที่ปลอดภัย",
-    "หยิบกล่องสี{color}ขึ้นมาโชว์ แล้วเอาไปวางซ้อนให้เรียบร้อย",
-    "หยิบกล่องสี{color}ไปวางที่ปลอดภัยแล้วเต้นฉลองหน่อย",
-    "หยิบกล่องที่โดนวางทับอยู่ขึ้นมาโชว์หน่อย",
-    "แกะกล่องที่โดนซ้อนทับอยู่แล้วนำไปวางในตำแหน่งที่ปลอดภัย",
+from agent.prompts import get_auto_prompt, AUTO_PROMPTS
 
-    # ── วิสัยทัศน์และการสำรวจ (Vision & Safe Inspection) ──
-    "อธิบายหน่อยว่าตอนนี้บนโต๊ะมีอะไรบ้าง",
-    "ส่ายกล้องสำรวจรอบๆ โต๊ะหน่อย",
-    "มองหากล่องสี{color}ให้หน่อยว่าอยู่ตรงไหน",
-    "อธิบายหน่อยว่ามีกล่องอะไรซ้อนทับกันอยู่บ้างบนโต๊ะ",
-    "สแกนหาตำแหน่งของกล่องสี{color}บนโต๊ะ",
-
-    # ── ท่าทางและการโต้ตอบ (Gestures & Entertainment) ──
-    "ทำท่าพยักหน้าและโบกมือทักทายแบบอีสานม่วนๆ",
-    "โค้งคำนับทักทายอย่างสุภาพหน่อย",
-    "ทำท่าส่ายหน้าแบบงงๆ ให้ดูหน่อย",
-    "หมุนมือซ้ายขวาโชว์ท่าหน่อย",
-    "เต้นฉลองโชว์สเต็ปหน่อย!",
-    "เล่นเป่ายิ้งฉุบโชว์สักตาหน่อย",
-    "ส่ายกล้องสำรวจรอบๆ แล้วทำท่าพยักหน้าทักทาย",
-    "ขยับปลายมือหมุนซ้ายขวาพร้อมโบกมือทักทาย"
-]
 
 
 class RedirectText:
@@ -132,13 +107,29 @@ class OneArmGUI:
     def _trigger_auto_task(self):
         self._auto_waiting = False
         if getattr(self.right_panel, 'auto_on', False) and self.right_panel.input_entry.cget('state') == tk.NORMAL:
-            import random
-            prompt = random.choice(AUTO_PROMPTS)
+            from hardware import init as hw_init
+            holding_obj = hw_init.current_held_object if (hw_init.is_holding_object or hw_init.current_held_object) else None
             
-            if "{color}" in prompt:
-                colors = ["แดง", "เขียว", "น้ำเงิน", "เหลือง"]
-                prompt = prompt.replace("{color}", random.choice(colors))
-                
+            # Detect if there are stacked/blocking relationships in memory
+            has_stacked = False
+            if hw_init.known_objects:
+                import armconfig
+                for obj_a, coord_a in hw_init.known_objects.items():
+                    if not isinstance(coord_a, list) or len(coord_a) < 2 or coord_a == "in gripper" or "area" in obj_a.lower():
+                        continue
+                    za = float(coord_a[2]) if len(coord_a) >= 3 and coord_a[2] > 0 else armconfig.GRAB_BASE_HEIGHT
+                    for obj_b, coord_b in hw_init.known_objects.items():
+                        if obj_a == obj_b or not isinstance(coord_b, list) or len(coord_b) < 2 or coord_b == "in gripper" or "area" in obj_b.lower():
+                            continue
+                        zb = float(coord_b[2]) if len(coord_b) >= 3 and coord_b[2] > 0 else armconfig.GRAB_BASE_HEIGHT
+                        if abs(coord_a[0] - coord_b[0]) < getattr(armconfig, "STACK_PROXIMITY_THRESHOLD", 35.0) and abs(coord_a[1] - coord_b[1]) < getattr(armconfig, "STACK_PROXIMITY_THRESHOLD", 35.0):
+                            if zb > za + 10:
+                                has_stacked = True
+                                break
+                    if has_stacked:
+                        break
+                        
+            prompt = get_auto_prompt(holding_object=holding_obj, has_stacked=has_stacked)
             self.send_message(f"[AUTO] {prompt}")
 
     def _append_log(self, text):

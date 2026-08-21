@@ -78,13 +78,13 @@ def get_contextual_input(raw_input):
         coords = init.last_coords
 
         # Format holding status with current held object if any
-        if init.is_holding_object:
+        if init.is_holding_object or init.current_held_object:
             held_str = (
                 f"'{init.current_held_object}'"
                 if init.current_held_object
-                else "an unknown object"
+                else "an object"
             )
-            holding_status = f"HOLDING {held_str}"
+            holding_status = f"HOLDING {held_str} (Notice: If user orders grabbing another object, insert move_to(smart_place=true) first to release this item)"
         else:
             holding_status = "EMPTY (not holding anything)"
 
@@ -113,8 +113,8 @@ def get_contextual_input(raw_input):
         if rel_str:
             memory_str += f" | Logical insights: {rel_str}"
 
-        if coords and len(coords) >= 3:
-            return f"[System: Current arm coordinates are X={coords[0]}, Y={coords[1]}, Z={coords[2]}. Gripper state: {holding_status}. Known objects in memory: {memory_str}]\nUser: {raw_input}"
+        coord_str = f"X={coords[0]}, Y={coords[1]}, Z={coords[2]}" if (coords and len(coords) >= 3) else "Unknown"
+        return f"[System: Current arm coordinates are {coord_str}. Gripper state: {holding_status}. Known objects in memory: {memory_str}]\nUser: {raw_input}"
     except Exception as e:
         print(f"Context error: {e}")
     return raw_input
