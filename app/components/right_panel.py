@@ -35,6 +35,24 @@ class RightPanel(tk.Frame):
         tk.Label(hdr, text="AI Interaction Log",
                  font=Theme.FONT_H1, bg=Theme.BG, fg=Theme.FG).pack(side=tk.LEFT)
         
+        # Score Badge
+        self.score_frame = RoundedFrame(hdr, radius=Theme.RADIUS_SM,
+                                        bg=Theme.SURFACE_MUTED, border_color=Theme.BORDER)
+        self.score_frame.pack(side=tk.LEFT, padx=(Theme.SP_MD, 0))
+        self.score_label = tk.Label(self.score_frame.inner,
+                                    text="⭐ 0 pts",
+                                    font=Theme.FONT_BODY_BOLD,
+                                    bg=Theme.SURFACE_MUTED, fg=Theme.ACCENT,
+                                    padx=10, pady=2)
+        self.score_label.pack()
+
+        try:
+            from agent import scoring
+            scoring.register_score_listener(self._on_score_update)
+            self.score_label.config(text=f"⭐ {scoring.get_score()} pts")
+        except Exception:
+            pass
+
         self.mic_on = False
         self.speaker_on = False
 
@@ -324,6 +342,12 @@ class RightPanel(tk.Frame):
         self.input_entry.focus()
 
     # ------------------------------------------------------------------
+    def _on_score_update(self, new_score):
+        def _update():
+            if hasattr(self, 'score_label') and self.score_label.winfo_exists():
+                self.score_label.config(text=f"⭐ {new_score} pts")
+        self.log_queue.put(_update)
+
     def _on_send(self):
         self.send_message_callback(self.input_entry.get().strip())
 

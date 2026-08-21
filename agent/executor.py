@@ -126,12 +126,18 @@ def execute_plan(tasks: list, plan_summary: str = "", speaker_on: bool = True) -
         if i < len(tasks) - 1:
             pass
 
-    # ── Print summary ─────────────────────────────────────────────
+    # ── Print summary & Scoring ──────────────────────────────────
     ok = sum(1 for r in results if r["status"] == "ok")
     fail = len(results) - ok
     print(
         f"\n🤖 <SYSTEM>: ทำงานเสร็จ {ok}/{len(results)} งาน"
         + (f" (ยกเลิกกลางคัน {fail} งาน)" if fail else "")
     )
+
+    # Calculate and award score if all planned tasks succeeded
+    if results and all(r.get("status") == "ok" for r in results) and len(results) == len(tasks):
+        from agent import scoring
+        points, reason = scoring.evaluate_task_points(tasks, plan_summary)
+        scoring.add_score(points, reason)
 
     return results
