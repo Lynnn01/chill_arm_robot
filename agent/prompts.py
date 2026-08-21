@@ -52,7 +52,10 @@ Your mission is to analyze intent, decide the smartest sequence of actions, and 
 8. `gesture(action: str)`
    - Non-verbal physical gesture: `action` can be `"yes"` (nodding), `"no"` (head shake), `"bow"` (respectful bow), `"wave"` (hand wave), or `"confused"` (head tilt).
 9. `scan_object(object_name: str)`
-   - ONLY when user asks "หา...", "มองหา..." WITHOUT ordering a grab.
+   - PRIMARY YOLO Vision & Memory Scanning Tool: Bends down to `POSE_READY` and scans across all angles (0°, 15°, 30°, 45°, 60°, 75°, 90°, -15°, -30°, -45°, -60°, -75°, -90°) using YOLO model to detect physical cubes, calculate coordinates, and memorize them into `known_objects`.
+   - ALWAYS choose `scan_object` whenever the request asks to "สแกน", "หาของ", "สำรวจโต๊ะ", "มองหากล่อง", "จำตำแหน่งกล่อง", "หาตำแหน่งของกล่องบนโต๊ะ", "ตรวจสอบความจำ".
+   - Pass `object_name="cube"` to scan and remember all blocks across the entire table into memory!
+   - Pass `object_name="red_cube"` (or specific color) to search for a specific block.
 10. `play_rps()`
    - Rock-Paper-Scissors Mini-Game: Use when user asks to "เป่ายิงฉุบ", "เป่ายิ้งฉุบ", "เล่นเกม".
 11. `unstack_and_grab(object_name: str, safe_area: str = "blank_area")`
@@ -60,7 +63,7 @@ Your mission is to analyze intent, decide the smartest sequence of actions, and 
 12. `describe_scene(question: str)`
    - Use when user asks "เห็นอะไรบ้าง", "มีอะไรอยู่บนโต๊ะ", "อธิบายสิ่งที่อยู่ตรงหน้า" or asks a general question about the scene. The robot automatically looks down at the table before taking a photo.
 13. `move_around(speed: int = 40)`
-   - Use when user asks to "ส่ายกล้อง", "สำรวจรอบๆ", "มองไปรอบๆ". Performs a scanning animation to look around.
+   - ONLY for casual look-around head animation when NOT looking for objects (e.g. "หันซ้ายหันขวาเล่นๆ"). If searching for objects or cubes on the desk, NEVER use `move_around`; ALWAYS use `scan_object`!
 14. `give_to_person()`
    - Hands over currently held object to the user in front of the robot and releases gripper after 4 seconds.
 15. `execute_python_code(code: str)`
@@ -140,12 +143,12 @@ _auto_mission_state = {
     "auto_command_count": 0,       # Counter for periodic 10-command memory verification
 }
 
-# 1. Empty Memory Pool: Explore and scan desk first to discover real blocks
+# 1. Empty Memory Pool: Explore and scan desk first to discover real blocks with YOLO
 AUTO_PROMPTS_EMPTY_SCAN = [
     "สแกนหาตำแหน่งของกล่องบนโต๊ะ",
     "สแกนสำรวจกล่องบนโต๊ะว่ามีสีอะไรบ้าง",
-    "อธิบายหน่อยว่าตอนนี้บนโต๊ะมีกล่องอะไรบ้าง",
-    "ส่ายกล้องสำรวจรอบๆ โต๊ะหน่อย",
+    "ก้มสแกนหาตำแหน่งและจำกล่องทั้งหมดบนโต๊ะ",
+    "สแกนค้นหากล่องบนโต๊ะและบันทึกลงความจำ",
 ]
 
 # 2. Holding Pool: Manage currently held item
