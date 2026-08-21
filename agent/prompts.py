@@ -137,10 +137,12 @@ COLOR_TO_THAI = {
 }
 
 # Auto Mode Mission & Normal Mode State Tracking
+MEMORY_REVIEW_INTERVAL = 11       # Run memory verification scan every 11 commands (when unstacked)
+
 _auto_mission_state = {
     "mode": "mission",             # "mission" (Tower Building) or "normal" (Casual Play)
     "normal_steps_left": 0,        # Count of casual commands before returning to mission
-    "auto_command_count": 0,       # Counter for periodic 10-command memory verification
+    "auto_command_count": 0,       # Counter for periodic memory verification
 }
 
 # 1. Empty Memory Pool: Explore and scan desk first to discover real blocks with YOLO
@@ -315,8 +317,8 @@ def get_auto_prompt(
     elif not all_colors:
         candidates = list(AUTO_PROMPTS_EMPTY_SCAN)
 
-    # Scenario 3: Periodic 10-Command Memory Verification (Only when NO boxes are stacked)
-    elif _auto_mission_state.get("auto_command_count", 0) >= 10 and not towers:
+    # Scenario 3: Periodic 11-Command Memory Verification (Only when NO boxes are stacked)
+    elif _auto_mission_state.get("auto_command_count", 0) >= MEMORY_REVIEW_INTERVAL and not towers:
         _auto_mission_state["auto_command_count"] = 0
         candidates = list(AUTO_PROMPTS_EMPTY_SCAN)
 
@@ -330,7 +332,7 @@ def get_auto_prompt(
         for p in AUTO_PROMPTS_NORMAL_PLAY:
             candidates.append(p.replace("{color}", chosen_color))
 
-    # Scenario 4: Mission Mode — Only 1 cube on desk
+    # Scenario 5: Mission Mode — Only 1 cube on desk
     elif len(free_cubes) == 1 and not towers:
         single_color = free_cubes[0][1]
         for p in AUTO_PROMPTS_SINGLE_CUBE:

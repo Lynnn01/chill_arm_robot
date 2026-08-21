@@ -124,7 +124,7 @@ def raw_grab_object(object_name: str, target_coord: list = None, _auto_unstack: 
                     robot_coord[1] += getattr(armconfig, 'GRAB_Y_OFFSET', 0.0)
                     if robot_coord[0] > 210:
                         robot_coord[0] -= 5
-                    init.known_objects[eng_name] = [round(robot_coord[0], 2), round(robot_coord[1], 2), round(z, 2)]
+                    # catlazy: QwenVL result used for THIS grab only — NOT saved to memory (prevents hallucinated coords)
                     print(f"🤖 <SYSTEM>: Vision เจอแล้ว! พิกัด {robot_coord}")
                 else:
                     print(f"🤖 <SYSTEM>: ไม่พบ {object_name} ในภาพ")
@@ -288,8 +288,8 @@ def raw_find_safe_spot(margin_mm: float = 55.0, scan_first: bool = False) -> lis
     has_valid_memory = any(isinstance(v, list) and v != "in gripper" for v in init.known_objects.values())
     if scan_first or not has_valid_memory:
         try:
-            from vision.yolo_detector import quick_scan_desk_objects
-            quick_scan_desk_objects()
+            from vision.yolo_detector import scan_with_yolo
+            scan_with_yolo("cube")
         except Exception as e:
             print(f"⚠️ <SYSTEM>: ไม่สามารถสแกนกล้องสดได้: {e} (ใช้ความจำ known_objects แทน)")
 
@@ -791,8 +791,8 @@ def raw_unstack_and_grab(object_name: str, safe_area: str = "blank_area") -> dic
     # Fallback: If no blocking objects found in memory but user requested unstacking, scan desk once
     if not blocking_objects and is_generic_query:
         try:
-            from vision.yolo_detector import quick_scan_desk_objects
-            quick_scan_desk_objects()
+            from vision.yolo_detector import scan_with_yolo
+            scan_with_yolo("cube")
             for k, v in init.known_objects.items():
                 if k == eng_name or v == "in gripper" or not isinstance(v, list) or len(v) < 2 or "area" in k.lower():
                     continue
@@ -954,11 +954,11 @@ def raw_give_to_person() -> dict:
 
 def raw_sort_by_color() -> dict:
     """Automatically scans all colored blocks and sorts them into corner zones."""
-    from vision.yolo_detector import scan_all_objects
+    from vision.yolo_detector import scan_with_yolo
     from agent.tools.sort_by_color.color_zones import COLOR_ZONES, DEFAULT_ZONE
     
     print("🤖 <SYSTEM>: เริ่มต้นโหมดแยกสี (Sort by Color)...")
-    found_objects = scan_all_objects()
+    found_objects = scan_with_yolo("cube")
     if not found_objects:
         return {"status": "DONE TASK", "message": "ไม่พบสิ่งของบนโต๊ะเลย"}
         

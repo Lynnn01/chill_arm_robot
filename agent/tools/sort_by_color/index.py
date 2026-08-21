@@ -1,7 +1,7 @@
 from agents import function_tool
 from agent.tools.grab_object import grab_object
 from agent.tools.move_to import move_to
-from vision.yolo_detector import scan_all_objects
+from vision.yolo_detector import scan_with_yolo
 from hardware import init
 from hardware.init import mc
 from .color_zones import COLOR_ZONES, DEFAULT_ZONE
@@ -18,7 +18,7 @@ def sort_by_color() -> str:
     """
     print("🤖 <SYSTEM>: เริ่มต้นโหมดแยกสี (Sort by Color)...")
     
-    found_objects = scan_all_objects()
+    found_objects = scan_with_yolo("cube")
     if not found_objects:
         return "ไม่พบสิ่งของบนโต๊ะเลยครับ ไม่สามารถแยกสีได้"
         
@@ -35,7 +35,10 @@ def sort_by_color() -> str:
         init.known_objects[full_name] = coord
         grab_result = grab_object(full_name)
         
-        if "Error:" not in grab_result and init.is_holding_object:
+        grab_ok = (
+            isinstance(grab_result, dict) and grab_result.get("status") == "DONE TASK"
+        ) or (isinstance(grab_result, str) and "Error:" not in grab_result)
+        if grab_ok and init.is_holding_object:
             move_to(target_zone)
             success_count += 1
         else:
