@@ -25,10 +25,11 @@ def raw_grab_object(object_name: str, target_coord: list = None, _auto_unstack: 
     import os
 
     if init.current_held_object:
-        print(f"⚠️ <SYSTEM>: กริปเปอร์ถือ '{init.current_held_object}' อยู่ → วางลง safe area อัตโนมัติก่อนแล้วค่อยหยิบใหม่...")
-        res = raw_move_to(target_coord=[armconfig.UNSTACK_SAFE_X, armconfig.UNSTACK_SAFE_Y])
+        print(f"⚠️ <SYSTEM>: กริปเปอร์ถือ '{init.current_held_object}' อยู่ → วางลงตำแหน่งที่ปลอดภัยอัตโนมัติก่อนแล้วค่อยหยิบใหม่...")
+        safe_spot = raw_find_safe_spot()
+        res = raw_move_to(target_coord=safe_spot)
         if isinstance(res, dict) and res.get("status") == "ERROR":
-            return {"status": "ERROR", "message": f"วาง '{init.current_held_object}' ลง safe area ไม่สำเร็จ! {res.get('message', '')}"}
+            return {"status": "ERROR", "message": f"วาง '{init.current_held_object}' ลงตำแหน่งปลอดภัยไม่สำเร็จ! {res.get('message', '')}"}
 
 
     init.BotInit(mc)
@@ -238,11 +239,90 @@ def get_english_name(name: str) -> str:
         
     return translated.replace(" ", "_")
 
-def raw_move_to(target_coord: list = None, target_name: str = None, target_height: int = None) -> str:
-    """Move and place current object at target_coord or on top of target_name."""
+# ── find_safe_spot & smart_place ──────────────────────────────────────────────
+
+def raw_find_safe_spot(margin_mm: float = 40.0) -> list:
+    """Return a random safe [x, y] on the desk away from base and known objects."""
+    import random
+    
+    # Workspace reachable zone on desk (mm)
+    for _ in range(60):
+        x = random.uniform(130.0, 220.0)
+        y = random.uniform(-160.0, 160.0)
+        dist = math.hypot(x, y)
+        if dist < armconfig.GRAB_MIN_RADIUS or dist > 260.0:
+            continue
+            
+        # Check against current held coordinate so we don't put it right back in the same spot
+        if hasattr(init, "current_held_coord") and init.current_held_coord:
+            if abs(init.current_held_coord[0] - x) < 35.0 and abs(init.current_held_coord[1] - y) < 35.0:
+                continue
+                
+        # Check against all known objects on table
+        conflict = False
+        for k, v in init.known_objects.items():
+            if isinstance(v, list) and len(v) >= 2 and v != "in gripper":
+                if abs(v[0] - x) < margin_mm and abs(v[1] - y) < margin_mm:
+                    conflict = True
+                    break
+        if not conflict:
+            return [round(x, 1), round(y, 1)]
+
+    # Fallback to predefined safe coordinate
+    return [armconfig.UNSTACK_SAFE_X, armconfig.UNSTACK_SAFE_Y]
+
+
+def raw_smart_place(prefer_stack: bool = True) -> dict:
+    """
+    Autonomously place the currently held object:
+    - If prefer_stack=True and other objects exist in memory -> Stack on one of them
+    - If no objects to stack on or prefer_stack=False -> Find a random safe spot on the desk
+    """
+    if not init.current_held_object:
+        print(f"⚠️ <SYSTEM>: กริปเปอร์ไม่ได้ถือวัตถุอยู่! ยกเลิก smart_place")
+        return {"status": "ERROR", "message": "No object held in gripper. Call grab_object first."}
+
+    held = init.current_held_object
+    held_coord = getattr(init, "current_held_coord", None)
+
+    if prefer_stack:
+        # Find candidate objects to stack on
+        candidates = []
+        for k, v in init.known_objects.items():
+            if (
+                isinstance(v, list)
+                and len(v) >= 2
+                and v != "in gripper"
+                and k != held
+                and "area" not in k.lower()
+            ):
+                # Don't stack on same spot where it was just picked up from
+                if held_coord and abs(v[0] - held_coord[0]) < 35.0 and abs(v[1] - held_coord[1]) < 35.0:
+                    continue
+                candidates.append((k, v))
+
+        if candidates:
+            import random
+            target_name, target_coord = random.choice(candidates)
+            print(f"🤖 <SYSTEM>: [Smart Place] เลือกวางซ้อนบน '{target_name}' ที่พิกัด {target_coord[:2]}")
+            return raw_move_to(target_coord=target_coord[:2], target_name=target_name)
+
+    # Fallback / Direct: Find a safe empty spot
+    spot = raw_find_safe_spot()
+    print(f"🤖 <SYSTEM>: [Smart Place] สุ่มหาพื้นที่ว่างที่ปลอดภัยได้ที่ {spot}")
+    return raw_move_to(target_coord=spot)
+
+
+def raw_move_to(target_coord: list = None, target_name: str = None, target_height: int = None, smart_place: bool = False) -> dict:
+    """Move and place current object at target_coord, on top of target_name, or smart place."""
     if not init.current_held_object:
         print(f"⚠️ <SYSTEM>: กริปเปอร์ไม่ได้ถือวัตถุอยู่! ยกเลิก move_to เพื่อป้องกันแขนกลขยับเปล่า (ต้องสั่ง grab_object ก่อน)")
         return {"status": "ERROR", "message": "No object held in gripper. Call grab_object first."}
+
+    # If explicit smart_place requested or generic target without specific coords
+    if smart_place or (target_name and any(term in target_name.lower() for term in ("smart", "auto", "random", "stack", "safe", "any", "table", "พื้นที่ว่าง")) and not target_coord):
+        prefer_stack = not (target_name and "random" in target_name.lower())
+        return raw_smart_place(prefer_stack=prefer_stack)
 
     # Check if target_coord is invalid, default [0,0], or matches the grabbed object's former location
     is_held_coord = False
@@ -276,31 +356,19 @@ def raw_move_to(target_coord: list = None, target_name: str = None, target_heigh
             target_coord = init.known_objects[found_key]
             print(f"🤖 <SYSTEM>: ใช้พิกัดของ '{found_key}' จากความจำ {target_coord}")
         else:
-            from vision import yolo_detector
-            print(f"🤖 <SYSTEM>: กำลังใช้กล้องสแกนหาพื้นที่ '{eng_name}' ด้วย area.pt/YOLO...")
-            found_coord = yolo_detector.scan_with_yolo(eng_name)
-            if found_coord:
-                target_coord = found_coord
-                eng_target = get_english_name(target_name)
-                # พื้นที่ (area) ไม่มี Z — ใช้ -1.0 เป็น sentinel (ค่าติดลบที่เป็นไปไม่ได้ในงานจริง) เพื่อให้ dz check ทำงานได้ถูกต้อง
-                init.known_objects[eng_target] = [target_coord[0], target_coord[1], -1.0]
-                print(f"🤖 <SYSTEM>: สแกนพบพื้นที่ '{eng_name}' ที่พิกัด {target_coord} และจดจำพิกัดเรียบร้อยแล้ว!")
-            else:
-                # SAFETY STOP & HOLD OBJECT IN GRIPPER!
-                print(f"⚠️ <SYSTEM>: สแกนหาพื้นที่ '{eng_name}' ไม่พบ! ยกเลิกการวางและกำกล่องไว้เพื่อความปลอดภัย")
-                from agent.tts import play_voice_async
-                play_voice_async(f"ข่อยสแกนหาพื้นที่ {eng_name} บ่เจอเด้อ! ยกเลิกการวางเพื่อความปลอดภัย ข่อยขอกำของไว้คือเก่าเด้อ", "area_not_found.mp3")
-                mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
-                mc.wait_for_arrival(armconfig.POSE_HOME, mode="angles")
-                return {"status": "ERROR", "message": f"ไม่พบพื้นที่ '{eng_name}' จากการสแกนด้วย area.pt! ยกเลิกการวางกล่องเพื่อความปลอดภัย (ถือกล่องไว้ในกริปเปอร์)"}
+            if "area" not in eng_name.lower():
+                from vision import yolo_detector
+                found_coord = yolo_detector.scan_with_yolo(eng_name)
+                if found_coord:
+                    target_coord = found_coord
+            
+            if not target_coord:
+                print(f"⚠️ <SYSTEM>: ไม่พบเป้าหมาย '{eng_name}' → สลับไปสุ่มหาตำแหน่งที่ปลอดภัยเพื่อวางแทน")
+                target_coord = raw_find_safe_spot()
 
     if not target_coord or (isinstance(target_coord, list) and len(target_coord) >= 2 and target_coord[0] == 0 and target_coord[1] == 0):
-        print(f"⚠️ <SYSTEM>: ไม่ทราบพิกัดเป้าหมายที่จะวาง! ยกเลิกการวางและกำกล่องไว้เพื่อความปลอดภัย")
-        from agent.tts import play_voice_async
-        play_voice_async("บ่รู้พิกัดพื้นที่ที่จะวางเด้อ! ยกเลิกการวางเพื่อความปลอดภัย ข่อยขอกำของไว้คือเก่าเด้อ", "no_coord.mp3")
-        mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
-        mc.wait_for_arrival(armconfig.POSE_HOME, mode="angles")
-        return {"status": "ERROR", "message": "ไม่พบพิกัดเป้าหมายที่จะวาง! ยกเลิกการวางกล่องเพื่อความปลอดภัย (ถือกล่องไว้ในกริปเปอร์)"}
+        print(f"⚠️ <SYSTEM>: ไม่ได้ระบุพิกัดเป้าหมาย → สุ่มหาตำแหน่งที่ปลอดภัยเพื่อวาง")
+        target_coord = raw_find_safe_spot()
 
     # Auto-adjust height for stacking (ถ้าไม่ได้ระบุ target_height มาจากภายนอก)
     if target_height is None:
@@ -578,8 +646,8 @@ def raw_unstack_and_grab(object_name: str, safe_area: str = "blank_area") -> dic
                 print(f"⚠️ <SYSTEM>: ล้มเหลวขณะพยายามหยิบ '{b_name}' ออก")
                 return res_grab
             
-            # ใช้พิกัดจริงแทน target_name ลอยๆ เพื่อให้หุ่นเอาไปวางได้สำเร็จ
-            safe_coord = [armconfig.UNSTACK_SAFE_X, armconfig.UNSTACK_SAFE_Y]
+            # ใช้พิกัดปลอดภัยที่คำนวณแบบ dynamic เพื่อให้หุ่นเอาไปวางได้สำเร็จโดยไม่ชนของอื่น
+            safe_coord = raw_find_safe_spot()
             res_move = raw_move_to(target_coord=safe_coord)  # target_height=None → auto-adjust
             if isinstance(res_move, dict) and res_move.get("status") == "ERROR":
                 print(f"⚠️ <SYSTEM>: ล้มเหลวขณะพยายามวาง '{b_name}' ลงพื้นที่ปลอดภัย")

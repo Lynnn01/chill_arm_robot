@@ -156,6 +156,22 @@ class LockedMyCobot:
     def set_gripper_value(self, value, speed):
         return self._call("set_gripper_value", value, speed)
 
+    def get_gripper_value(self):
+        if hasattr(self._mc, "get_gripper_value"):
+            try:
+                return self._call("get_gripper_value")
+            except Exception:
+                return None
+        return None
+
+    def set_gripper_state(self, state, speed):
+        if hasattr(self._mc, "set_gripper_state"):
+            try:
+                return self._call("set_gripper_state", state, speed)
+            except Exception:
+                pass
+        return None
+
     def set_fresh_mode(self, mode):
         if hasattr(self._mc, "set_fresh_mode"):
             return self._call("set_fresh_mode", mode)
@@ -205,16 +221,49 @@ last_coords = [0, 0, 200, -175, 0, -45]
 # --- Gripper ---
 def open_gripper():
     global is_holding_object
-    mc.set_gripper_value(100, 50)
+    print("🤖 <SYSTEM>: กำลังเปิดกริปเปอร์เพื่อปล่อยวัตถุ...")
+    for attempt in range(3):
+        try:
+            mc.set_gripper_value(100, 60)
+            if hasattr(mc, "set_gripper_state"):
+                mc.set_gripper_state(0, 60)
+        except Exception as e:
+            print(f"⚠️ <SYSTEM>: ส่งคำสั่งเปิดกริปเปอร์ผิดพลาด: {e}")
+        time.sleep(0.6)
+
+        val = None
+        try:
+            if hasattr(mc, "get_gripper_value"):
+                val = mc.get_gripper_value()
+        except Exception:
+            val = None
+
+        if val is not None and isinstance(val, (int, float)) and val >= 70:
+            print(f"✅ <SYSTEM>: กริปเปอร์เปิดสุดแล้ว (val={val})")
+            break
+        elif val is not None and isinstance(val, (int, float)):
+            if attempt < 2:
+                print(f"⚠️ <SYSTEM>: กริปเปอร์ยังไม่เปิดสุด (val={val}) — ส่งคำสั่งเปิดซ้ำครั้งที่ {attempt+2}...")
+        time.sleep(0.2)
+
     is_holding_object = False
-    time.sleep(1)
+    time.sleep(0.4)
 
 
 def close_gripper():
     global is_holding_object
-    mc.set_gripper_value(0, 50)
+    print("🤖 <SYSTEM>: กำลังปิดกริปเปอร์เพื่อจับวัตถุ...")
+    for attempt in range(2):
+        try:
+            mc.set_gripper_value(0, 60)
+            if hasattr(mc, "set_gripper_state"):
+                mc.set_gripper_state(1, 60)
+        except Exception as e:
+            print(f"⚠️ <SYSTEM>: ส่งคำสั่งปิดกริปเปอร์ผิดพลาด: {e}")
+        time.sleep(0.5)
+
     is_holding_object = True
-    time.sleep(1)
+    time.sleep(0.5)
 
 
 def BotInit(mc):
