@@ -306,8 +306,6 @@ class CameraManager:
     def __init__(self):
         self.cap = None
         self.frame = None
-        self.overlay_frame = None
-        self.overlay_expiry = 0
         self.lock = threading.Lock()
         self.running = False
         self._started = False
@@ -319,10 +317,9 @@ class CameraManager:
             self.ai_results = results
             self.ai_expiry = time.time() + duration
 
-    def set_overlay(self, frame, duration=2.0):
-        with self.lock:
-            self.overlay_frame = frame
-            self.overlay_expiry = time.time() + duration
+    def set_overlay(self, frame, duration=1.0):
+        # Kept for backward compatibility without freezing live feed
+        pass
 
     def start(self):
         if self._started:
@@ -360,46 +357,44 @@ class CameraManager:
 
             self.cap = cap
             self.running = True
-            print("✅ Camera started.")
+            print("✅ Camera started (Zero-Lag Buffer Mode).")
 
-            # Start only the reading loop in a background thread
+            # Start high-speed reading loop in a background thread
             threading.Thread(target=self._update, daemon=True).start()
         except Exception as e:
             print(f"⚠️ Camera init failed: {e}")
 
     def _update(self):
+        """Dedicated high-speed thread to constantly drain hardware buffer and keep the latest frame."""
         while self.running and self.cap and self.cap.isOpened():
             try:
-                ret, frame = self.cap.read()
-                if ret and frame is not None and frame.size > 0:
-                    # พลิกภาพซ้ายขวาถ้าตั้งค่าไว้ใน armconfig
-                    if getattr(armconfig, 'CAMERA_FLIP_HORIZONTAL', False):
-                        frame = cv2.flip(frame, 1)
-                    with self.lock:
-                        self.frame = frame
+                grabbed = self.cap.grab()
+                if grabbed:
+                    ret, frame = self.cap.retrieve()
+                    if ret and frame is not None and frame.size > 0:
+                        # พลิกภาพซ้ายขวาถ้าตั้งค่าไว้ใน armconfig
+                        if getattr(armconfig, 'CAMERA_FLIP_HORIZONTAL', False):
+                            frame = cv2.flip(frame, 1)
+                        with self.lock:
+                            self.frame = frame
+                else:
+                    time.sleep(0.005)
             except Exception as e:
                 print(f"⚠️ Camera read error: {e}")
-            if hasattr(armconfig, 'CAMERA_READ_DELAY') and armconfig.CAMERA_READ_DELAY > 0:
-                time.sleep(armconfig.CAMERA_READ_DELAY)
+                time.sleep(0.01)
 
     def get_frame(self):
-        import time
-
+        """Returns the latest live video frame with real-time AI overlay."""
         with self.lock:
             if self.frame is not None:
                 img = self.frame.copy()
                 
-                # Draw live AI bounding boxes on the NEWEST frame! (Smooth Video)
+                # Draw live AI bounding boxes dynamically on the newest frame
                 if self.ai_results is not None and time.time() < self.ai_expiry:
                     try:
-                        # ultralytics results.plot can draw on a provided image
                         img = self.ai_results.plot(img=img)
                     except Exception:
                         pass
-                
-                # Legacy overlay (freezes video, used by yolo_detector for 1s scans)
-                elif self.overlay_frame is not None and time.time() < self.overlay_expiry:
-                    return self.overlay_frame.copy()
                 
                 return img
         return None

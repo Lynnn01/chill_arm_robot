@@ -17,6 +17,38 @@ import armconfig
 _OBJECT_COLORS = frozenset({"red", "green", "blue", "yellow", "orange", "purple", "pink", "white", "black"})
 
 
+def _find_in_memory(eng_name: str) -> tuple:
+    """
+    Find matching object in init.known_objects with strict color enforcement.
+    Returns: (found_key, coord) or (None, None)
+    """
+    if not eng_name:
+        return None, None
+    
+    # 1. Exact match
+    if eng_name in init.known_objects and isinstance(init.known_objects[eng_name], list) and init.known_objects[eng_name] != "in gripper":
+        return eng_name, init.known_objects[eng_name]
+        
+    target_color = next((c for c in _OBJECT_COLORS if c in eng_name.lower()), None)
+    
+    # 2. Strict color-aware fuzzy match
+    for k, v in init.known_objects.items():
+        if not isinstance(v, list) or v == "in gripper" or "area" in k.lower():
+            continue
+        k_color = next((c for c in _OBJECT_COLORS if c in k.lower()), None)
+        
+        if target_color:
+            # Target has a color (e.g. yellow): MUST only match keys with same color!
+            if k_color == target_color:
+                return k, v
+        else:
+            # Target is generic (no color): can match generic or any cube
+            if eng_name.lower() in k.lower() or k.lower() in eng_name.lower():
+                return k, v
+                
+    return None, None
+
+
 # ── grab_object ──────────────────────────────────────────────────────────────────
 
 def raw_grab_object(object_name: str, target_coord: list = None, _auto_unstack: bool = True) -> list:
@@ -50,19 +82,10 @@ def raw_grab_object(object_name: str, target_coord: list = None, _auto_unstack: 
         if len(target_coord) >= 3 and float(target_coord[2]) > 0:
             z = float(target_coord[2])
     else:
-        # 1. MEMORY FIRST: Check known_objects (exact and fuzzy)
-        found_key = None
-        if eng_name in init.known_objects and isinstance(init.known_objects[eng_name], list):
-            found_key = eng_name
-        else:
-            for k, v in init.known_objects.items():
-                if isinstance(v, list) and v != "in gripper" and "area" not in k.lower():
-                    if eng_name.lower() in k.lower() or k.lower() in eng_name.lower():
-                        found_key = k
-                        break
+        # 1. MEMORY FIRST: Check known_objects with strict color matching
+        found_key, saved = _find_in_memory(eng_name)
 
-        if found_key and isinstance(init.known_objects[found_key], list):
-            saved = init.known_objects[found_key]
+        if found_key and saved:
             robot_coord = [float(saved[0]), float(saved[1])]
             if len(saved) >= 3 and float(saved[2]) > 0:
                 z = float(saved[2])
@@ -77,6 +100,14 @@ def raw_grab_object(object_name: str, target_coord: list = None, _auto_unstack: 
                 init.known_objects[eng_name] = [round(robot_coord[0], 2), round(robot_coord[1], 2), round(z, 2)]
                 print(f"🤖 <SYSTEM>: YOLO เจอแล้วที่ {robot_coord} และบันทึกลงความจำ")
             else:
+                # If target is a colored cube/block and YOLO didn't find it -> Report not found immediately!
+                # Do NOT call QwenVL for colored cubes to prevent hallucinated false box positions.
+                _is_cube_query = any(c in eng_name.lower() for c in _OBJECT_COLORS) or "cube" in eng_name.lower() or "block" in eng_name.lower() or "กล่อง" in object_name or "บล็อก" in object_name
+                if _is_cube_query:
+                    print(f"🤖 <SYSTEM>: YOLO สแกนโต๊ะครบทุกมุมแล้ว ไม่พบ '{object_name}' จริงๆ")
+                    init.known_objects.pop(eng_name, None)
+                    return {"status": "ERROR", "message": f"ไม่พบ {object_name} บนโต๊ะ (สแกนตรวจหาแล้วไม่มีอยู่จริง)"}
+
                 print(f"🤖 <SYSTEM>: YOLO สแกนไม่พบ → กำลังใช้กล้อง Vision AI (QwenVL) ค้นหา '{eng_name}'...")
                 init.GetImage()
                 img_path = os.path.join(init.PROJECT_ROOT, "captured_image.jpg")
@@ -390,18 +421,10 @@ def raw_move_to(target_coord: list = None, target_name: str = None, target_heigh
         target_coord = None
         eng_name = get_english_name(target_name)
         
-        # 1. MEMORY FIRST: Check matching key in init.known_objects memory (exact and fuzzy)
-        found_key = None
-        if eng_name in init.known_objects and isinstance(init.known_objects[eng_name], list):
-            found_key = eng_name
-        else:
-            for k, v in init.known_objects.items():
-                if v != "in gripper" and isinstance(v, list) and (eng_name.lower() in k.lower() or k.lower() in eng_name.lower()):
-                    found_key = k
-                    break
+        # 1. MEMORY FIRST: Check matching key in init.known_objects memory with strict color matching
+        found_key, target_coord = _find_in_memory(eng_name)
         
-        if found_key and isinstance(init.known_objects[found_key], list):
-            target_coord = init.known_objects[found_key]
+        if found_key and target_coord:
             print(f"🤖 <SYSTEM>: [Memory-First] ใช้พิกัดของ '{found_key}' จากความจำ {target_coord}")
         else:
             # 2. SCAN IF NOT IN MEMORY
@@ -608,7 +631,7 @@ def raw_gesture(action: str) -> str:
         return {"status": "DONE TASK"}
     elif action == "wave":
         j6 = base[5]
-        mc.send_angles([base[0], base[1], base[2], -80, base[4], j6 + 45], speed); time.sleep(0.6)
+        mc.send_angles([base[0], base[1], base[2], 65, base[4], j6 + 45], speed); time.sleep(0.6)
         mc.send_angle(6, j6 - 45, speed); time.sleep(0.6)
         mc.send_angle(6, j6 + 45, speed); time.sleep(0.6)
         mc.send_angles(base, speed); time.sleep(0.8)
@@ -699,17 +722,10 @@ def raw_unstack_and_grab(object_name: str, safe_area: str = "blank_area") -> dic
                 if eng_name and is_generic_query:
                     break
 
-    # 2. MEMORY FIRST: Find target coordinates
-    target_coord = None
-    if eng_name in init.known_objects and isinstance(init.known_objects[eng_name], list):
-        target_coord = init.known_objects[eng_name]
-    else:
-        for k, v in init.known_objects.items():
-            if isinstance(v, list) and v != "in gripper" and "area" not in k.lower():
-                if eng_name.lower() in k.lower() or k.lower() in eng_name.lower():
-                    target_coord = v
-                    eng_name = k
-                    break
+    # 2. MEMORY FIRST: Find target coordinates with strict color matching
+    found_key, target_coord = _find_in_memory(eng_name)
+    if found_key and target_coord:
+        eng_name = found_key
 
     # 3. SCAN IF NOT IN MEMORY
     if not target_coord:
@@ -784,10 +800,10 @@ def raw_unstack_and_grab(object_name: str, safe_area: str = "blank_area") -> dic
 
 def raw_scan_object(object_name: str) -> str:
     eng_name = get_english_name(object_name)
-    # Memory First: check known_objects
-    if eng_name in init.known_objects and isinstance(init.known_objects[eng_name], list):
-        coord = init.known_objects[eng_name]
-        print(f"✅ <SYSTEM>: [Memory-First] พบ '{object_name}' ในความจำแล้ว ที่ {coord}")
+    # Memory First: check known_objects with strict color matching
+    found_key, coord = _find_in_memory(eng_name)
+    if found_key and coord:
+        print(f"✅ <SYSTEM>: [Memory-First] พบ '{object_name}' ({found_key}) ในความจำแล้ว ที่ {coord}")
         return {"status": "DONE TASK", "message": f"Found '{object_name}' in memory at {coord}."}
         
     from vision import yolo_detector

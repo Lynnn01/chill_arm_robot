@@ -166,8 +166,8 @@ def scan_with_yolo(object_name: str):
             results = model(frame, verbose=False, conf=conf_thresh)
 
 
-            annotated_frame = results[0].plot()
-            cam_manager.set_overlay(annotated_frame, duration=1.0)
+            if hasattr(cam_manager, 'set_ai_results') and len(results) > 0:
+                cam_manager.set_ai_results(results[0], duration=0.8)
 
             for result in results:
                 boxes = result.boxes
