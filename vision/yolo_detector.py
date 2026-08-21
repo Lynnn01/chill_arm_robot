@@ -92,6 +92,57 @@ def preload_model():
 # Start preloading immediately when module is imported
 # preload_model() # REMOVED: Causes Segmentation fault on Jetson due to concurrent Torch CUDA + OpenCV Camera initialization
 
+def classify_cube_color_hsv(crop_bgr) -> str:
+    """
+    Non-invasive helper: Classify physical color of cropped cube using HSV color space.
+    Returns: 'red_cube', 'yellow_cube', 'green_cube', 'blue_cube', or None.
+    """
+    if crop_bgr is None or crop_bgr.size == 0:
+        return None
+    try:
+        h, w = crop_bgr.shape[:2]
+        if h < 5 or w < 5:
+            return None
+        # Center 60% crop to avoid table background and border shadows
+        my, mx = int(h * 0.2), int(w * 0.2)
+        center = crop_bgr[my:h-my, mx:w-mx]
+        if center.size == 0:
+            center = crop_bgr
+
+        hsv = cv2.cvtColor(center, cv2.COLOR_BGR2HSV)
+
+        # Red: Hue in 0..10 or 160..180
+        mask_red1 = cv2.inRange(hsv, (0, 60, 50), (10, 255, 255))
+        mask_red2 = cv2.inRange(hsv, (160, 60, 50), (180, 255, 255))
+        mask_red = cv2.bitwise_or(mask_red1, mask_red2)
+
+        # Yellow: Hue in 15..38 (Distinct separation from red and green)
+        mask_yellow = cv2.inRange(hsv, (15, 60, 50), (38, 255, 255))
+
+        # Green: Hue in 39..85 (Distinct separation from blue)
+        mask_green = cv2.inRange(hsv, (39, 50, 40), (85, 255, 255))
+
+        # Blue: Hue in 90..135 (Distinct separation from green)
+        mask_blue = cv2.inRange(hsv, (90, 60, 40), (135, 255, 255))
+
+        counts = {
+            "red_cube": cv2.countNonZero(mask_red),
+            "yellow_cube": cv2.countNonZero(mask_yellow),
+            "green_cube": cv2.countNonZero(mask_green),
+            "blue_cube": cv2.countNonZero(mask_blue),
+        }
+
+        best_color, max_count = max(counts.items(), key=lambda item: item[1])
+        total_pixels = center.shape[0] * center.shape[1]
+
+        # Require at least 15% of pixels to match dominant color
+        if total_pixels > 0 and max_count > total_pixels * 0.15:
+            return best_color
+    except Exception:
+        pass
+    return None
+
+
 def is_area_query(object_name: str) -> bool:
     """Check if object_name is requesting a target placement area."""
     name_lower = object_name.lower().strip()
@@ -175,6 +226,21 @@ def scan_with_yolo(object_name: str):
                     cls = int(box.cls[0])
                     name = model.names[cls]
 
+                    # Non-invasive HSV color refinement (only for cube model)
+                    if primary_type == "cube" and frame is not None:
+                        try:
+                            ih, iw = frame.shape[:2]
+                            bx_coords = box.xyxy[0].cpu().numpy()
+                            bx1, by1 = max(0, int(bx_coords[0])), max(0, int(bx_coords[1]))
+                            bx2, by2 = min(iw, int(bx_coords[2])), min(ih, int(bx_coords[3]))
+                            if bx2 > bx1 and by2 > by1:
+                                verified_name = classify_cube_color_hsv(frame[by1:by2, bx1:bx2])
+                                if verified_name and verified_name != name:
+                                    print(f"🤖 <SYSTEM>: [Color Correction] ปรับแก้สีจาก '{name}' → '{verified_name}' ด้วยค่าสีจริง (HSV)")
+                                    name = verified_name
+                        except Exception:
+                            pass
+
                     name_lower = name.lower().replace("_", " ")
                     name_words = set(name_lower.split())
                     name_colors = name_words.intersection(colors)
@@ -257,6 +323,19 @@ def detect_boxes_in_frame(frame, j1_angle: float = 0.0, conf_thresh: float = 0.3
                 cls = int(box.cls[0])
                 name = cube_model.names[cls].lower()
                 x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+
+                # Safe HSV color refinement for cube
+                if frame is not None:
+                    try:
+                        ih, iw = frame.shape[:2]
+                        bx1, by1 = max(0, int(x1)), max(0, int(y1))
+                        bx2, by2 = min(iw, int(x2)), min(ih, int(y2))
+                        if bx2 > bx1 and by2 > by1:
+                            verified_name = classify_cube_color_hsv(frame[by1:by2, bx1:bx2])
+                            if verified_name:
+                                name = verified_name
+                    except Exception:
+                        pass
                 center_x = (x1 + x2) / 2
                 center_y = (y1 + y2) / 2
 
@@ -359,6 +438,21 @@ def scan_all_objects():
                     for box in boxes:
                         cls = int(box.cls[0])
                         name = model.names[cls]
+                        x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+
+                        # Safe HSV color refinement for cube model
+                        if model == cube_model and frame is not None:
+                            try:
+                                ih, iw = frame.shape[:2]
+                                bx1, by1 = max(0, int(x1)), max(0, int(y1))
+                                bx2, by2 = min(iw, int(x2)), min(ih, int(y2))
+                                if bx2 > bx1 and by2 > by1:
+                                    verified_name = classify_cube_color_hsv(frame[by1:by2, bx1:bx2])
+                                    if verified_name:
+                                        name = verified_name
+                            except Exception:
+                                pass
+
                         full_name = name.lower()
 
                         if "area" not in full_name:
