@@ -424,6 +424,9 @@ def raw_move_to(target_coord: list = None, target_name: str = None, target_heigh
         max_z_at_xy = None
         stack_target_name = None
         
+        # Stacking detection: only when target_name indicates an object/stack or target_coord is directly over an object
+        is_stack_intent = bool(target_name and any(term in target_name.lower() for term in ("cube", "block", "stack", "กล่อง", "บล็อก", "ซ้อน", "red", "green", "blue", "yellow", "แดง", "เขียว", "น้ำเงิน", "เหลือง")))
+
         for obj_name, coord in init.known_objects.items():
             if isinstance(coord, list) and len(coord) >= 2 and coord != "in gripper":
                 if "area" in obj_name.lower() or "พื้นที่" in obj_name or "zone" in obj_name.lower():
@@ -433,18 +436,19 @@ def raw_move_to(target_coord: list = None, target_name: str = None, target_heigh
                     
                 dx = abs(coord[0] - target_coord[0])
                 dy = abs(coord[1] - target_coord[1])
-                if dx < armconfig.STACK_PROXIMITY_THRESHOLD and dy < armconfig.STACK_PROXIMITY_THRESHOLD:
-                    obj_z = float(coord[2]) if len(coord) >= 3 and coord[2] > 0 else armconfig.GRAB_BASE_HEIGHT
+                # ถ้าตั้งใจวางซ้อน หรือพิกัดตรงกับกล่องอื่นจริงๆ (< 25mm)
+                if (is_stack_intent and dx < armconfig.STACK_PROXIMITY_THRESHOLD and dy < armconfig.STACK_PROXIMITY_THRESHOLD) or (dx < 25.0 and dy < 25.0):
+                    obj_z = float(coord[2]) if len(coord) >= 3 and float(coord[2]) > 0 else armconfig.STACK_BASE_HEIGHT
                     if max_z_at_xy is None or obj_z > max_z_at_xy:
                         max_z_at_xy = obj_z
                         stack_target_name = obj_name
         
         if max_z_at_xy is not None:
-            # วางซ้อนบนวัตถุเดิม: Z = ความสูงวัตถุเดิม + 30mm + STACK_SAFE_OFFSET
+            # วางซ้อนบนวัตถุเดิม: Z = ความสูงวัตถุเดิม + STACK_HEIGHT_PER_LAYER
             target_height = max_z_at_xy + armconfig.STACK_HEIGHT_PER_LAYER + getattr(armconfig, "STACK_SAFE_OFFSET", 0.0)
             print(f"🤖 <SYSTEM>: [Stack Placement] ตรวจพบวัตถุ '{stack_target_name}' (Z={max_z_at_xy}) → วางซ้อนที่ระดับ Z={target_height}")
         else:
-            # วางลงบนพื้นโต๊ะโดยตรง: ใช้ระดับ STACK_BASE_HEIGHT (85)
+            # วางลงบนพื้นโต๊ะโดยตรง: ใช้ระดับ STACK_BASE_HEIGHT (110)
             target_height = armconfig.STACK_BASE_HEIGHT
             print(f"🤖 <SYSTEM>: [Ground Placement] วางลงบนพื้นโต๊ะที่ระดับ Z={target_height}")
 
@@ -459,14 +463,21 @@ def raw_move_to(target_coord: list = None, target_name: str = None, target_heigh
 
     print(f"🤖 <SYSTEM>: กำลังเคลื่อนย้ายวัตถุไปวางที่พิกัด {tc} ความสูง {th} (เข้าประชิดที่ Z={z_approach})...")
     mc.send_coords([tc[0], tc[1], z_approach] + armconfig.WRIST_PLACE, armconfig.SPEED_GRAB)
-    time.sleep(2.5)
+    mc.wait_for_arrival([tc[0], tc[1], z_approach], mode="coords")
+    time.sleep(0.3)
+
+    print(f"🤖 <SYSTEM>: กำลังลดระดับหัวลงวางที่ Z={th}...")
     mc.send_coords([tc[0], tc[1], th] + armconfig.WRIST_PLACE, armconfig.SPEED_GRAB)
-    time.sleep(2)
+    time.sleep(0.2)
+    mc.send_coords([tc[0], tc[1], th] + armconfig.WRIST_PLACE, armconfig.SPEED_GRAB)
+    mc.wait_for_z(th)
+    time.sleep(0.4)  # รอให้นิ่งสนิทที่ระดับพิกัดเป้าหมายจริงก่อนเปิดกริปเปอร์
     init.open_gripper()
-    time.sleep(1)
+    time.sleep(1.0)
+
     print(f"🤖 <SYSTEM>: ถอยหัวกลับแนวตั้งถึงระดับปลอดภัย Z={z_retreat} ป้องกันการสะบัดโดนของ...")
     mc.send_coords([tc[0], tc[1], z_retreat] + armconfig.WRIST_PLACE, armconfig.SPEED_GRAB)
-    time.sleep(2)
+    mc.wait_for_arrival([tc[0], tc[1], z_retreat], mode="coords")
     mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
     mc.wait_for_arrival(armconfig.POSE_HOME, mode="angles")
 

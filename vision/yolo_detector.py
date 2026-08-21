@@ -11,16 +11,46 @@ import armconfig
 # Lazy load models
 _cube_model = None
 _area_model = None
+_face_model = None
+_person_model = None
 
 
 def get_yolo_model(model_type: str = "cube"):
     """
-    Get YOLO model instance based on model_type ('cube' or 'area').
+    Get YOLO model instance based on model_type ('cube', 'area', 'face', 'person').
     'cube': cube.pt (for detecting red, green, blue, yellow blocks)
     'area': area.pt (for detecting blue_area, red_area, one_area, two_area, etc.)
+    'face': face.pt (for detecting faces)
+    'person': person.pt (for detecting people)
     """
-    global _cube_model, _area_model
-    if model_type == "area":
+    global _cube_model, _area_model, _face_model, _person_model
+    if model_type == "face":
+        if _face_model is None:
+            try:
+                from vision.safe_yolo import YOLO
+                model_path = os.path.join(init.PROJECT_ROOT, "vision", "models", "face.pt")
+                if os.path.exists(model_path):
+                    _face_model = YOLO(model_path)
+                    print(f"🤖 <SYSTEM>: โหลดโมเดลตรวจจับใบหน้า face.pt สำเร็จ")
+                else:
+                    print(f"⚠️ <SYSTEM>: ไม่พบโมเดล face.pt ที่ {model_path}")
+            except Exception as e:
+                print(f"⚠️ <SYSTEM>: ไม่สามารถโหลด face.pt: {e}")
+        return _face_model
+    elif model_type == "person":
+        if _person_model is None:
+            try:
+                from vision.safe_yolo import YOLO
+                model_path = os.path.join(init.PROJECT_ROOT, "vision", "models", "person.pt")
+                if os.path.exists(model_path):
+                    _person_model = YOLO(model_path)
+                    print(f"🤖 <SYSTEM>: โหลดโมเดลตรวจจับคน person.pt สำเร็จ")
+                else:
+                    print(f"⚠️ <SYSTEM>: ไม่พบโมเดล person.pt ที่ {model_path}")
+            except Exception as e:
+                print(f"⚠️ <SYSTEM>: ไม่สามารถโหลด person.pt: {e}")
+        return _person_model
+    elif model_type == "area":
         if _area_model is None:
             try:
                 from vision.safe_yolo import YOLO
@@ -54,6 +84,8 @@ def preload_model():
     def _preload():
         get_yolo_model("cube")
         get_yolo_model("area")
+        get_yolo_model("face")
+        get_yolo_model("person")
     threading.Thread(target=_preload, daemon=True).start()
 
 
@@ -72,14 +104,22 @@ def is_area_query(object_name: str) -> bool:
 
 def scan_with_yolo(object_name: str):
     """
-    Scans the environment using YOLO model (cube.pt or area.pt).
+    Scans the environment using YOLO model (cube.pt, area.pt, face.pt, or person.pt).
     Returns: robot_coord (list of [x, y]) if found, else None
     """
-    use_area = is_area_query(object_name)
-    primary_type = "area" if use_area else "cube"
+    name_lower = object_name.lower().strip()
+    if any(k in name_lower for k in ("face", "หน้า", "ใบหน้า")):
+        primary_type = "face"
+    elif any(k in name_lower for k in ("person", "คน", "มนุษย์", "human")):
+        primary_type = "person"
+    elif is_area_query(object_name):
+        primary_type = "area"
+    else:
+        primary_type = "cube"
+
     model = get_yolo_model(primary_type)
     if not model:
-        model = get_yolo_model("cube" if primary_type == "area" else "area")
+        model = get_yolo_model("cube")
     if not model:
         return None
 

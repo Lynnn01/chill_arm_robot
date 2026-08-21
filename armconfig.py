@@ -131,10 +131,10 @@ SCAN_WAIT_PER_ANGLE = 1
 
 
 # ความสูงพื้นฐานสำหรับลงไปหยิบของ (mm) — ต่ำลงมาถึงระดับโต๊ะ
-GRAB_BASE_HEIGHT = 85.0
+GRAB_BASE_HEIGHT = 110.0
 
 # ความสูงพื้นฐานสำหรับวางของชั้นแรก (mm)
-STACK_BASE_HEIGHT = 85.0
+STACK_BASE_HEIGHT = 110.0
 
 # ความสูงเพิ่มต่อชั้น (mm) — 30mm ป้องกันการกดทับกล่องชั้นล่าง
 STACK_HEIGHT_PER_LAYER = 30.0
@@ -156,8 +156,8 @@ STACK_PROXIMITY_THRESHOLD = 35.0
 # เปิด/ปิดเสียง (ซิงค์กับปุ่ม GUI Spk)
 SPEAKER_ON = False
 
-# ความมั่นใจขั้นต่ำสำหรับการตรวจจับใบหน้าโดยเฉพาะ (ค่าเริ่มต้น 0.80)
-FACE_CONFIDENCE_THRESHOLD = 0.80
+# ความมั่นใจขั้นต่ำสำหรับการตรวจจับใบหน้าโดยเฉพาะ (ปรับเป็น 0.35 เพื่อตรวจจับใบหน้าได้ไวในแสงปกติ)
+FACE_CONFIDENCE_THRESHOLD = 0.35
 
 # พิกัดพื้นที่ปลอดภัยสำหรับวางวัตถุชั่วคราวระหว่าง unstack (mm)
 UNSTACK_SAFE_X = float(os.getenv("UNSTACK_SAFE_X", "160.0"))
