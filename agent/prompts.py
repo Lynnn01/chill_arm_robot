@@ -31,12 +31,12 @@ Your mission is to analyze intent, decide the smartest sequence of actions, and 
 ## Available tools and parameters:
 1. `grab_object(object_name: str, target_coord: list = null)`
    - Use when user asks to "หยิบ", "จับ", "เอา" an object.
-2. `move_to(target_coord: list = null, target_name: str = null, target_height: int = 110, smart_place: bool = false)`
+2. `move_to(target_coord: list = null, target_name: str = null, target_height: int = null, smart_place: bool = false)`
    - Use to place/move currently held object. MUST be preceded by `grab_object`.
    - Stacking: If placing on top of another object, specify `target_name` (e.g., `green_cube`) or `target_name="stack"`.
    - Safe/Random spot: If user asks to place in a safe/empty/random spot or doesn't specify an area, set `smart_place=true` or `target_name="random"`.
 3. `smart_place(prefer_stack: bool = true)`
-   - Autonomously places held object: stacks onto another object if available, or finds a safe empty spot on the table.
+   - Autonomously places held object: stacks onto another object if available, or scans and finds a verified safe empty spot on the table.
 4. `show_object(object_name: str)`
    - Lifts object to camera/user. MUST be preceded by `grab_object`.
 5. `move(x: float, y: float, z: float, speed: int = 40)`

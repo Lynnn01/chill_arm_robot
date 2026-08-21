@@ -198,6 +198,88 @@ def scan_with_yolo(object_name: str):
     return None
 
 
+def detect_boxes_in_frame(frame, j1_angle: float = 0.0, conf_thresh: float = 0.30) -> dict:
+    """Detect cubes in a single frame and convert to world robot coordinates [x, y]."""
+    cube_model = get_yolo_model("cube")
+    if cube_model is None or frame is None:
+        return {}
+
+    with open(init.CONFIG_PATH, "r", encoding="utf-8") as config_file:
+        config_data = json.load(config_file)
+    x_offset = config_data.get("x", 0)
+    y_offset = config_data.get("y", 0)
+
+    found = {}
+    try:
+        results = cube_model(frame, verbose=False, conf=conf_thresh)
+        for result in results:
+            for box in result.boxes:
+                cls = int(box.cls[0])
+                name = cube_model.names[cls].lower()
+                x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+                center_x = (x1 + x2) / 2
+                center_y = (y1 + y2) / 2
+
+                if getattr(armconfig, 'CAMERA_FLIP_HORIZONTAL', False):
+                    center_x = 640 - center_x
+
+                target_pixel = (center_x, center_y)
+                robot_coord_np = eyeonhand.pixel_to_arm(target_pixel)
+                robot_coord = [float(robot_coord_np[0]) + x_offset, float(robot_coord_np[1]) + y_offset]
+
+                theta = math.radians(j1_angle)
+                x_world = robot_coord[0] * math.cos(theta) - robot_coord[1] * math.sin(theta)
+                y_world = robot_coord[0] * math.sin(theta) + robot_coord[1] * math.cos(theta)
+                x_world += getattr(armconfig, 'GRAB_X_OFFSET', 0.0)
+                y_world += getattr(armconfig, 'GRAB_Y_OFFSET', 0.0)
+
+                x_world = max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, x_world))
+                y_world = max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, y_world))
+                coord = [round(x_world, 2), round(y_world, 2)]
+
+                base_name = name
+                cnt = 1
+                while name in found:
+                    cnt += 1
+                    name = f"{base_name}_{cnt}"
+
+                found[name] = coord
+                init.known_objects[name] = coord
+    except Exception as e:
+        print(f"⚠️ <SYSTEM>: detect_boxes_in_frame error: {e}")
+
+    return found
+
+
+def quick_scan_desk_objects(angles: list = None) -> dict:
+    """Quickly scan desk from key angles to update real-time positions of all boxes."""
+    if angles is None:
+        angles = [0, -30, 30]
+
+    print(f"🤖 <SYSTEM>: [Vision Safety] กำลังสแกนตรวจจับกล่องบนโต๊ะแบบ Real-time เพื่อหาพื้นที่ปลอดภัย...")
+    found_all = {}
+
+    for j1 in angles:
+        target_pose = armconfig.POSE_READY.copy()
+        target_pose[0] = target_pose[0] + j1
+        mc.send_angles(target_pose, armconfig.SPEED_GRAB)
+        time.sleep(0.7)
+
+        for _ in range(2):
+            frame = cam_manager.get_frame()
+            if frame is not None:
+                detected = detect_boxes_in_frame(frame, j1_angle=j1)
+                found_all.update(detected)
+                break
+            time.sleep(0.1)
+
+    mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
+    time.sleep(0.5)
+
+    print(f"🤖 <SYSTEM>: [Vision Safety] สแกนพบกล่องบนโต๊ะทั้งหมด {len(found_all)} จุด: {list(found_all.keys())}")
+    return found_all
+
+
 def scan_all_objects():
     """
     Scans environment across multiple angles and returns a dictionary of all detected objects and placement areas.

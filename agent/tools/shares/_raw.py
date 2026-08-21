@@ -241,42 +241,83 @@ def get_english_name(name: str) -> str:
 
 # ── find_safe_spot & smart_place ──────────────────────────────────────────────
 
-def raw_find_safe_spot(margin_mm: float = 40.0) -> list:
-    """Return a random safe [x, y] on the desk away from base and known objects."""
+# ── find_safe_spot & smart_place ──────────────────────────────────────────────
+
+def raw_find_safe_spot(margin_mm: float = 55.0, scan_first: bool = True) -> list:
+    """
+    Find a verified safe [x, y] spot on the table where NO boxes or obstacles exist.
+    Scans the desk using the camera first if scan_first=True.
+    """
     import random
     
-    # Workspace reachable zone on desk (mm)
-    for _ in range(60):
-        x = random.uniform(130.0, 220.0)
-        y = random.uniform(-160.0, 160.0)
-        dist = math.hypot(x, y)
-        if dist < armconfig.GRAB_MIN_RADIUS or dist > 260.0:
-            continue
-            
-        # Check against current held coordinate so we don't put it right back in the same spot
-        if hasattr(init, "current_held_coord") and init.current_held_coord:
-            if abs(init.current_held_coord[0] - x) < 35.0 and abs(init.current_held_coord[1] - y) < 35.0:
-                continue
-                
-        # Check against all known objects on table
-        conflict = False
-        for k, v in init.known_objects.items():
-            if isinstance(v, list) and len(v) >= 2 and v != "in gripper":
-                if abs(v[0] - x) < margin_mm and abs(v[1] - y) < margin_mm:
-                    conflict = True
-                    break
-        if not conflict:
-            return [round(x, 1), round(y, 1)]
+    # 1. Live Vision Scan: Look at the table to detect all actual box locations in real-time
+    if scan_first:
+        try:
+            from vision.yolo_detector import quick_scan_desk_objects
+            quick_scan_desk_objects()
+        except Exception as e:
+            print(f"⚠️ <SYSTEM>: ไม่สามารถสแกนกล้องสดได้: {e} (ใช้ความจำ known_objects แทน)")
 
-    # Fallback to predefined safe coordinate
-    return [armconfig.UNSTACK_SAFE_X, armconfig.UNSTACK_SAFE_Y]
+    # 2. Collect all active obstacles on desk
+    obstacles = []
+    for k, v in init.known_objects.items():
+        if isinstance(v, list) and len(v) >= 2 and v != "in gripper" and "area" not in k.lower():
+            obstacles.append((k, float(v[0]), float(v[1])))
+
+    # Also treat current held object's pickup coord as an obstacle so we don't drop right back
+    if hasattr(init, "current_held_coord") and init.current_held_coord:
+        obstacles.append(("held_origin", float(init.current_held_coord[0]), float(init.current_held_coord[1])))
+
+    print(f"🤖 <SYSTEM>: [Safety Check] กำลังค้นหาพื้นที่ว่าง (ระยะห่างจากกล่องทุกใบอย่างน้อย {margin_mm}mm, ตรวจเทียบกับสิ่งกีดขวาง {len(obstacles)} จุด)...")
+
+    # 3. Generate and verify candidate locations
+    # Workspace reachable zone on table: X: 130 to 220, Y: -150 to 150
+    for attempt in range(80):
+        x = random.uniform(130.0, 220.0)
+        y = random.uniform(-150.0, 150.0)
+        dist_base = math.hypot(x, y)
+        if dist_base < armconfig.GRAB_MIN_RADIUS or dist_base > 255.0:
+            continue
+
+        # Verify Euclidean distance to EVERY obstacle
+        is_safe = True
+        for name, ox, oy in obstacles:
+            dist_to_obj = math.hypot(x - ox, y - oy)
+            if dist_to_obj < margin_mm:
+                is_safe = False
+                break
+
+        if is_safe:
+            spot = [round(x, 1), round(y, 1)]
+            print(f"✅ <SYSTEM>: [Safety Check] พบพื้นที่ปลอดภัยที่ว่าง ไม่มีกล่องอยู่ใกล้เคียงที่ {spot}")
+            return spot
+
+    # 4. Fallback if desk is crowded: Find the spot with the maximum clearance from all obstacles
+    print(f"⚠️ <SYSTEM>: [Safety Check] โต๊ะมีกล่องค่อนข้างแน่น กำลังคำนวณหาจุดที่มีระยะห่างจากกล่องอื่นมากที่สุด...")
+    best_spot = [armconfig.UNSTACK_SAFE_X, armconfig.UNSTACK_SAFE_Y]
+    max_min_dist = -1.0
+
+    for _ in range(50):
+        x = random.uniform(130.0, 220.0)
+        y = random.uniform(-150.0, 150.0)
+        if math.hypot(x, y) < armconfig.GRAB_MIN_RADIUS:
+            continue
+        if not obstacles:
+            return [round(x, 1), round(y, 1)]
+        min_d = min(math.hypot(x - ox, y - oy) for _, ox, oy in obstacles)
+        if min_d > max_min_dist:
+            max_min_dist = min_d
+            best_spot = [round(x, 1), round(y, 1)]
+
+    print(f"🤖 <SYSTEM>: [Safety Check] เลือกจุดที่โล่งที่สุดที่พิกัด {best_spot} (ระยะห่าง {max_min_dist:.1f}mm)")
+    return best_spot
 
 
 def raw_smart_place(prefer_stack: bool = True) -> dict:
     """
     Autonomously place the currently held object:
     - If prefer_stack=True and other objects exist in memory -> Stack on one of them
-    - If no objects to stack on or prefer_stack=False -> Find a random safe spot on the desk
+    - If no objects to stack on or prefer_stack=False -> Scan and find a verified safe empty spot
     """
     if not init.current_held_object:
         print(f"⚠️ <SYSTEM>: กริปเปอร์ไม่ได้ถือวัตถุอยู่! ยกเลิก smart_place")
@@ -307,9 +348,9 @@ def raw_smart_place(prefer_stack: bool = True) -> dict:
             print(f"🤖 <SYSTEM>: [Smart Place] เลือกวางซ้อนบน '{target_name}' ที่พิกัด {target_coord[:2]}")
             return raw_move_to(target_coord=target_coord[:2], target_name=target_name)
 
-    # Fallback / Direct: Find a safe empty spot
-    spot = raw_find_safe_spot()
-    print(f"🤖 <SYSTEM>: [Smart Place] สุ่มหาพื้นที่ว่างที่ปลอดภัยได้ที่ {spot}")
+    # Fallback / Direct: Scan and find a verified safe empty spot
+    spot = raw_find_safe_spot(scan_first=True)
+    print(f"🤖 <SYSTEM>: [Smart Place] สแกนพบพื้นที่ว่างที่ปลอดภัยที่ {spot}")
     return raw_move_to(target_coord=spot)
 
 
@@ -363,12 +404,23 @@ def raw_move_to(target_coord: list = None, target_name: str = None, target_heigh
                     target_coord = found_coord
             
             if not target_coord:
-                print(f"⚠️ <SYSTEM>: ไม่พบเป้าหมาย '{eng_name}' → สลับไปสุ่มหาตำแหน่งที่ปลอดภัยเพื่อวางแทน")
-                target_coord = raw_find_safe_spot()
+                print(f"⚠️ <SYSTEM>: ไม่พบเป้าหมาย '{eng_name}' → สลับไปสแกนหาตำแหน่งที่ปลอดภัยเพื่อวางแทน")
+                target_coord = raw_find_safe_spot(scan_first=True)
 
     if not target_coord or (isinstance(target_coord, list) and len(target_coord) >= 2 and target_coord[0] == 0 and target_coord[1] == 0):
-        print(f"⚠️ <SYSTEM>: ไม่ได้ระบุพิกัดเป้าหมาย → สุ่มหาตำแหน่งที่ปลอดภัยเพื่อวาง")
-        target_coord = raw_find_safe_spot()
+        print(f"⚠️ <SYSTEM>: ไม่ได้ระบุพิกัดเป้าหมาย → สแกนหาตำแหน่งที่ปลอดภัยเพื่อวาง")
+        target_coord = raw_find_safe_spot(scan_first=True)
+
+    # SAFETY: Check if target_coord has an unexpected obstacle underneath
+    for k, v in init.known_objects.items():
+        if k != init.current_held_object and isinstance(v, list) and len(v) >= 2 and v != "in gripper" and "area" not in k.lower():
+            dx = abs(target_coord[0] - v[0])
+            dy = abs(target_coord[1] - v[1])
+            if dx < armconfig.STACK_PROXIMITY_THRESHOLD and dy < armconfig.STACK_PROXIMITY_THRESHOLD:
+                if target_height is None:
+                    contact_z = v[2] if len(v) >= 3 and v[2] > 0 else armconfig.GRAB_BASE_HEIGHT
+                    target_height = contact_z + armconfig.STACK_HEIGHT_PER_LAYER + armconfig.STACK_SAFE_OFFSET
+                    print(f"⚠️ <SYSTEM>: [Safety Auto-Adjust] ตรวจพบกล่อง '{k}' อยู่ที่พิกัดเป้าหมาย! ปรับความสูงเป็น Z={target_height} เพื่อวางซ้อนอย่างปลอดภัย ป้องกันการชน")
 
     # Auto-adjust height for stacking (ถ้าไม่ได้ระบุ target_height มาจากภายนอก)
     if target_height is None:
@@ -594,7 +646,8 @@ def raw_clean_desk() -> str:
         res_grab = raw_grab_object(obj_name, target_coord=coord)
         if isinstance(res_grab, dict) and res_grab.get("status") == "ERROR":
             continue
-        raw_move_to(target_coord=corner_coord, target_height=110)
+        # Pass target_height=None so raw_move_to calculates proper layer stacking height automatically
+        raw_move_to(target_coord=corner_coord)
 
 # ── play_rps ─────────────────────────────────────────────────────────────────
 
