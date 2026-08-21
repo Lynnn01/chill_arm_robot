@@ -124,34 +124,48 @@ class LockedMyCobot:
         
         return True
 
-    def wait_for_z(self, target_z, timeout=6.0, threshold=25.0):
+    def wait_for_z(self, target_z, timeout=10.0, threshold=8.0):
         """
         รอแกน Z ดำดิ่งถึงระดับเป้าหมาย — หากหัวยังค้างกลางอากาศจะส่งคำสั่งย้ำให้อัตโนมัติ
         """
         start_time = time.time()
         time.sleep(0.4)
-        resend_count = 0
+        last_resend = 0.0
 
         while time.time() - start_time < timeout:
             current = self.safe_get_coords()
             if current and len(current) >= 3:
                 z_now = current[2]
-                if abs(z_now - target_z) <= threshold or z_now <= target_z + 15:
-                    print(f"✅ <SYSTEM>: หัวลงถึง Z={z_now:.1f} (เป้า {target_z})")
+                # ตรวจจับว่าลงถึงระดับความสูงเป้าหมายจริง (คลาดเคลื่อนไม่เกิน 8mm หรือแตะระดับเป้า)
+                if abs(z_now - target_z) <= threshold or (z_now <= target_z + 3.0 and z_now >= target_z - 15.0):
+                    print(f"✅ <SYSTEM>: หัวลงถึงระดับเป้าหมาย Z={z_now:.1f} (เป้า {target_z})")
                     return True
 
-                # หากผ่านไป 1 วิ แล้ว Z ยังค้างอยู่ที่สูงมาก (Z > 160) แสดงว่าบอร์ดดรอปคำสั่ง -> ส่งคำสั่งซ้ำ!
-                if resend_count == 0 and (time.time() - start_time > 1.0) and z_now > 160:
-                    print(f"🔄 <SYSTEM>: ตรวจพบหัวค้างกลางอากาศที่ Z={z_now:.1f} — กำลังพุ่งหัวลงซ้ำให้อัตโนมัติ!")
-                    resend_count += 1
+                # ส่งคำสั่งซ้ำทุก 1.5 วิ ถ้า Z ยังค้างอยู่สูงกว่าเป้าเกิน 15mm
+                elapsed = time.time() - start_time
+                if z_now > target_z + 15.0 and elapsed - last_resend > 1.5:
+                    print(f"🔄 <SYSTEM>: Z={z_now:.1f} ยังค้างสูงกว่าเป้า {target_z} — ส่งคำสั่งดิ่งลงซ้ำ!")
+                    last_resend = elapsed
                     if hasattr(self, "_last_coords") and self._last_coords:
                         coords, speed, mode = self._last_coords
                         self._call("send_coords", coords, speed, mode)
 
             time.sleep(0.2)
 
-        print(f"✅ <SYSTEM>: ดำดิ่งถึงระดับเป้าหมายเรียบร้อย (Z_target={target_z})")
+        # Timeout — ตรวจสอบครั้งสุดท้ายว่าถึงหรือไม่ก่อน return
+        current = self.safe_get_coords()
+        if current and len(current) >= 3:
+            z_now = current[2]
+            if abs(z_now - target_z) <= threshold + 5.0:
+                print(f"✅ <SYSTEM>: Timeout แต่ Z={z_now:.1f} ใกล้เป้า {target_z} พอ — ถือว่าถึง")
+                return True
+            print(f"⚠️ <SYSTEM>: Timeout! Z={z_now:.1f} ยังไม่ถึงเป้า {target_z} (threshold={threshold})")
+            return False
+
+        # ถ้าอ่านค่า Z ไม่ได้เลย ให้ถือว่าถึง (MOCK / Hardware ตอบสนองช้า)
+        print(f"⚠️ <SYSTEM>: ไม่สามารถอ่าน Z ได้ — ถือว่าถึงระดับเป้า (Z_target={target_z})")
         return True
+
 
     def set_gripper_value(self, value, speed):
         return self._call("set_gripper_value", value, speed)

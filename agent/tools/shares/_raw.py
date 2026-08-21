@@ -47,8 +47,8 @@ def raw_grab_object(object_name: str, target_coord: list = None, _auto_unstack: 
     if target_coord and len(target_coord) >= 2:
         print(f"🤖 <SYSTEM>: กำลังขยับแขนกลไปหยิบของที่พิกัด {target_coord}...")
         robot_coord = [float(target_coord[0]), float(target_coord[1])]
-        if len(target_coord) >= 3:
-            z = float(target_coord[2]) + z_offset
+        if len(target_coord) >= 3 and float(target_coord[2]) > 0:
+            z = float(target_coord[2])
     else:
         # 1. MEMORY FIRST: Check known_objects (exact and fuzzy)
         found_key = None
@@ -63,11 +63,11 @@ def raw_grab_object(object_name: str, target_coord: list = None, _auto_unstack: 
 
         if found_key and isinstance(init.known_objects[found_key], list):
             saved = init.known_objects[found_key]
-            print(f"🤖 <SYSTEM>: [Memory-First] ดึงพิกัด '{found_key}' จากความจำ {saved} (เริ่มจากความทรงจำก่อน ข้ามการสแกน)...")
             robot_coord = [float(saved[0]), float(saved[1])]
-            if len(saved) >= 3 and saved[2] > 0:
-                z = float(saved[2]) + z_offset
+            if len(saved) >= 3 and float(saved[2]) > 0:
+                z = float(saved[2])
             eng_name = found_key
+            print(f"🤖 <SYSTEM>: [Memory-First] ดึงพิกัด '{found_key}' จากความจำ (X={robot_coord[0]}, Y={robot_coord[1]}, Z={z}) (เริ่มจากความทรงจำก่อน ข้ามการสแกน)...")
         else:
             # 2. SCAN IF NOT IN MEMORY
             print(f"🤖 <SYSTEM>: ไม่พบ '{eng_name}' ในความจำ → เริ่มสแกนค้นหาด้วย YOLO...")
@@ -141,8 +141,9 @@ def raw_grab_object(object_name: str, target_coord: list = None, _auto_unstack: 
         mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
         return {"status": "ERROR", "message": f"Joint stall at target Z={z}. Object unreachable."}
     
+    time.sleep(0.5)  # รอให้หัวนิ่งสนิทที่ระดับ Z จริงก่อนสั่งหนีบ
     init.close_gripper()
-    time.sleep(1)  # รอกริปเปอร์หนีบเสร็จ
+    time.sleep(1.2)  # รอกริปเปอร์หนีบเสร็จสนิท
 
     eng_name = get_english_name(object_name)
 

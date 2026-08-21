@@ -122,9 +122,9 @@ You are an ultra-smart, creative 6-axis robotic arm assistant with autonomous de
 AUTO_PROMPTS_DEFAULT = [
     # ── วัตถุและการจัดวาง (Safe Pick, Place & Stacking) ──
     "หยิบกล่องสี{color}มาโชว์ให้ดูหน่อย",
-    "หยิบกล่องสี{color}แล้วนำไปวางซ้อนบนกล่องใบอื่น",
+    "หยิบกล่องสี{color_a}แล้วนำไปวางซ้อนบนกล่องสี{color_b}",
     "หยิบกล่องสี{color}แล้วย้ายไปวางในตำแหน่งที่ปลอดภัย",
-    "หยิบกล่องสี{color}ขึ้นมาโชว์ แล้วเอาไปวางซ้อนให้เรียบร้อย",
+    "หยิบกล่องสี{color_a}ขึ้นมาโชว์ แล้วเอาไปวางซ้อนบนกล่องสี{color_b}",
     "หยิบกล่องสี{color}ไปวางที่ปลอดภัยแล้วเต้นฉลองหน่อย",
 
     # ── วิสัยทัศน์และการสำรวจ (Vision & Safe Inspection) ──
@@ -147,7 +147,7 @@ AUTO_PROMPTS_DEFAULT = [
 
 AUTO_PROMPTS_HOLDING = [
     "นำกล่องที่ถืออยู่ในมือไปวางในพื้นที่ปลอดภัย",
-    "เอากล่องที่ถืออยู่ไปวางซ้อนบนกล่องใบอื่น",
+    "เอากล่องที่ถืออยู่ไปวางซ้อนบนกล่องสี{color}",
     "โชว์กล่องที่กำลังถืออยู่ในมือให้ดูหน่อย แล้วนำไปวางที่ปลอดภัย",
     "เอากล่องที่กำลังถืออยู่ไปวางในตำแหน่งที่ปลอดภัยแล้วพยักหน้าทักทาย"
 ]
@@ -181,8 +181,16 @@ def get_auto_prompt(holding_object: str = None, has_stacked: bool = False) -> st
     else:
         pool = AUTO_PROMPTS_DEFAULT
 
+    colors = ["แดง", "เขียว", "น้ำเงิน", "เหลือง"]
     prompt = random.choice(pool)
+
+    # Handle {color_a} and {color_b} — must be different colors
+    if "{color_a}" in prompt or "{color_b}" in prompt:
+        shuffled = random.sample(colors, 2)
+        prompt = prompt.replace("{color_a}", shuffled[0]).replace("{color_b}", shuffled[1])
+
+    # Handle single {color}
     if "{color}" in prompt:
-        colors = ["แดง", "เขียว", "น้ำเงิน", "เหลือง"]
         prompt = prompt.replace("{color}", random.choice(colors))
+
     return prompt
