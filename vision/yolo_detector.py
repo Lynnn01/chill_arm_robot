@@ -66,6 +66,7 @@ def get_yolo_model(model_type: str = "cube"):
 def classify_cube_color_hsv(crop_bgr) -> str:
     """
     Non-invasive helper: Classify physical color of cropped cube using HSV color space.
+    Tuned for real-world lighting: glare resistance, lime/warm green, pale yellow.
     Returns: 'red_cube', 'yellow_cube', 'green_cube', 'blue_cube', or None.
     """
     if crop_bgr is None or crop_bgr.size == 0:
@@ -74,27 +75,27 @@ def classify_cube_color_hsv(crop_bgr) -> str:
         h, w = crop_bgr.shape[:2]
         if h < 5 or w < 5:
             return None
-        # Center 60% crop to avoid table background and border shadows
-        my, mx = int(h * 0.2), int(w * 0.2)
+        # Center 70% crop to avoid table background and border shadows
+        my, mx = int(h * 0.15), int(w * 0.15)
         center = crop_bgr[my:h-my, mx:w-mx]
         if center.size == 0:
             center = crop_bgr
 
         hsv = cv2.cvtColor(center, cv2.COLOR_BGR2HSV)
 
-        # Red: Hue in 0..10 or 160..180
-        mask_red1 = cv2.inRange(hsv, (0, 60, 50), (10, 255, 255))
-        mask_red2 = cv2.inRange(hsv, (160, 60, 50), (180, 255, 255))
+        # Red: Hue in 0..11 or 158..180 (S>=40, V>=40)
+        mask_red1 = cv2.inRange(hsv, (0, 40, 40), (11, 255, 255))
+        mask_red2 = cv2.inRange(hsv, (158, 40, 40), (180, 255, 255))
         mask_red = cv2.bitwise_or(mask_red1, mask_red2)
 
-        # Yellow: Hue in 15..38 (Distinct separation from red and green)
-        mask_yellow = cv2.inRange(hsv, (15, 60, 50), (38, 255, 255))
+        # Yellow: Hue in 12..38, S>=35, V>=40 (Resistant to desk lamp glare and pale yellow)
+        mask_yellow = cv2.inRange(hsv, (12, 35, 40), (38, 255, 255))
 
-        # Green: Hue in 39..85 (Distinct separation from blue)
-        mask_green = cv2.inRange(hsv, (39, 50, 40), (85, 255, 255))
+        # Green: Hue in 35..88, S>=35, V>=30 (Resistant to shadows and lime/warm green)
+        mask_green = cv2.inRange(hsv, (35, 35, 30), (88, 255, 255))
 
-        # Blue: Hue in 90..135 (Distinct separation from green)
-        mask_blue = cv2.inRange(hsv, (90, 60, 40), (135, 255, 255))
+        # Blue: Hue in 89..138, S>=40, V>=30
+        mask_blue = cv2.inRange(hsv, (89, 40, 30), (138, 255, 255))
 
         counts = {
             "red_cube": cv2.countNonZero(mask_red),
@@ -106,8 +107,8 @@ def classify_cube_color_hsv(crop_bgr) -> str:
         best_color, max_count = max(counts.items(), key=lambda item: item[1])
         total_pixels = center.shape[0] * center.shape[1]
 
-        # Require at least 15% of pixels to match dominant color
-        if total_pixels > 0 and max_count > total_pixels * 0.15:
+        # Require at least 10% of pixels to match dominant color and minimum 8 pixels
+        if total_pixels > 0 and max_count >= 8 and max_count > total_pixels * 0.10:
             return best_color
     except Exception:
         pass
@@ -216,6 +217,7 @@ def scan_with_yolo(object_name: str = "cube"):
                             if bx2 > bx1 and by2 > by1:
                                 verified_name = classify_cube_color_hsv(frame[by1:by2, bx1:bx2])
                                 if verified_name and verified_name != name:
+                                    print(f"🎨 <SYSTEM>: ปรับปรุงสีด้วย HSV: {name} -> {verified_name}")
                                     name = verified_name
                         except Exception:
                             pass
