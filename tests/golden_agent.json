@@ -1,0 +1,321 @@
+{
+ "ctx_blocked_relations": {
+  "out": "",
+  "res": "[System: Current arm coordinates are X=0, Y=0, Z=0. Gripper state: EMPTY (not holding anything). Known objects in memory: {'red_cube': [200, 0, 110], 'blue_cube': [205, 3, 150], 'green_cube': [170, 90, 0], 'a_area': [160, -150, 0], 'x': 'in gripper', 'short': [1]} | Logical insights: 'red_cube' is at bottom (blocked by 'blue_cube' on top, use unstack_and_grab)]\nUser: hello"
+ },
+ "ctx_coords": {
+  "out": "",
+  "res": "[System: Current arm coordinates are X=1, Y=2, Z=3. Gripper state: EMPTY (not holding anything). Known objects in memory: {}]\nUser: hello"
+ },
+ "ctx_empty": {
+  "out": "",
+  "res": "[System: Current arm coordinates are Unknown. Gripper state: EMPTY (not holding anything). Known objects in memory: {}]\nUser: hello"
+ },
+ "ctx_error_returns_raw": {
+  "out": "Context error: 'object' object has no attribute 'items'\n",
+  "res": "hello"
+ },
+ "ctx_holding_named": {
+  "out": "",
+  "res": "[System: Current arm coordinates are X=1, Y=2, Z=3. Gripper state: HOLDING 'red_cube' (Notice: Gripper is currently holding an item. If user asks to place/release it, OR orders ANY action requiring free hands such as grabbing another object, gestures, dancing, rock-paper-scissors, or sorting, you MUST insert move_to(smart_place=true) as the FIRST step to place down what is in hand before performing that action). Known objects in memory: {'red_cube': [200, 0, 110], 'blue_cube': [205, 3, 150], 'green_cube': [170, 90, 0], 'a_area': [160, -150, 0], 'x': 'in gripper', 'short': [1]} | Logical insights: 'red_cube' is at bottom (blocked by 'blue_cube' on top, use unstack_and_grab)]\nUser: hello"
+ },
+ "ctx_holding_unnamed": {
+  "out": "",
+  "res": "[System: Current arm coordinates are Unknown. Gripper state: HOLDING an object (Notice: Gripper is currently holding an item. If user asks to place/release it, OR orders ANY action requiring free hands such as grabbing another object, gestures, dancing, rock-paper-scissors, or sorting, you MUST insert move_to(smart_place=true) as the FIRST step to place down what is in hand before performing that action). Known objects in memory: {}]\nUser: hello"
+ },
+ "ctx_no_blocking_far": {
+  "out": "",
+  "res": "[System: Current arm coordinates are Unknown. Gripper state: EMPTY (not holding anything). Known objects in memory: {'a_cube': [0, 0, 110], 'b_cube': [100, 0, 200]}]\nUser: hello"
+ },
+ "ctx_short_coords": {
+  "out": "",
+  "res": "[System: Current arm coordinates are Unknown. Gripper state: EMPTY (not holding anything). Known objects in memory: {}]\nUser: hello"
+ },
+ "plan_empty": {
+  "calls": [],
+  "res": [],
+  "voice": []
+ },
+ "plan_error_dict_breaks": {
+  "calls": [
+   [
+    "a",
+    {}
+   ],
+   [
+    "b",
+    {
+     "x": 1
+    }
+   ]
+  ],
+  "res": [
+   {
+    "result": {
+     "status": "DONE TASK"
+    },
+    "status": "ok",
+    "tool": "a"
+   },
+   {
+    "result": "boom",
+    "status": "error",
+    "tool": "b"
+   }
+  ],
+  "voice": []
+ },
+ "plan_exception_breaks": {
+  "calls": [
+   [
+    "a",
+    {}
+   ]
+  ],
+  "res": [
+   {
+    "result": "bad",
+    "status": "error",
+    "tool": "a"
+   }
+  ],
+  "voice": []
+ },
+ "plan_move_with_target_not_overridden": {
+  "calls": [
+   [
+    "grab_object",
+    {}
+   ],
+   [
+    "move_to",
+    {
+     "target_name": "red cube"
+    }
+   ],
+   [
+    "score",
+    5,
+    "r:sum"
+   ]
+  ],
+  "res": [
+   {
+    "result": {
+     "data": [
+      10,
+      20
+     ],
+     "status": "DONE TASK"
+    },
+    "status": "ok",
+    "tool": "grab_object"
+   },
+   {
+    "result": {
+     "status": "DONE TASK"
+    },
+    "status": "ok",
+    "tool": "move_to"
+   }
+  ],
+  "voice": []
+ },
+ "plan_none_args_stripped": {
+  "calls": [
+   [
+    "a",
+    {
+     "y": 2
+    }
+   ],
+   [
+    "score",
+    5,
+    "r:sum"
+   ]
+  ],
+  "res": [
+   {
+    "result": "text result",
+    "status": "ok",
+    "tool": "a"
+   }
+  ],
+  "voice": []
+ },
+ "plan_old_list_grab": {
+  "calls": [
+   [
+    "grab_object",
+    {}
+   ],
+   [
+    "move_to",
+    {
+     "target_coord": [
+      7,
+      8
+     ]
+    }
+   ],
+   [
+    "score",
+    5,
+    "r:sum"
+   ]
+  ],
+  "res": [
+   {
+    "result": [
+     7,
+     8
+    ],
+    "status": "ok",
+    "tool": "grab_object"
+   },
+   {
+    "result": {
+     "status": "DONE TASK"
+    },
+    "status": "ok",
+    "tool": "move_to"
+   }
+  ],
+  "voice": []
+ },
+ "plan_partial_no_score": {
+  "calls": [
+   [
+    "a",
+    {}
+   ]
+  ],
+  "res": [
+   {
+    "result": {
+     "status": "DONE TASK"
+    },
+    "status": "ok",
+    "tool": "a"
+   },
+   {
+    "result": "Unknown tool",
+    "status": "error",
+    "tool": "zzz"
+   }
+  ],
+  "voice": []
+ },
+ "plan_two_ok_move_uses_grab_coord": {
+  "calls": [
+   [
+    "grab_object",
+    {
+     "object_name": "red cube"
+    }
+   ],
+   [
+    "move_to",
+    {
+     "target_coord": [
+      10,
+      20
+     ]
+    }
+   ],
+   [
+    "score",
+    5,
+    "r:sum"
+   ]
+  ],
+  "res": [
+   {
+    "result": {
+     "data": [
+      10,
+      20
+     ],
+     "status": "DONE TASK"
+    },
+    "status": "ok",
+    "tool": "grab_object"
+   },
+   {
+    "result": {
+     "status": "DONE TASK"
+    },
+    "status": "ok",
+    "tool": "move_to"
+   }
+  ],
+  "voice": []
+ },
+ "plan_unknown_tool_skipped": {
+  "calls": [
+   [
+    "dance_celebrate",
+    {}
+   ]
+  ],
+  "res": [
+   {
+    "result": "Unknown tool",
+    "status": "error",
+    "tool": "nope"
+   },
+   {
+    "result": {
+     "status": "DONE TASK"
+    },
+    "status": "ok",
+    "tool": "dance_celebrate"
+   }
+  ],
+  "voice": []
+ },
+ "plan_voice_threads": {
+  "calls": [
+   [
+    "a",
+    {}
+   ],
+   [
+    "b",
+    {}
+   ],
+   [
+    "score",
+    5,
+    "r:sum"
+   ]
+  ],
+  "res": [
+   {
+    "result": {
+     "status": "DONE TASK"
+    },
+    "status": "ok",
+    "tool": "a"
+   },
+   {
+    "result": {
+     "status": "DONE TASK"
+    },
+    "status": "ok",
+    "tool": "b"
+   }
+  ],
+  "voice": [
+   [
+    "hi",
+    "speech_task_0.mp3"
+   ],
+   [
+    "กำลังทำตามคำสั่ง b เด้อครับ",
+    "speech_task_1.mp3"
+   ]
+  ]
+ }
+}

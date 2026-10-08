@@ -115,6 +115,143 @@ def classify_cube_color_hsv(crop_bgr) -> str:
     return None
 
 
+def _announce_scan(is_full_desk_scan: bool, name_raw: str, primary_type: str) -> None:
+    if is_full_desk_scan:
+        print(f"🤖 <SYSTEM>: [Central Scanner] เริ่มต้นการสแกนโต๊ะแบบ Panoramic และตรวจสอบความจำ 100% (ทีละ 15°)...")
+    else:
+        print(f"🤖 <SYSTEM>: [Central Scanner] เริ่มต้นการสแกนหา '{name_raw}' ({primary_type}) ทีละ 15°...")
+
+
+def _load_xy_offsets():
+    with open(init.CONFIG_PATH, "r", encoding="utf-8") as config_file:
+        config_data = json.load(config_file)
+    return config_data.get("x", 0), config_data.get("y", 0)
+
+
+def _primary_type(name_lower: str) -> str:
+    if any(k in name_lower for k in ("face", "หน้า", "ใบหน้า")):
+        return "face"
+    if any(k in name_lower for k in ("person", "คน", "มนุษย์", "human")):
+        return "person"
+    return "cube"
+
+
+def _is_full_desk_scan(primary_type: str, obj_lower: str) -> bool:
+    return (
+        primary_type == "cube"
+        and (
+            not obj_lower
+            or obj_lower in ("cube", "cubes", "box", "boxes", "all", "all objects", "table", "desk", "สิ่งของ", "กล่อง")
+        )
+    )
+
+
+def _refine_name_hsv(frame, box, name: str) -> str:
+    """Non-invasive HSV color refinement of a detected cube's class name."""
+    try:
+        ih, iw = frame.shape[:2]
+        bx_coords = box.xyxy[0].cpu().numpy()
+        bx1, by1 = max(0, int(bx_coords[0])), max(0, int(bx_coords[1]))
+        bx2, by2 = min(iw, int(bx_coords[2])), min(ih, int(bx_coords[3]))
+        if bx2 > bx1 and by2 > by1:
+            verified_name = classify_cube_color_hsv(frame[by1:by2, bx1:bx2])
+            if verified_name and verified_name != name:
+                print(f"🎨 <SYSTEM>: ปรับปรุงสีด้วย HSV: {name} -> {verified_name}")
+                return verified_name
+    except Exception as e:
+        print(f"⚠️ <SYSTEM>: HSV color verify failed: {e}")
+    return name
+
+
+def _box_to_world(box, j1: float, x_offset: float, y_offset: float) -> list:
+    """Pixel box center -> arm base-frame [x, y] (rotated by the scan angle j1, offset, clamped)."""
+    x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+    center_x = (x1 + x2) / 2
+    center_y = (y1 + y2) / 2
+
+    if getattr(armconfig, 'CAMERA_FLIP_HORIZONTAL', False):
+        center_x = 640 - center_x
+
+    target_pixel = (center_x, center_y)
+    robot_coord_np = eyeonhand.pixel_to_arm(target_pixel)
+    robot_coord = [float(robot_coord_np[0]) + x_offset, float(robot_coord_np[1]) + y_offset]
+
+    theta = math.radians(j1)
+    x_local = float(robot_coord[0])
+    y_local = float(robot_coord[1])
+
+    x_world = x_local * math.cos(theta) - y_local * math.sin(theta)
+    y_world = x_local * math.sin(theta) + y_local * math.cos(theta)
+
+    x_world += getattr(armconfig, 'GRAB_X_OFFSET', 0.0)
+    y_world += getattr(armconfig, 'GRAB_Y_OFFSET', 0.0)
+
+    x_world = max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, x_world))
+    y_world = max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, y_world))
+    return [round(x_world, 2), round(y_world, 2)]
+
+
+def _target_matches(obj_colors, obj_words, name_colors, name_words, name_lower) -> bool:
+    """Targeted scan: does a detected class name match the requested object?"""
+    if obj_colors:
+        if not name_colors or not obj_colors.intersection(name_colors):
+            return False
+    return bool(obj_words.intersection(name_words) or any(w in name_lower for w in obj_words if len(w) > 2))
+
+
+def _calibrate_memory(found_cubes: dict) -> None:
+    """Full-desk scan: update moved cubes, add new ones, drop stale ones (keeping the held cube)."""
+    old_cube_keys = [k for k in list(init.known_objects.keys()) if "cube" in k.lower()]
+    held_obj = init.current_held_object if (init.is_holding_object or init.current_held_object) else None
+
+    # Update or add verified cubes
+    for cube_name, coord in found_cubes.items():
+        old_val = init.known_objects.get(cube_name)
+        if old_val and isinstance(old_val, list) and len(old_val) >= 2 and old_val != "in gripper":
+            dist = math.hypot(coord[0] - old_val[0], coord[1] - old_val[1])
+            if dist > 15.0:
+                print(f"🔄 <SYSTEM>: [Memory Check] '{cube_name}' ขยับตำแหน่ง {dist:.1f}mm! ปรับพิกัดจาก {old_val[:2]} -> {coord}")
+                init.known_objects[cube_name] = [coord[0], coord[1], armconfig.GRAB_BASE_HEIGHT]
+            else:
+                print(f"✅ <SYSTEM>: [Memory Check] พิกัด '{cube_name}' ถูกต้อง 100% ตรงกับความเป็นจริง ({coord})")
+        else:
+            print(f"✨ <SYSTEM>: [Memory Check] พบ '{cube_name}' ใหม่บนโต๊ะ! บันทึกพิกัด {coord}")
+            init.known_objects[cube_name] = [coord[0], coord[1], armconfig.GRAB_BASE_HEIGHT]
+
+    # Remove stale cubes not seen anywhere (except held cube)
+    for old_k in old_cube_keys:
+        if held_obj and (old_k == held_obj or held_obj in old_k or old_k in held_obj):
+            continue
+        if old_k not in found_cubes:
+            print(f"🗑️ <SYSTEM>: [Memory Check] ไม่พบ '{old_k}' บนโต๊ะแล้ว → ลบออกจากความจำเพื่อความถูกต้อง 100%")
+            init.known_objects.pop(old_k, None)
+
+
+def _iter_detections(model, results, frame, primary_type, colors, j1, x_offset, y_offset):
+    """Lazily yield (std_name, name_lower, name_words, name_colors, world_coord) per detected box."""
+    for result in results:
+        for box in result.boxes:
+            cls = int(box.cls[0])
+            name = model.names[cls]
+
+            # Non-invasive HSV color refinement for cube model
+            if primary_type == "cube" and frame is not None:
+                name = _refine_name_hsv(frame, box, name)
+
+            name_lower = name.lower().replace("_", " ")
+            name_words = set(name_lower.split())
+            name_colors = name_words.intersection(colors)
+
+            saved_coord = _box_to_world(box, j1, x_offset, y_offset)
+
+            # Standardize cube key (e.g. "red_cube")
+            std_name = name.lower()
+            if "_" not in std_name and primary_type == "cube":
+                std_name = f"{std_name}_cube"
+
+            yield std_name, name_lower, name_words, name_colors, saved_coord
+
+
 def scan_with_yolo(object_name: str = "cube"):
     """
     Unified Central Scanning Function using YOLO + HSV color verification.
@@ -137,16 +274,9 @@ def scan_with_yolo(object_name: str = "cube"):
     name_raw = (object_name or "cube").strip()
     name_lower = name_raw.lower()
 
-    if any(k in name_lower for k in ("face", "หน้า", "ใบหน้า")):
-        primary_type = "face"
-    elif any(k in name_lower for k in ("person", "คน", "มนุษย์", "human")):
-        primary_type = "person"
-    else:
-        primary_type = "cube"
+    primary_type = _primary_type(name_lower)
 
-    model = get_yolo_model(primary_type)
-    if not model:
-        model = get_yolo_model("cube")
+    model = get_yolo_model(primary_type) or get_yolo_model("cube")
     if not model:
         return None
 
@@ -155,25 +285,13 @@ def scan_with_yolo(object_name: str = "cube"):
     obj_lower = eng_name.replace("_", " ").strip() if eng_name else name_lower
 
     # Determine if this is a general desk scan / memory calibration
-    is_full_desk_scan = (
-        primary_type == "cube"
-        and (
-            not obj_lower
-            or obj_lower in ("cube", "cubes", "box", "boxes", "all", "all objects", "table", "desk", "สิ่งของ", "กล่อง")
-        )
-    )
+    is_full_desk_scan = _is_full_desk_scan(primary_type, obj_lower)
 
-    if is_full_desk_scan:
-        print(f"🤖 <SYSTEM>: [Central Scanner] เริ่มต้นการสแกนโต๊ะแบบ Panoramic และตรวจสอบความจำ 100% (ทีละ 15°)...")
-    else:
-        print(f"🤖 <SYSTEM>: [Central Scanner] เริ่มต้นการสแกนหา '{name_raw}' ({primary_type}) ทีละ 15°...")
+    _announce_scan(is_full_desk_scan, name_raw, primary_type)
 
     scan_angles = armconfig.SCAN_ANGLES
 
-    with open(init.CONFIG_PATH, "r", encoding="utf-8") as config_file:
-        config_data = json.load(config_file)
-    x_offset = config_data.get("x", 0)
-    y_offset = config_data.get("y", 0)
+    x_offset, y_offset = _load_xy_offsets()
 
     time.sleep(0.3)
 
@@ -202,75 +320,18 @@ def scan_with_yolo(object_name: str = "cube"):
             if hasattr(cam_manager, 'set_ai_results') and len(results) > 0:
                 cam_manager.set_ai_results(results[0], duration=0.8)
 
-            for result in results:
-                for box in result.boxes:
-                    cls = int(box.cls[0])
-                    name = model.names[cls]
+            for std_name, name_lower, name_words, name_colors, saved_coord in _iter_detections(
+                    model, results, frame, primary_type, colors, j1, x_offset, y_offset):
+                # 1. Full Desk Scan Mode: Aggregate all cubes
+                if is_full_desk_scan:
+                    found_cubes[std_name] = saved_coord
 
-                    # Non-invasive HSV color refinement for cube model
-                    if primary_type == "cube" and frame is not None:
-                        try:
-                            ih, iw = frame.shape[:2]
-                            bx_coords = box.xyxy[0].cpu().numpy()
-                            bx1, by1 = max(0, int(bx_coords[0])), max(0, int(bx_coords[1]))
-                            bx2, by2 = min(iw, int(bx_coords[2])), min(ih, int(bx_coords[3]))
-                            if bx2 > bx1 and by2 > by1:
-                                verified_name = classify_cube_color_hsv(frame[by1:by2, bx1:bx2])
-                                if verified_name and verified_name != name:
-                                    print(f"🎨 <SYSTEM>: ปรับปรุงสีด้วย HSV: {name} -> {verified_name}")
-                                    name = verified_name
-                        except Exception as e:
-                            print(f"⚠️ <SYSTEM>: HSV color verify failed: {e}")
-
-                    name_lower = name.lower().replace("_", " ")
-                    name_words = set(name_lower.split())
-                    name_colors = name_words.intersection(colors)
-
-                    # Calculate world coordinates
-                    x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
-                    center_x = (x1 + x2) / 2
-                    center_y = (y1 + y2) / 2
-
-                    if getattr(armconfig, 'CAMERA_FLIP_HORIZONTAL', False):
-                        center_x = 640 - center_x
-
-                    target_pixel = (center_x, center_y)
-                    robot_coord_np = eyeonhand.pixel_to_arm(target_pixel)
-                    robot_coord = [float(robot_coord_np[0]) + x_offset, float(robot_coord_np[1]) + y_offset]
-
-                    theta = math.radians(j1)
-                    x_local = float(robot_coord[0])
-                    y_local = float(robot_coord[1])
-
-                    x_world = x_local * math.cos(theta) - y_local * math.sin(theta)
-                    y_world = x_local * math.sin(theta) + y_local * math.cos(theta)
-
-                    x_world += getattr(armconfig, 'GRAB_X_OFFSET', 0.0)
-                    y_world += getattr(armconfig, 'GRAB_Y_OFFSET', 0.0)
-
-                    x_world = max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, x_world))
-                    y_world = max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, y_world))
-                    saved_coord = [round(x_world, 2), round(y_world, 2)]
-
-                    # Standardize cube key (e.g. "red_cube")
-                    std_name = name.lower()
-                    if "_" not in std_name and primary_type == "cube":
-                        std_name = f"{std_name}_cube"
-
-                    # 1. Full Desk Scan Mode: Aggregate all cubes
-                    if is_full_desk_scan:
-                        found_cubes[std_name] = saved_coord
-
-                    # 2. Targeted Scan Mode: Match requested object and return immediately
-                    else:
-                        if obj_colors:
-                            if not name_colors or not obj_colors.intersection(name_colors):
-                                continue
-                        if obj_words.intersection(name_words) or any(w in name_lower for w in obj_words if len(w) > 2):
-                            print(f"🤖 <SYSTEM>: YOLO ({primary_type}) เจอ '{std_name}' ที่มุม {j1}! พิกัดโลก: {saved_coord}")
-                            mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
-                            init.known_objects[std_name] = [saved_coord[0], saved_coord[1], armconfig.GRAB_BASE_HEIGHT]
-                            return saved_coord
+                # 2. Targeted Scan Mode: Match requested object and return immediately
+                elif _target_matches(obj_colors, obj_words, name_colors, name_words, name_lower):
+                    print(f"🤖 <SYSTEM>: YOLO ({primary_type}) เจอ '{std_name}' ที่มุม {j1}! พิกัดโลก: {saved_coord}")
+                    mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
+                    init.known_objects[std_name] = [saved_coord[0], saved_coord[1], armconfig.GRAB_BASE_HEIGHT]
+                    return saved_coord
 
             time.sleep(0.1)
 
@@ -280,30 +341,7 @@ def scan_with_yolo(object_name: str = "cube"):
 
     # Full Desk Scan: Re-calibrate memory 100%
     if is_full_desk_scan:
-        old_cube_keys = [k for k in list(init.known_objects.keys()) if "cube" in k.lower()]
-        held_obj = init.current_held_object if (init.is_holding_object or init.current_held_object) else None
-
-        # Update or add verified cubes
-        for cube_name, coord in found_cubes.items():
-            old_val = init.known_objects.get(cube_name)
-            if old_val and isinstance(old_val, list) and len(old_val) >= 2 and old_val != "in gripper":
-                dist = math.hypot(coord[0] - old_val[0], coord[1] - old_val[1])
-                if dist > 15.0:
-                    print(f"🔄 <SYSTEM>: [Memory Check] '{cube_name}' ขยับตำแหน่ง {dist:.1f}mm! ปรับพิกัดจาก {old_val[:2]} -> {coord}")
-                    init.known_objects[cube_name] = [coord[0], coord[1], armconfig.GRAB_BASE_HEIGHT]
-                else:
-                    print(f"✅ <SYSTEM>: [Memory Check] พิกัด '{cube_name}' ถูกต้อง 100% ตรงกับความเป็นจริง ({coord})")
-            else:
-                print(f"✨ <SYSTEM>: [Memory Check] พบ '{cube_name}' ใหม่บนโต๊ะ! บันทึกพิกัด {coord}")
-                init.known_objects[cube_name] = [coord[0], coord[1], armconfig.GRAB_BASE_HEIGHT]
-
-        # Remove stale cubes not seen anywhere (except held cube)
-        for old_k in old_cube_keys:
-            if held_obj and (old_k == held_obj or held_obj in old_k or old_k in held_obj):
-                continue
-            if old_k not in found_cubes:
-                print(f"🗑️ <SYSTEM>: [Memory Check] ไม่พบ '{old_k}' บนโต๊ะแล้ว → ลบออกจากความจำเพื่อความถูกต้อง 100%")
-                init.known_objects.pop(old_k, None)
+        _calibrate_memory(found_cubes)
 
         print(f"✅ <SYSTEM>: [Central Scanner] สแกนครบถ้วน ความจำสมบูรณ์ 100%: {init.known_objects}")
         return init.known_objects

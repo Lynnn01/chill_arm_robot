@@ -231,18 +231,8 @@ AUTO_PROMPTS = (
 )
 
 
-def _analyze_cubes_and_towers(known_objects: dict):
-    """
-    Analyzes cubes in memory to identify ground cubes and existing tower stacks.
-    Returns:
-        free_cubes: list of (obj_name, thai_color) on ground not in stack
-        towers: list of lists of (obj_name, thai_color, z) sorted by z ascending
-        all_colors: list of unique thai_color strings found
-    """
-    if not known_objects:
-        return [], [], []
-
-    import math
+def _extract_cubes(known_objects: dict) -> list:
+    """Known-object entries -> cube dicts with thai color and xyz (z defaults to 110)."""
     cubes = []
     for k, v in known_objects.items():
         if not isinstance(v, list) or len(v) < 2 or v == "in gripper" or "area" in k.lower():
@@ -253,11 +243,12 @@ def _analyze_cubes_and_towers(known_objects: dict):
                 z = float(v[2]) if len(v) >= 3 and v[2] > 0 else 110.0
                 cubes.append({"name": k, "color": color_th, "x": float(v[0]), "y": float(v[1]), "z": z})
                 break
+    return cubes
 
-    if not cubes:
-        return [], [], []
 
-    # Cluster cubes by XY proximity (< 35mm)
+def _cluster_cubes(cubes: list) -> list:
+    """Cluster cubes by XY proximity (< 35mm); each cluster sorted by z ascending."""
+    import math
     clusters = []
     visited = set()
     for i, c1 in enumerate(cubes):
@@ -272,18 +263,114 @@ def _analyze_cubes_and_towers(known_objects: dict):
                     visited.add(j)
         cluster.sort(key=lambda item: item["z"])
         clusters.append(cluster)
+    return clusters
+
+
+def _analyze_cubes_and_towers(known_objects: dict):
+    """
+    Analyzes cubes in memory to identify ground cubes and existing tower stacks.
+    Returns:
+        free_cubes: list of (obj_name, thai_color) on ground not in stack
+        towers: list of lists of (obj_name, thai_color, z) sorted by z ascending
+        all_colors: list of unique thai_color strings found
+    """
+    if not known_objects:
+        return [], [], []
+
+    cubes = _extract_cubes(known_objects)
+    if not cubes:
+        return [], [], []
 
     free_cubes = []
     towers = []
     all_colors = list(dict.fromkeys(c["color"] for c in cubes))
 
-    for cl in clusters:
+    for cl in _cluster_cubes(cubes):
         if len(cl) == 1:
             free_cubes.append((cl[0]["name"], cl[0]["color"]))
         else:
             towers.append([(item["name"], item["color"], item["z"]) for item in cl])
 
     return free_cubes, towers, all_colors
+
+
+def _holding_candidates(towers, free_cubes, all_colors):
+    top_color = None
+    if towers:
+        top_color = towers[0][-1][1]  # Color of top of highest tower
+    elif free_cubes:
+        top_color = free_cubes[0][1]
+    target_color = top_color or (all_colors[0] if all_colors else random.choice(list(COLOR_TO_THAI.values())))
+    return [p.replace("{color}", target_color) for p in AUTO_PROMPTS_HOLDING]
+
+
+def _normal_play_candidates(all_colors):
+    _auto_mission_state["normal_steps_left"] -= 1
+    if _auto_mission_state["normal_steps_left"] <= 0:
+        _auto_mission_state["mode"] = "mission"
+    chosen_color = random.choice(all_colors) if all_colors else random.choice(list(COLOR_TO_THAI.values()))
+    return [p.replace("{color}", chosen_color) for p in AUTO_PROMPTS_NORMAL_PLAY]
+
+
+def _tower_start_candidates(free_cubes):
+    import itertools
+    candidates = []
+    for c_pair in itertools.permutations(free_cubes[:3], 2):
+        ca, cb = c_pair[0][1], c_pair[1][1]
+        for p in AUTO_PROMPTS_TOWER_START:
+            candidates.append(p.replace("{color_a}", ca).replace("{color_b}", cb))
+    return candidates
+
+
+def _tower_grow_candidates(towers, free_cubes):
+    top_color = towers[0][-1][1]
+    candidates = []
+    for fc in free_cubes:
+        for p in AUTO_PROMPTS_TOWER_GROW:
+            candidates.append(p.replace("{free_color}", fc[1]).replace("{top_color}", top_color))
+    return candidates
+
+
+def _tower_complete_candidates():
+    # Switch to Normal Mode for 5-10 normal commands
+    _auto_mission_state["mode"] = "normal"
+    _auto_mission_state["normal_steps_left"] = random.randint(5, 10)
+    return list(AUTO_PROMPTS_TOWER_COMPLETE)
+
+
+def _mission_candidates(towers, free_cubes, all_colors):
+    """Scenarios 3-7 (non-holding, memory not empty)."""
+    # Periodic 11-command memory verification (only when NO boxes are stacked)
+    if _auto_mission_state.get("auto_command_count", 0) >= MEMORY_REVIEW_INTERVAL and not towers:
+        _auto_mission_state["auto_command_count"] = 0
+        return list(AUTO_PROMPTS_EMPTY_SCAN)
+    # Cooldown: 5-10 casual commands between missions
+    if _auto_mission_state["mode"] == "normal":
+        return _normal_play_candidates(all_colors)
+    if len(free_cubes) == 1 and not towers:
+        return [p.replace("{color}", free_cubes[0][1]) for p in AUTO_PROMPTS_SINGLE_CUBE]
+    if len(free_cubes) >= 2 and not towers:
+        return _tower_start_candidates(free_cubes)
+    if towers and free_cubes:
+        return _tower_grow_candidates(towers, free_cubes)
+    if towers:
+        return _tower_complete_candidates()
+    return list(AUTO_PROMPTS_EMPTY_SCAN)
+
+
+def _filter_recent(candidates, recent_prompts):
+    """Anti-Repetition Filter (LRU - Least Recently Used)."""
+    if not (recent_prompts and len(candidates) > 1):
+        return candidates
+    unseen = [c for c in candidates if c not in recent_prompts]
+    if unseen:
+        return unseen
+
+    def _last_seen(c):
+        indices = [i for i, r in enumerate(recent_prompts) if r == c]
+        return max(indices) if indices else -1
+    min_seen = min(_last_seen(c) for c in candidates)
+    return [c for c in candidates if _last_seen(c) == min_seen]
 
 
 def get_auto_prompt(
@@ -298,83 +385,14 @@ def get_auto_prompt(
     commands after mission completion before returning to mission mode.
     """
     free_cubes, towers, all_colors = _analyze_cubes_and_towers(known_objects)
-    candidates = []
     _auto_mission_state["auto_command_count"] = _auto_mission_state.get("auto_command_count", 0) + 1
 
-    # Scenario 1: Holding an object (Always prioritize safe placement / stacking)
     if holding_object:
-        top_color = None
-        if towers:
-            top_color = towers[0][-1][1]  # Color of top of highest tower
-        elif free_cubes:
-            top_color = free_cubes[0][1]
-
-        target_color = top_color or (all_colors[0] if all_colors else random.choice(list(COLOR_TO_THAI.values())))
-        for p in AUTO_PROMPTS_HOLDING:
-            candidates.append(p.replace("{color}", target_color))
-
-    # Scenario 2: Memory is Empty (No cubes found yet) -> Scan desk first
+        candidates = _holding_candidates(towers, free_cubes, all_colors)
     elif not all_colors:
         candidates = list(AUTO_PROMPTS_EMPTY_SCAN)
-
-    # Scenario 3: Periodic 11-Command Memory Verification (Only when NO boxes are stacked)
-    elif _auto_mission_state.get("auto_command_count", 0) >= MEMORY_REVIEW_INTERVAL and not towers:
-        _auto_mission_state["auto_command_count"] = 0
-        candidates = list(AUTO_PROMPTS_EMPTY_SCAN)
-
-    # Scenario 4: In Normal Mode (Cooldown period: 5-10 casual commands between missions)
-    elif _auto_mission_state["mode"] == "normal":
-        _auto_mission_state["normal_steps_left"] -= 1
-        if _auto_mission_state["normal_steps_left"] <= 0:
-            _auto_mission_state["mode"] = "mission"
-
-        chosen_color = random.choice(all_colors) if all_colors else random.choice(list(COLOR_TO_THAI.values()))
-        for p in AUTO_PROMPTS_NORMAL_PLAY:
-            candidates.append(p.replace("{color}", chosen_color))
-
-    # Scenario 5: Mission Mode — Only 1 cube on desk
-    elif len(free_cubes) == 1 and not towers:
-        single_color = free_cubes[0][1]
-        for p in AUTO_PROMPTS_SINGLE_CUBE:
-            candidates.append(p.replace("{color}", single_color))
-
-    # Scenario 5: Mission Mode — Multiple free cubes on ground, no tower yet -> START TOWER
-    elif len(free_cubes) >= 2 and not towers:
-        import itertools
-        for c_pair in itertools.permutations(free_cubes[:3], 2):
-            ca, cb = c_pair[0][1], c_pair[1][1]
-            for p in AUTO_PROMPTS_TOWER_START:
-                candidates.append(p.replace("{color_a}", ca).replace("{color_b}", cb))
-
-    # Scenario 6: Mission Mode — Tower exists + Free cubes remain on ground -> GROW TOWER
-    elif towers and free_cubes:
-        top_color = towers[0][-1][1]
-        for fc in free_cubes:
-            free_color = fc[1]
-            for p in AUTO_PROMPTS_TOWER_GROW:
-                candidates.append(p.replace("{free_color}", free_color).replace("{top_color}", top_color))
-
-    # Scenario 7: Mission Mode — Tower is Complete (All cubes stacked)
-    # -> Trigger Celebration and switch to Normal Mode for next 5-10 commands!
-    elif towers and not free_cubes:
-        candidates = list(AUTO_PROMPTS_TOWER_COMPLETE)
-        # Switch to Normal Mode for 5-10 normal commands
-        _auto_mission_state["mode"] = "normal"
-        _auto_mission_state["normal_steps_left"] = random.randint(5, 10)
-
     else:
-        candidates = list(AUTO_PROMPTS_EMPTY_SCAN)
+        candidates = _mission_candidates(towers, free_cubes, all_colors)
 
-    # Anti-Repetition Filter (LRU - Least Recently Used)
-    if recent_prompts and len(candidates) > 1:
-        unseen = [c for c in candidates if c not in recent_prompts]
-        if unseen:
-            candidates = unseen
-        else:
-            def _last_seen(c):
-                indices = [i for i, r in enumerate(recent_prompts) if r == c]
-                return max(indices) if indices else -1
-            min_seen = min(_last_seen(c) for c in candidates)
-            candidates = [c for c in candidates if _last_seen(c) == min_seen]
-
+    candidates = _filter_recent(candidates, recent_prompts)
     return random.choice(candidates) if candidates else "สแกนหาตำแหน่งของกล่องบนโต๊ะ"

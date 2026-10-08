@@ -22,7 +22,7 @@ async def plan_tasks(contextual_input: str) -> dict:
     Returns dict with mode="plan" and "tasks" list, or mode="fallback".
     """
     client = AsyncOpenAI(timeout=120.0)
-    model_name = os.getenv("LLM_MODEL_NAME", "deepseek-chat")
+    model_name = os.getenv("LLM_MODEL_NAME", "gpt-4o-mini")
     raw = ""
 
     try:
@@ -69,7 +69,7 @@ async def summarize_results(contextual_input: str, results: list) -> str:
     Call LLM with the results of the execution to get a conversational summary.
     """
     client = AsyncOpenAI(timeout=120.0)
-    model_name = os.getenv("LLM_MODEL_NAME", "deepseek-chat")
+    model_name = os.getenv("LLM_MODEL_NAME", "gpt-4o-mini")
 
     # Format the results into a readable string
     results_str = "Execution Results:\n"

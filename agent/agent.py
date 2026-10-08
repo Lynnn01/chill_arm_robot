@@ -2,14 +2,12 @@ import os
 import argparse
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 # Force standard OpenAI client to use the custom base URL and key from .env
 # This must be done before the client is initialized inside openai-agents.
 if os.getenv("LLM_BASE_URL"):
     os.environ["OPENAI_BASE_URL"] = os.getenv("LLM_BASE_URL")
-if os.getenv("OPENAI_API_KEY"):
-    os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
 # Disable background tracing to prevent 401 errors when not using OpenAI
 os.environ["OPENAI_AGENTS_DISABLE_TRACING"] = "1"
@@ -52,7 +50,7 @@ from agent.prompts import AGENT_SYSTEM_PROMPT
 
 def get_agent():
     instructions = AGENT_SYSTEM_PROMPT
-    llm_model_name = os.getenv("LLM_MODEL_NAME", "deepseek-chat")
+    llm_model_name = os.getenv("LLM_MODEL_NAME", "gpt-4o-mini")
 
     # We must use OpenAIChatCompletionsModel instead of the default Responses API
     # because third-party providers (Deepseek, Ollama) only support Chat Completions.
@@ -71,45 +69,55 @@ def get_agent():
     )
 
 
+def _holding_status() -> str:
+    """Gripper state text for the LLM context (init.* flags)."""
+    if init.is_holding_object or init.current_held_object:
+        held_str = (
+            f"'{init.current_held_object}'"
+            if init.current_held_object
+            else "an object"
+        )
+        return f"HOLDING {held_str} (Notice: Gripper is currently holding an item. If user asks to place/release it, OR orders ANY action requiring free hands such as grabbing another object, gestures, dancing, rock-paper-scissors, or sorting, you MUST insert move_to(smart_place=true) as the FIRST step to place down what is in hand before performing that action)"
+    return "EMPTY (not holding anything)"
+
+
+def _blocked_relations(known_objects: dict) -> list:
+    """Memory Translator: describe which remembered objects are buried under another."""
+    import armconfig
+    threshold = getattr(armconfig, "STACK_PROXIMITY_THRESHOLD", 35.0)
+
+    def _placed(name, coord):
+        return (
+            isinstance(coord, list) and len(coord) >= 2 and coord != "in gripper"
+            and "area" not in name.lower() and "zone" not in name.lower()
+        )
+
+    def _z(coord):
+        return float(coord[2]) if len(coord) >= 3 and coord[2] > 0 else armconfig.GRAB_BASE_HEIGHT
+
+    relations = []
+    for obj_a, coord_a in known_objects.items():
+        if not _placed(obj_a, coord_a):
+            continue
+        za = _z(coord_a)
+        for obj_b, coord_b in known_objects.items():
+            if obj_a == obj_b or not _placed(obj_b, coord_b):
+                continue
+            zb = _z(coord_b)
+            dx = abs(coord_a[0] - coord_b[0])
+            dy = abs(coord_a[1] - coord_b[1])
+            if dx < threshold and dy < threshold and zb > za + 10:
+                relations.append(f"'{obj_a}' is at bottom (blocked by '{obj_b}' on top, use unstack_and_grab)")
+    return relations
+
+
 def get_contextual_input(raw_input):
     try:
-        from hardware import init
-
         coords = init.last_coords
-
-        # Format holding status with current held object if any
-        if init.is_holding_object or init.current_held_object:
-            held_str = (
-                f"'{init.current_held_object}'"
-                if init.current_held_object
-                else "an object"
-            )
-            holding_status = f"HOLDING {held_str} (Notice: Gripper is currently holding an item. If user asks to place/release it, OR orders ANY action requiring free hands such as grabbing another object, gestures, dancing, rock-paper-scissors, or sorting, you MUST insert move_to(smart_place=true) as the FIRST step to place down what is in hand before performing that action)"
-        else:
-            holding_status = "EMPTY (not holding anything)"
-
+        holding_status = _holding_status()
         memory_str = f"{init.known_objects}" if init.known_objects else "{}"
-        
-        # Memory Translator: Detect stacking/blocking relationships
-        import armconfig
-        blocked_relations = []
-        if init.known_objects:
-            for obj_a, coord_a in init.known_objects.items():
-                if not isinstance(coord_a, list) or len(coord_a) < 2 or coord_a == "in gripper": continue
-                if "area" in obj_a.lower() or "zone" in obj_a.lower(): continue
-                za = float(coord_a[2]) if len(coord_a) >= 3 and coord_a[2] > 0 else armconfig.GRAB_BASE_HEIGHT
-                for obj_b, coord_b in init.known_objects.items():
-                    if obj_a == obj_b or not isinstance(coord_b, list) or len(coord_b) < 2 or coord_b == "in gripper": continue
-                    if "area" in obj_b.lower() or "zone" in obj_b.lower(): continue
-                    zb = float(coord_b[2]) if len(coord_b) >= 3 and coord_b[2] > 0 else armconfig.GRAB_BASE_HEIGHT
-                    
-                    dx = abs(coord_a[0] - coord_b[0])
-                    dy = abs(coord_a[1] - coord_b[1])
-                    if dx < getattr(armconfig, "STACK_PROXIMITY_THRESHOLD", 35.0) and dy < getattr(armconfig, "STACK_PROXIMITY_THRESHOLD", 35.0):
-                        if zb > za + 10:
-                            blocked_relations.append(f"'{obj_a}' is at bottom (blocked by '{obj_b}' on top, use unstack_and_grab)")
-                            
-        rel_str = ". ".join(blocked_relations)
+
+        rel_str = ". ".join(_blocked_relations(init.known_objects)) if init.known_objects else ""
         if rel_str:
             memory_str += f" | Logical insights: {rel_str}"
 

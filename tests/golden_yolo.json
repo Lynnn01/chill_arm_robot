@@ -1,0 +1,262 @@
+{
+ "empty_results": {
+  "calls": [
+   "call.mc.send_angles([17.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.send_angles([32.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)"
+  ],
+  "known": {},
+  "model_calls": 4,
+  "result": {}
+ },
+ "face_target": {
+  "calls": [
+   "call.mc.send_angles([17.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)"
+  ],
+  "known": {
+   "face": [
+    187.5,
+    25.0,
+    110.0
+   ]
+  },
+  "model_calls": 1,
+  "result": [
+   187.5,
+   25.0
+  ]
+ },
+ "frame_none_never_detects": {
+  "calls": [
+   "call.mc.send_angles([17.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)"
+  ],
+  "model_calls": 0,
+  "result": null
+ },
+ "full_scan_calibrate_moved_stale_held": {
+  "calls": [
+   "call.mc.send_angles([17.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.send_angles([32.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)"
+  ],
+  "known": {
+   "blue_cube": [
+    5.0,
+    5.0,
+    110.0
+   ],
+   "green_cube": [
+    88.44,
+    82.25,
+    110.0
+   ],
+   "red_cube": [
+    197.98,
+    59.83,
+    110.0
+   ]
+  },
+  "model_calls": 4,
+  "result": {
+   "blue_cube": [
+    5.0,
+    5.0,
+    110.0
+   ],
+   "green_cube": [
+    88.44,
+    82.25,
+    110.0
+   ],
+   "red_cube": [
+    197.98,
+    59.83,
+    110.0
+   ]
+  }
+ },
+ "full_scan_new_cubes": {
+  "calls": [
+   "call.mc.send_angles([17.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.send_angles([32.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)"
+  ],
+  "known": {
+   "blue_cube": [
+    149.68,
+    46.89,
+    110.0
+   ],
+   "red_cube": [
+    197.98,
+    59.83,
+    110.0
+   ]
+  },
+  "model_calls": 4,
+  "result": {
+   "blue_cube": [
+    149.68,
+    46.89,
+    110.0
+   ],
+   "red_cube": [
+    197.98,
+    59.83,
+    110.0
+   ]
+  }
+ },
+ "full_scan_thai_generic": {
+  "calls": [
+   "call.mc.send_angles([17.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.send_angles([32.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)"
+  ],
+  "known": {
+   "green_cube": [
+    88.44,
+    82.25,
+    110.0
+   ]
+  },
+  "model_calls": 4,
+  "result": {
+   "green_cube": [
+    88.44,
+    82.25,
+    110.0
+   ]
+  }
+ },
+ "full_scan_unchanged_position_kept": {
+  "calls": [
+   "call.mc.send_angles([17.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.send_angles([32.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)"
+  ],
+  "known": {
+   "red_cube": [
+    198.0,
+    59.8,
+    110.0
+   ]
+  },
+  "model_calls": 4,
+  "result": {
+   "red_cube": [
+    198.0,
+    59.8,
+    110.0
+   ]
+  }
+ },
+ "hsv_overrides_model_name": {
+  "calls": [
+   "call.mc.send_angles([17.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.send_angles([32.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)"
+  ],
+  "known": {
+   "red_cube": [
+    197.98,
+    59.83,
+    110.0
+   ]
+  },
+  "model_calls": 4,
+  "result": {
+   "red_cube": [
+    197.98,
+    59.83,
+    110.0
+   ]
+  }
+ },
+ "hsv_tiny_crop_keeps_name": {
+  "calls": [
+   "call.mc.send_angles([17.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.send_angles([32.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)"
+  ],
+  "known": {
+   "blue_cube": [
+    240.54,
+    35.26,
+    110.0
+   ]
+  },
+  "model_calls": 4,
+  "result": {
+   "blue_cube": [
+    240.54,
+    35.26,
+    110.0
+   ]
+  }
+ },
+ "no_model": {
+  "calls": [],
+  "known": {},
+  "model_calls": 0,
+  "result": null
+ },
+ "targeted_color_mismatch_skipped": {
+  "calls": [
+   "call.mc.send_angles([17.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.send_angles([32.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)"
+  ],
+  "known": {},
+  "model_calls": 4,
+  "result": null
+ },
+ "targeted_found_first_angle": {
+  "calls": [
+   "call.mc.send_angles([17.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)"
+  ],
+  "known": {
+   "red_cube": [
+    207.5,
+    2.5,
+    110.0
+   ]
+  },
+  "model_calls": 1,
+  "result": [
+   207.5,
+   2.5
+  ]
+ },
+ "targeted_not_found": {
+  "calls": [
+   "call.mc.send_angles([17.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.send_angles([32.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)"
+  ],
+  "known": {},
+  "model_calls": 4,
+  "result": null
+ },
+ "targeted_thai_name": {
+  "calls": [
+   "call.mc.send_angles([17.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)"
+  ],
+  "known": {
+   "blue_cube": [
+    157.5,
+    2.5,
+    110.0
+   ]
+  },
+  "model_calls": 1,
+  "result": [
+   157.5,
+   2.5
+  ]
+ }
+}

@@ -4,7 +4,7 @@ import faulthandler
 from dotenv import load_dotenv
 
 faulthandler.enable()  # Catch Segmentation Faults and print the exact line of code!
-load_dotenv()  # Load .env BEFORE anything else gets imported
+load_dotenv(override=True)  # Load .env BEFORE anything else gets imported
 
 # Suppress all background process warnings including multiprocessing leaked semaphores
 os.environ["PYTHONWARNINGS"] = "ignore"

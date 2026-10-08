@@ -27,6 +27,56 @@ def _get_raw_tool_map():
     return mapping
 
 
+def _speak_task(task_voice: str, index: int) -> None:
+    """Play this task's narration in the background (own file name so mp3 locks don't collide)."""
+    import threading
+    from agent.agent import _play_voice
+
+    filename = f"speech_task_{index}.mp3"
+    threading.Thread(
+        target=_play_voice, args=(task_voice, filename), daemon=True
+    ).start()
+
+
+def _inject_grab_coord(tool_name: str, args: dict, last_grab_coord) -> None:
+    """Smart arg injection: a bare move_to reuses the coord from the previous grab."""
+    if (
+        tool_name == "move_to"
+        and not args.get("target_coord")
+        and not args.get("target_name")
+    ):
+        if last_grab_coord and isinstance(last_grab_coord, list):
+            print(
+                f"🤖 <SYSTEM>: move_to ใช้พิกัดจาก grab ก่อนหน้า: {last_grab_coord}"
+            )
+            args["target_coord"] = last_grab_coord
+
+
+def _handle_result(tool_name: str, result, last_grab_coord):
+    """Returns (error_message_or_None, new_last_grab_coord)."""
+    if isinstance(result, dict):
+        # หากมี Error (เช่น หุ่นไปไม่ถึง, ชน, หรือ Timeout) ให้หยุดทำงานทันที!
+        if result.get("status") == "ERROR":
+            return result.get("message", "Unknown error"), last_grab_coord
+
+        # หากทำงานเสร็จสมบูรณ์
+        if result.get("status") == "DONE TASK" and tool_name == "grab_object":
+            last_grab_coord = result.get("data")
+
+    # รองรับกรณี tool บางตัวยัง return แบบเก่า
+    elif tool_name == "grab_object" and isinstance(result, list) and len(result) >= 2:
+        last_grab_coord = result
+    return None, last_grab_coord
+
+
+def _award_score(results: list, tasks: list, plan_summary: str) -> None:
+    """Calculate and award score if all planned tasks succeeded."""
+    if results and all(r.get("status") == "ok" for r in results) and len(results) == len(tasks):
+        from agent import scoring
+        points, reason = scoring.evaluate_task_points(tasks, plan_summary)
+        scoring.add_score(points, reason)
+
+
 def execute_plan(tasks: list, plan_summary: str = "", speaker_on: bool = True) -> list:
     """
     Execute a list of tasks sequentially without any LLM roundtrips.
@@ -49,7 +99,8 @@ def execute_plan(tasks: list, plan_summary: str = "", speaker_on: bool = True) -
     for i, task in enumerate(tasks):
         tool_name = str(task.get("tool", "")).strip().replace("()", "").rstrip("()").strip()
         args = dict(task.get("args") or {})
-        task_voice = task.get("voice", "")
+        # catlazy: Fallback ง่ายๆ แทนการ hardcode ดิกชันนารี 50 บรรทัด
+        task_voice = task.get("voice", "") or f"กำลังทำตามคำสั่ง {tool_name} เด้อครับ"
 
         if tool_name not in tool_map:
             print(f"⚠️ <SYSTEM>: ไม่รู้จักคำสั่ง '{tool_name}' ข้ามไป")
@@ -58,34 +109,11 @@ def execute_plan(tasks: list, plan_summary: str = "", speaker_on: bool = True) -
             )
             continue
 
-        if not task_voice:
-            # catlazy: Fallback ง่ายๆ แทนการ hardcode ดิกชันนารี 50 บรรทัด
-            task_voice = f"กำลังทำตามคำสั่ง {tool_name} เด้อครับ"
-
         # เล่นเสียงบรรยายของ task นี้ (แบบ background)
-        if task_voice and speaker_on:
-            import threading
-            from agent.agent import _play_voice
+        if speaker_on:
+            _speak_task(task_voice, i)
 
-            # ใช้ชื่อไฟล์เฉพาะสำหรับ task นี้เพื่อไม่ให้ไฟล์ล็อคตีกัน
-            filename = f"speech_task_{i}.mp3"
-            threading.Thread(
-                target=_play_voice, args=(task_voice, filename), daemon=True
-            ).start()
-
-        # Smart arg injection: move_to can use coord from previous grab
-        if (
-            tool_name == "move_to"
-            and not args.get("target_coord")
-            and not args.get("target_name")
-        ):
-            if last_grab_coord and isinstance(last_grab_coord, list):
-                print(
-                    f"🤖 <SYSTEM>: move_to ใช้พิกัดจาก grab ก่อนหน้า: {last_grab_coord}"
-                )
-                args["target_coord"] = last_grab_coord
-
-
+        _inject_grab_coord(tool_name, args, last_grab_coord)
 
         # Strip null/None args
         args = {k: v for k, v in args.items() if v is not None}
@@ -94,37 +122,19 @@ def execute_plan(tasks: list, plan_summary: str = "", speaker_on: bool = True) -
 
         try:
             result = tool_map[tool_name](**args)
-            
-            if isinstance(result, dict):
-                # หากมี Error (เช่น หุ่นไปไม่ถึง, ชน, หรือ Timeout) ให้หยุดทำงานทันที!
-                if result.get("status") == "ERROR":
-                    err_msg = result.get("message", "Unknown error")
-                    print(f"⚠️ <SYSTEM>: หยุดการทำงานอัตโนมัติเนื่องจาก: {err_msg}")
-                    results.append({"tool": tool_name, "status": "error", "result": err_msg})
-                    break # ขัดจังหวะ ไม่ทำคำสั่งที่เหลือต่อ!
-                    
-                # หากทำงานเสร็จสมบูรณ์
-                if result.get("status") == "DONE TASK":
-                    if tool_name == "grab_object":
-                        last_grab_coord = result.get("data")
-                        
-            # รองรับกรณี tool บางตัวยัง return แบบเก่า
-            elif tool_name == "grab_object" and isinstance(result, list) and len(result) >= 2:
-                last_grab_coord = result
+            err_msg, last_grab_coord = _handle_result(tool_name, result, last_grab_coord)
+            if err_msg is not None:
+                print(f"⚠️ <SYSTEM>: หยุดการทำงานอัตโนมัติเนื่องจาก: {err_msg}")
+                results.append({"tool": tool_name, "status": "error", "result": err_msg})
+                break # ขัดจังหวะ ไม่ทำคำสั่งที่เหลือต่อ!
 
             results.append({"tool": tool_name, "status": "ok", "result": result})
 
         except Exception as e:
             print(f"⚠️ <SYSTEM>: {tool_name} ผิดพลาด: {e}")
-            import traceback
-
             traceback.print_exc()
             results.append({"tool": tool_name, "status": "error", "result": str(e)})
             break # ถ้าพังจากโค้ด ก็ให้หยุดทำงานเหมือนกัน
-
-        # Tools จะรอจนกว่าหุ่นจะขยับเสร็จด้วยตัวเอง (wait_for_arrival / wait_for_z)
-        if i < len(tasks) - 1:
-            pass
 
     # ── Print summary & Scoring ──────────────────────────────────
     ok = sum(1 for r in results if r["status"] == "ok")
@@ -134,10 +144,5 @@ def execute_plan(tasks: list, plan_summary: str = "", speaker_on: bool = True) -
         + (f" (ยกเลิกกลางคัน {fail} งาน)" if fail else "")
     )
 
-    # Calculate and award score if all planned tasks succeeded
-    if results and all(r.get("status") == "ok" for r in results) and len(results) == len(tasks):
-        from agent import scoring
-        points, reason = scoring.evaluate_task_points(tasks, plan_summary)
-        scoring.add_score(points, reason)
-
+    _award_score(results, tasks, plan_summary)
     return results

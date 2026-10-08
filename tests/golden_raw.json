@@ -1,0 +1,1192 @@
+{
+ "grab_alias_cleanup_other_color_kept": {
+  "calls": [
+   "call.BotInit(<MagicMock name='mock.mc'>)",
+   "call.open_gripper()",
+   "call.mc.send_coords([200.0, 3.0, 200, -173, 0, -45], 40)",
+   "call.mc.wait_for_arrival([200.0, 3.0, 200], mode='coords')",
+   "call.mc.send_coords([200.0, 3.0, 150.0, -173, 0, -45], 40)",
+   "call.mc.send_coords([200.0, 3.0, 150.0, -173, 0, -45], 40)",
+   "call.mc.wait_for_z(150.0)",
+   "call.close_gripper()",
+   "call.mc.send_coords([200.0, 3.0, 200, -173, 0, -45], 20)",
+   "call.mc.wait_for_arrival([200.0, 3.0, 200], mode='coords')",
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)",
+   "call.mc.wait_for_arrival([0, 0, 0, 0, 0, -45], mode='angles')"
+  ],
+  "held": "blue_cube",
+  "is_holding": false,
+  "known": {
+   "blank_area": [
+    160.0,
+    -150.0,
+    0.0
+   ],
+   "blue_cube": "in gripper",
+   "green_cube": [
+    170.0,
+    90.0,
+    110.0
+   ],
+   "red_cube": [
+    200.0,
+    0.0,
+    110.0
+   ]
+  },
+  "result": {
+   "data": [
+    200.0,
+    3.0
+   ],
+   "status": "DONE TASK"
+  }
+ },
+ "grab_buried_redirect": {
+  "calls": [
+   "call.BotInit(<MagicMock name='mock.mc'>)"
+  ],
+  "held": null,
+  "is_holding": false,
+  "known": {
+   "blank_area": [
+    160.0,
+    -150.0,
+    0.0
+   ],
+   "blue_cube": [
+    200.0,
+    5.0,
+    150.0
+   ],
+   "green_cube": [
+    170.0,
+    90.0,
+    110.0
+   ],
+   "red_cube": [
+    200.0,
+    0.0,
+    110.0
+   ]
+  },
+  "result": {
+   "status": "UNSTACK"
+  }
+ },
+ "grab_cube_not_found": {
+  "calls": [
+   "call.BotInit(<MagicMock name='mock.mc'>)"
+  ],
+  "held": null,
+  "is_holding": false,
+  "known": {},
+  "result": {
+   "message": "ไม่พบ yellow cube บนโต๊ะ (สแกนตรวจหาแล้วไม่มีอยู่จริง)",
+   "status": "ERROR"
+  }
+ },
+ "grab_generic_name_alias": {
+  "calls": [
+   "call.BotInit(<MagicMock name='mock.mc'>)",
+   "call.open_gripper()",
+   "call.mc.send_coords([200.0, 0.0, 200, -173, 0, -45], 40)",
+   "call.mc.wait_for_arrival([200.0, 0.0, 200], mode='coords')",
+   "call.mc.send_coords([200.0, 0.0, 110.0, -173, 0, -45], 40)",
+   "call.mc.send_coords([200.0, 0.0, 110.0, -173, 0, -45], 40)",
+   "call.mc.wait_for_z(110.0)",
+   "call.close_gripper()",
+   "call.mc.send_coords([200.0, 0.0, 200, -173, 0, -45], 20)",
+   "call.mc.wait_for_arrival([200.0, 0.0, 200], mode='coords')",
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)",
+   "call.mc.wait_for_arrival([0, 0, 0, 0, 0, -45], mode='angles')"
+  ],
+  "held": "red_cube",
+  "is_holding": false,
+  "known": {
+   "blank_area": [
+    160.0,
+    -150.0,
+    0.0
+   ],
+   "blue_cube": [
+    200.0,
+    5.0,
+    150.0
+   ],
+   "green_cube": [
+    170.0,
+    90.0,
+    110.0
+   ],
+   "red_cube": "in gripper"
+  },
+  "result": {
+   "data": [
+    200.0,
+    0.0
+   ],
+   "status": "DONE TASK"
+  }
+ },
+ "grab_holding_first": {
+  "calls": [
+   "call.mc.send_coords([198.7, -68.5, 180, -175, 0, -45], 40)",
+   "call.mc.wait_for_arrival([198.7, -68.5, 180], mode='coords')",
+   "call.mc.send_coords([198.7, -68.5, 110, -175, 0, -45], 40)",
+   "call.mc.send_coords([198.7, -68.5, 110, -175, 0, -45], 40)",
+   "call.mc.wait_for_z(110)",
+   "call.open_gripper()",
+   "call.mc.send_coords([198.7, -68.5, 200, -175, 0, -45], 40)",
+   "call.mc.wait_for_arrival([198.7, -68.5, 200], mode='coords')",
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)",
+   "call.mc.wait_for_arrival([0, 0, 0, 0, 0, -45], mode='angles')",
+   "call.BotInit(<MagicMock name='mock.mc'>)",
+   "call.open_gripper()",
+   "call.mc.send_coords([170.0, 90.0, 200, -173, 0, -45], 40)",
+   "call.mc.wait_for_arrival([170.0, 90.0, 200], mode='coords')",
+   "call.mc.send_coords([170.0, 90.0, 110.0, -173, 0, -45], 40)",
+   "call.mc.send_coords([170.0, 90.0, 110.0, -173, 0, -45], 40)",
+   "call.mc.wait_for_z(110.0)",
+   "call.close_gripper()",
+   "call.mc.send_coords([170.0, 90.0, 200, -173, 0, -45], 20)",
+   "call.mc.wait_for_arrival([170.0, 90.0, 200], mode='coords')",
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)",
+   "call.mc.wait_for_arrival([0, 0, 0, 0, 0, -45], mode='angles')"
+  ],
+  "held": "green_cube",
+  "is_holding": false,
+  "known": {
+   "blank_area": [
+    160.0,
+    -150.0,
+    0.0
+   ],
+   "blue_cube": [
+    200.0,
+    5.0,
+    150.0
+   ],
+   "green_cube": "in gripper",
+   "red_cube": [
+    198.7,
+    -68.5,
+    110
+   ]
+  },
+  "result": {
+   "data": [
+    170.0,
+    90.0
+   ],
+   "status": "DONE TASK"
+  }
+ },
+ "grab_memory_first": {
+  "calls": [
+   "call.BotInit(<MagicMock name='mock.mc'>)",
+   "call.open_gripper()",
+   "call.mc.send_coords([170.0, 90.0, 200, -173, 0, -45], 40)",
+   "call.mc.wait_for_arrival([170.0, 90.0, 200], mode='coords')",
+   "call.mc.send_coords([170.0, 90.0, 110.0, -173, 0, -45], 40)",
+   "call.mc.send_coords([170.0, 90.0, 110.0, -173, 0, -45], 40)",
+   "call.mc.wait_for_z(110.0)",
+   "call.close_gripper()",
+   "call.mc.send_coords([170.0, 90.0, 200, -173, 0, -45], 20)",
+   "call.mc.wait_for_arrival([170.0, 90.0, 200], mode='coords')",
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)",
+   "call.mc.wait_for_arrival([0, 0, 0, 0, 0, -45], mode='angles')"
+  ],
+  "held": "green_cube",
+  "is_holding": false,
+  "known": {
+   "blank_area": [
+    160.0,
+    -150.0,
+    0.0
+   ],
+   "blue_cube": [
+    200.0,
+    5.0,
+    150.0
+   ],
+   "green_cube": "in gripper",
+   "red_cube": [
+    200.0,
+    0.0,
+    110.0
+   ]
+  },
+  "result": {
+   "data": [
+    170.0,
+    90.0
+   ],
+   "status": "DONE TASK"
+  }
+ },
+ "grab_over_bounds_clamp": {
+  "calls": [
+   "call.BotInit(<MagicMock name='mock.mc'>)",
+   "call.open_gripper()",
+   "call.mc.send_coords([280.0, -280.0, 200, -173, 0, -45], 40)",
+   "call.mc.wait_for_arrival([280.0, -280.0, 200], mode='coords')",
+   "call.mc.send_coords([280.0, -280.0, 110.0, -173, 0, -45], 40)",
+   "call.mc.send_coords([280.0, -280.0, 110.0, -173, 0, -45], 40)",
+   "call.mc.wait_for_z(110.0)",
+   "call.close_gripper()",
+   "call.mc.send_coords([280.0, -280.0, 200, -173, 0, -45], 20)",
+   "call.mc.wait_for_arrival([280.0, -280.0, 200], mode='coords')",
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)",
+   "call.mc.wait_for_arrival([0, 0, 0, 0, 0, -45], mode='angles')"
+  ],
+  "held": "red_cube",
+  "is_holding": false,
+  "known": {
+   "red_cube": "in gripper"
+  },
+  "result": {
+   "data": [
+    280.0,
+    -280.0
+   ],
+   "status": "DONE TASK"
+  }
+ },
+ "grab_radius_clamp": {
+  "calls": [
+   "call.BotInit(<MagicMock name='mock.mc'>)",
+   "call.open_gripper()",
+   "call.mc.send_coords([134.16407864998737, 67.08203932499369, 200, -173, 0, -45], 40)",
+   "call.mc.wait_for_arrival([134.16407864998737, 67.08203932499369, 200], mode='coords')",
+   "call.mc.send_coords([134.16407864998737, 67.08203932499369, 110.0, -173, 0, -45], 40)",
+   "call.mc.send_coords([134.16407864998737, 67.08203932499369, 110.0, -173, 0, -45], 40)",
+   "call.mc.wait_for_z(110.0)",
+   "call.close_gripper()",
+   "call.mc.send_coords([134.16407864998737, 67.08203932499369, 200, -173, 0, -45], 20)",
+   "call.mc.wait_for_arrival([134.16407864998737, 67.08203932499369, 200], mode='coords')",
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)",
+   "call.mc.wait_for_arrival([0, 0, 0, 0, 0, -45], mode='angles')"
+  ],
+  "held": "red_cube",
+  "is_holding": false,
+  "known": {
+   "red_cube": "in gripper"
+  },
+  "result": {
+   "data": [
+    134.16407864998737,
+    67.08203932499369
+   ],
+   "status": "DONE TASK"
+  }
+ },
+ "grab_target_coord": {
+  "calls": [
+   "call.BotInit(<MagicMock name='mock.mc'>)",
+   "call.open_gripper()",
+   "call.mc.send_coords([200.0, 0.0, 200, -173, 0, -45], 40)",
+   "call.mc.wait_for_arrival([200.0, 0.0, 200], mode='coords')",
+   "call.mc.send_coords([200.0, 0.0, 110.0, -173, 0, -45], 40)",
+   "call.mc.send_coords([200.0, 0.0, 110.0, -173, 0, -45], 40)",
+   "call.mc.wait_for_z(110.0)",
+   "call.close_gripper()",
+   "call.mc.send_coords([200.0, 0.0, 200, -173, 0, -45], 20)",
+   "call.mc.wait_for_arrival([200.0, 0.0, 200], mode='coords')",
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)",
+   "call.mc.wait_for_arrival([0, 0, 0, 0, 0, -45], mode='angles')"
+  ],
+  "held": "red_cube",
+  "is_holding": false,
+  "known": {
+   "blank_area": [
+    160.0,
+    -150.0,
+    0.0
+   ],
+   "blue_cube": [
+    200.0,
+    5.0,
+    150.0
+   ],
+   "green_cube": [
+    170.0,
+    90.0,
+    110.0
+   ],
+   "red_cube": "in gripper"
+  },
+  "result": {
+   "data": [
+    200.0,
+    0.0
+   ],
+   "status": "DONE TASK"
+  }
+ },
+ "grab_vision_fallback_found": {
+  "calls": [
+   "call.BotInit(<MagicMock name='mock.mc'>)",
+   "call.GetImage()",
+   "call.open_gripper()",
+   "call.mc.send_coords([205.0, 5.0, 200, -173, 0, -45], 40)",
+   "call.mc.wait_for_arrival([205.0, 5.0, 200], mode='coords')",
+   "call.mc.send_coords([205.0, 5.0, 110.0, -173, 0, -45], 40)",
+   "call.mc.send_coords([205.0, 5.0, 110.0, -173, 0, -45], 40)",
+   "call.mc.wait_for_z(110.0)",
+   "call.close_gripper()",
+   "call.mc.send_coords([205.0, 5.0, 200, -173, 0, -45], 20)",
+   "call.mc.wait_for_arrival([205.0, 5.0, 200], mode='coords')",
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)",
+   "call.mc.wait_for_arrival([0, 0, 0, 0, 0, -45], mode='angles')"
+  ],
+  "held": "pen",
+  "is_holding": false,
+  "known": {
+   "pen": "in gripper"
+  },
+  "result": {
+   "data": [
+    205.0,
+    5.0
+   ],
+   "status": "DONE TASK"
+  }
+ },
+ "grab_vision_fallback_missing": {
+  "calls": [
+   "call.BotInit(<MagicMock name='mock.mc'>)",
+   "call.GetImage()"
+  ],
+  "held": null,
+  "is_holding": false,
+  "known": {},
+  "result": {
+   "message": "ไม่พบ pen ในภาพ",
+   "status": "ERROR"
+  }
+ },
+ "grab_yolo_found": {
+  "calls": [
+   "call.BotInit(<MagicMock name='mock.mc'>)",
+   "call.open_gripper()",
+   "call.mc.send_coords([180.0, 60.0, 200, -173, 0, -45], 40)",
+   "call.mc.wait_for_arrival([180.0, 60.0, 200], mode='coords')",
+   "call.mc.send_coords([180.0, 60.0, 110.0, -173, 0, -45], 40)",
+   "call.mc.send_coords([180.0, 60.0, 110.0, -173, 0, -45], 40)",
+   "call.mc.wait_for_z(110.0)",
+   "call.close_gripper()",
+   "call.mc.send_coords([180.0, 60.0, 200, -173, 0, -45], 20)",
+   "call.mc.wait_for_arrival([180.0, 60.0, 200], mode='coords')",
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)",
+   "call.mc.wait_for_arrival([0, 0, 0, 0, 0, -45], mode='angles')"
+  ],
+  "held": "yellow_cube",
+  "is_holding": false,
+  "known": {
+   "yellow_cube": "in gripper"
+  },
+  "result": {
+   "data": [
+    180.0,
+    60.0
+   ],
+   "status": "DONE TASK"
+  }
+ },
+ "grab_z_unreachable": {
+  "calls": [
+   "call.BotInit(<MagicMock name='mock.mc'>)",
+   "call.open_gripper()",
+   "call.mc.send_coords([200.0, 0.0, 200, -173, 0, -45], 40)",
+   "call.mc.wait_for_arrival([200.0, 0.0, 200], mode='coords')",
+   "call.mc.send_coords([200.0, 0.0, 110.0, -173, 0, -45], 40)",
+   "call.mc.send_coords([200.0, 0.0, 110.0, -173, 0, -45], 40)",
+   "call.mc.wait_for_z(110.0)",
+   "call.mc.send_coords([200.0, 0.0, 200, -173, 0, -45], 40)",
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)"
+  ],
+  "held": null,
+  "is_holding": false,
+  "known": {
+   "blank_area": [
+    160.0,
+    -150.0,
+    0.0
+   ],
+   "blue_cube": [
+    200.0,
+    5.0,
+    150.0
+   ],
+   "green_cube": [
+    170.0,
+    90.0,
+    110.0
+   ],
+   "red_cube": [
+    200.0,
+    0.0,
+    110.0
+   ]
+  },
+  "result": {
+   "message": "Joint stall at target Z=110.0. Object unreachable.",
+   "status": "ERROR"
+  }
+ },
+ "move_to_area_unknown": {
+  "calls": [
+   "call.mc.send_coords([142.1, 109.2, 180, -175, 0, -45], 40)",
+   "call.mc.wait_for_arrival([142.1, 109.2, 180], mode='coords')",
+   "call.mc.send_coords([142.1, 109.2, 110, -175, 0, -45], 40)",
+   "call.mc.send_coords([142.1, 109.2, 110, -175, 0, -45], 40)",
+   "call.mc.wait_for_z(110)",
+   "call.open_gripper()",
+   "call.mc.send_coords([142.1, 109.2, 200, -175, 0, -45], 40)",
+   "call.mc.wait_for_arrival([142.1, 109.2, 200], mode='coords')",
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)",
+   "call.mc.wait_for_arrival([0, 0, 0, 0, 0, -45], mode='angles')"
+  ],
+  "held": null,
+  "is_holding": false,
+  "known": {
+   "red_area": [
+    142.1,
+    109.2,
+    80.0
+   ],
+   "red_cube": [
+    142.1,
+    109.2,
+    110
+   ]
+  },
+  "result": {
+   "message": "Placed successfully.",
+   "status": "DONE TASK"
+  }
+ },
+ "move_to_explicit_height": {
+  "calls": [
+   "call.mc.send_coords([250.0, 280.0, 320.0, -175, 0, -45], 40)",
+   "call.mc.wait_for_arrival([250.0, 280.0, 320.0], mode='coords')",
+   "call.mc.send_coords([250.0, 280.0, 280.0, -175, 0, -45], 40)",
+   "call.mc.send_coords([250.0, 280.0, 280.0, -175, 0, -45], 40)",
+   "call.mc.wait_for_z(280.0)",
+   "call.open_gripper()",
+   "call.mc.send_coords([250.0, 280.0, 330.0, -175, 0, -45], 40)",
+   "call.mc.wait_for_arrival([250.0, 280.0, 330.0], mode='coords')",
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)",
+   "call.mc.wait_for_arrival([0, 0, 0, 0, 0, -45], mode='angles')"
+  ],
+  "held": null,
+  "is_holding": false,
+  "known": {
+   "red_cube": [
+    250.0,
+    280.0,
+    280.0
+   ]
+  },
+  "result": {
+   "message": "Placed successfully.",
+   "status": "DONE TASK"
+  }
+ },
+ "move_to_ground": {
+  "calls": [
+   "call.mc.send_coords([200.0, 55.0, 180, -175, 0, -45], 40)",
+   "call.mc.wait_for_arrival([200.0, 55.0, 180], mode='coords')",
+   "call.mc.send_coords([200.0, 55.0, 110, -175, 0, -45], 40)",
+   "call.mc.send_coords([200.0, 55.0, 110, -175, 0, -45], 40)",
+   "call.mc.wait_for_z(110)",
+   "call.open_gripper()",
+   "call.mc.send_coords([200.0, 55.0, 200, -175, 0, -45], 40)",
+   "call.mc.wait_for_arrival([200.0, 55.0, 200], mode='coords')",
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)",
+   "call.mc.wait_for_arrival([0, 0, 0, 0, 0, -45], mode='angles')"
+  ],
+  "held": null,
+  "is_holding": false,
+  "known": {
+   "red_cube": [
+    200.0,
+    55.0,
+    110
+   ]
+  },
+  "result": {
+   "message": "Placed successfully.",
+   "status": "DONE TASK"
+  }
+ },
+ "move_to_held_coord_fallback": {
+  "calls": [
+   "call.mc.send_coords([170.0, 95.0, 180, -175, 0, -45], 40)",
+   "call.mc.wait_for_arrival([170.0, 95.0, 180], mode='coords')",
+   "call.mc.send_coords([170.0, 95.0, 140, -175, 0, -45], 40)",
+   "call.mc.send_coords([170.0, 95.0, 140, -175, 0, -45], 40)",
+   "call.mc.wait_for_z(140)",
+   "call.open_gripper()",
+   "call.mc.send_coords([170.0, 95.0, 200, -175, 0, -45], 40)",
+   "call.mc.wait_for_arrival([170.0, 95.0, 200], mode='coords')",
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)",
+   "call.mc.wait_for_arrival([0, 0, 0, 0, 0, -45], mode='angles')"
+  ],
+  "held": null,
+  "is_holding": false,
+  "known": {
+   "blank_area": [
+    160.0,
+    -150.0,
+    0.0
+   ],
+   "blue_cube": [
+    200.0,
+    5.0,
+    150.0
+   ],
+   "green_cube": [
+    170.0,
+    95.0,
+    110.0
+   ],
+   "red_cube": [
+    170.0,
+    95.0,
+    140
+   ]
+  },
+  "result": {
+   "message": "Placed successfully.",
+   "status": "DONE TASK"
+  }
+ },
+ "move_to_invalid_zero": {
+  "calls": [
+   "call.mc.send_coords([142.1, 109.2, 180, -175, 0, -45], 40)",
+   "call.mc.wait_for_arrival([142.1, 109.2, 180], mode='coords')",
+   "call.mc.send_coords([142.1, 109.2, 110, -175, 0, -45], 40)",
+   "call.mc.send_coords([142.1, 109.2, 110, -175, 0, -45], 40)",
+   "call.mc.wait_for_z(110)",
+   "call.open_gripper()",
+   "call.mc.send_coords([142.1, 109.2, 200, -175, 0, -45], 40)",
+   "call.mc.wait_for_arrival([142.1, 109.2, 200], mode='coords')",
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)",
+   "call.mc.wait_for_arrival([0, 0, 0, 0, 0, -45], mode='angles')"
+  ],
+  "held": null,
+  "is_holding": false,
+  "known": {
+   "red_cube": [
+    142.1,
+    109.2,
+    110
+   ]
+  },
+  "result": {
+   "message": "Placed successfully.",
+   "status": "DONE TASK"
+  }
+ },
+ "move_to_not_holding": {
+  "calls": [],
+  "held": null,
+  "is_holding": false,
+  "known": {},
+  "result": {
+   "message": "No object held in gripper. Call grab_object first.",
+   "status": "ERROR"
+  }
+ },
+ "move_to_smart_place_random": {
+  "calls": [
+   "call.mc.send_coords([198.7, -68.5, 180, -175, 0, -45], 40)",
+   "call.mc.wait_for_arrival([198.7, -68.5, 180], mode='coords')",
+   "call.mc.send_coords([198.7, -68.5, 110, -175, 0, -45], 40)",
+   "call.mc.send_coords([198.7, -68.5, 110, -175, 0, -45], 40)",
+   "call.mc.wait_for_z(110)",
+   "call.open_gripper()",
+   "call.mc.send_coords([198.7, -68.5, 200, -175, 0, -45], 40)",
+   "call.mc.wait_for_arrival([198.7, -68.5, 200], mode='coords')",
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)",
+   "call.mc.wait_for_arrival([0, 0, 0, 0, 0, -45], mode='angles')"
+  ],
+  "held": null,
+  "is_holding": false,
+  "known": {
+   "blank_area": [
+    160.0,
+    -150.0,
+    0.0
+   ],
+   "blue_cube": [
+    200.0,
+    5.0,
+    150.0
+   ],
+   "green_cube": [
+    170.0,
+    90.0,
+    110.0
+   ],
+   "red_cube": [
+    200.0,
+    0.0,
+    110.0
+   ],
+   "yellow_cube": [
+    198.7,
+    -68.5,
+    110
+   ]
+  },
+  "result": {
+   "message": "Placed successfully.",
+   "status": "DONE TASK"
+  }
+ },
+ "move_to_smart_place_stack": {
+  "calls": [
+   "call.mc.send_coords([200.0, 5.0, 220, -175, 0, -45], 40)",
+   "call.mc.wait_for_arrival([200.0, 5.0, 220], mode='coords')",
+   "call.mc.send_coords([200.0, 5.0, 180, -175, 0, -45], 40)",
+   "call.mc.send_coords([200.0, 5.0, 180, -175, 0, -45], 40)",
+   "call.mc.wait_for_z(180)",
+   "call.open_gripper()",
+   "call.mc.send_coords([200.0, 5.0, 230, -175, 0, -45], 40)",
+   "call.mc.wait_for_arrival([200.0, 5.0, 230], mode='coords')",
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)",
+   "call.mc.wait_for_arrival([0, 0, 0, 0, 0, -45], mode='angles')"
+  ],
+  "held": null,
+  "is_holding": false,
+  "known": {
+   "blank_area": [
+    160.0,
+    -150.0,
+    0.0
+   ],
+   "blue_cube": [
+    200.0,
+    5.0,
+    150.0
+   ],
+   "green_cube": [
+    170.0,
+    90.0,
+    110.0
+   ],
+   "red_cube": [
+    200.0,
+    5.0,
+    150.0
+   ],
+   "yellow_cube": [
+    200.0,
+    5.0,
+    180
+   ]
+  },
+  "result": {
+   "message": "Placed successfully.",
+   "status": "DONE TASK"
+  }
+ },
+ "move_to_stack_by_coord": {
+  "calls": [
+   "call.mc.send_coords([200.0, 15.0, 220, -175, 0, -45], 40)",
+   "call.mc.wait_for_arrival([200.0, 15.0, 220], mode='coords')",
+   "call.mc.send_coords([200.0, 15.0, 180, -175, 0, -45], 40)",
+   "call.mc.send_coords([200.0, 15.0, 180, -175, 0, -45], 40)",
+   "call.mc.wait_for_z(180)",
+   "call.open_gripper()",
+   "call.mc.send_coords([200.0, 15.0, 230, -175, 0, -45], 40)",
+   "call.mc.wait_for_arrival([200.0, 15.0, 230], mode='coords')",
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)",
+   "call.mc.wait_for_arrival([0, 0, 0, 0, 0, -45], mode='angles')"
+  ],
+  "held": null,
+  "is_holding": false,
+  "known": {
+   "blank_area": [
+    160.0,
+    -150.0,
+    0.0
+   ],
+   "blue_cube": [
+    200.0,
+    5.0,
+    150.0
+   ],
+   "green_cube": [
+    170.0,
+    90.0,
+    110.0
+   ],
+   "red_cube": [
+    200.0,
+    0.0,
+    110.0
+   ],
+   "yellow_cube": [
+    200.0,
+    15.0,
+    180
+   ]
+  },
+  "result": {
+   "message": "Placed successfully.",
+   "status": "DONE TASK"
+  }
+ },
+ "move_to_stack_by_name": {
+  "calls": [
+   "call.mc.send_coords([200.0, 10.0, 220, -175, 0, -45], 40)",
+   "call.mc.wait_for_arrival([200.0, 10.0, 220], mode='coords')",
+   "call.mc.send_coords([200.0, 10.0, 180, -175, 0, -45], 40)",
+   "call.mc.send_coords([200.0, 10.0, 180, -175, 0, -45], 40)",
+   "call.mc.wait_for_z(180)",
+   "call.open_gripper()",
+   "call.mc.send_coords([200.0, 10.0, 230, -175, 0, -45], 40)",
+   "call.mc.wait_for_arrival([200.0, 10.0, 230], mode='coords')",
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)",
+   "call.mc.wait_for_arrival([0, 0, 0, 0, 0, -45], mode='angles')"
+  ],
+  "held": null,
+  "is_holding": false,
+  "known": {
+   "blank_area": [
+    160.0,
+    -150.0,
+    0.0
+   ],
+   "blue_cube": [
+    200.0,
+    10.0,
+    150.0
+   ],
+   "green_cube": [
+    170.0,
+    90.0,
+    110.0
+   ],
+   "red_cube": [
+    200.0,
+    10.0,
+    180
+   ]
+  },
+  "result": {
+   "message": "Placed successfully.",
+   "status": "DONE TASK"
+  }
+ },
+ "move_to_unknown_name_scan": {
+  "calls": [
+   "call.mc.send_coords([190.0, -35.0, 180, -175, 0, -45], 40)",
+   "call.mc.wait_for_arrival([190.0, -35.0, 180], mode='coords')",
+   "call.mc.send_coords([190.0, -35.0, 110, -175, 0, -45], 40)",
+   "call.mc.send_coords([190.0, -35.0, 110, -175, 0, -45], 40)",
+   "call.mc.wait_for_z(110)",
+   "call.open_gripper()",
+   "call.mc.send_coords([190.0, -35.0, 200, -175, 0, -45], 40)",
+   "call.mc.wait_for_arrival([190.0, -35.0, 200], mode='coords')",
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)",
+   "call.mc.wait_for_arrival([0, 0, 0, 0, 0, -45], mode='angles')"
+  ],
+  "held": null,
+  "is_holding": false,
+  "known": {
+   "purple_cube": [
+    190.0,
+    -35.0,
+    80.0
+   ],
+   "red_cube": [
+    190.0,
+    -35.0,
+    110
+   ]
+  },
+  "result": {
+   "message": "Placed successfully.",
+   "status": "DONE TASK"
+  }
+ },
+ "safe_spot_crowded": {
+  "calls": [],
+  "held": null,
+  "is_holding": false,
+  "known": {
+   "blank_area": [
+    160.0,
+    -150.0,
+    0.0
+   ],
+   "blue_cube": [
+    200.0,
+    5.0,
+    150.0
+   ],
+   "green_cube": [
+    170.0,
+    90.0,
+    110.0
+   ],
+   "red_cube": [
+    200.0,
+    0.0,
+    110.0
+   ]
+  },
+  "result": [
+   152.7,
+   -147.5
+  ]
+ },
+ "safe_spot_empty": {
+  "calls": [],
+  "held": null,
+  "is_holding": false,
+  "known": {
+   "red_cube": [
+    1,
+    1,
+    1
+   ]
+  },
+  "result": [
+   142.1,
+   104.2
+  ]
+ },
+ "safe_spot_scan_error": {
+  "calls": [],
+  "held": null,
+  "is_holding": false,
+  "known": {},
+  "result": [
+   142.1,
+   104.2
+  ]
+ },
+ "safe_spot_scan_first": {
+  "calls": [],
+  "held": null,
+  "is_holding": false,
+  "known": {},
+  "result": [
+   142.1,
+   104.2
+  ]
+ },
+ "smart_place_not_holding": {
+  "calls": [],
+  "held": null,
+  "is_holding": false,
+  "known": {},
+  "result": {
+   "message": "No object held in gripper. Call grab_object first.",
+   "status": "ERROR"
+  }
+ },
+ "unstack_blocking": {
+  "calls": [],
+  "held": null,
+  "is_holding": false,
+  "known": {
+   "blank_area": [
+    160.0,
+    -150.0,
+    0.0
+   ],
+   "blue_cube": [
+    200.0,
+    5.0,
+    150.0
+   ],
+   "green_cube": [
+    170.0,
+    90.0,
+    110.0
+   ],
+   "red_cube": [
+    200.0,
+    0.0,
+    110.0
+   ]
+  },
+  "result": {
+   "grab": "[call('blue_cube', _auto_unstack=False),\n call('red_cube', target_coord=[200.0, 0.0, 110.0], _auto_unstack=False)]",
+   "move": "[call(target_coord=[190.0, -60.0])]",
+   "r": {
+    "status": "DONE TASK"
+   }
+  }
+ },
+ "unstack_generic_buried": {
+  "calls": [],
+  "held": null,
+  "is_holding": false,
+  "known": {
+   "blank_area": [
+    160.0,
+    -150.0,
+    0.0
+   ],
+   "blue_cube": [
+    200.0,
+    5.0,
+    150.0
+   ],
+   "green_cube": [
+    170.0,
+    90.0,
+    110.0
+   ],
+   "red_cube": [
+    200.0,
+    0.0,
+    110.0
+   ]
+  },
+  "result": {
+   "grab": "[call('blue_cube', _auto_unstack=False),\n call('red_cube', target_coord=[200.0, 0.0, 110.0], _auto_unstack=False)]",
+   "move": "[call(target_coord=[190.0, -60.0])]",
+   "r": {
+    "status": "DONE TASK"
+   }
+  }
+ },
+ "unstack_generic_scan_fallback": {
+  "calls": [],
+  "held": null,
+  "is_holding": false,
+  "known": {
+   "red_cube": [
+    180,
+    20,
+    110
+   ]
+  },
+  "result": {
+   "grab": "[call('buried')]",
+   "move": "[]",
+   "r": {
+    "status": "DONE TASK"
+   }
+  }
+ },
+ "unstack_grab_blocker_fails": {
+  "calls": [],
+  "held": null,
+  "is_holding": false,
+  "known": {
+   "blank_area": [
+    160.0,
+    -150.0,
+    0.0
+   ],
+   "blue_cube": [
+    200.0,
+    5.0,
+    150.0
+   ],
+   "green_cube": [
+    170.0,
+    90.0,
+    110.0
+   ],
+   "red_cube": [
+    200.0,
+    0.0,
+    110.0
+   ]
+  },
+  "result": {
+   "grab": "[call('blue_cube', _auto_unstack=False)]",
+   "move": "[]",
+   "r": {
+    "message": "x",
+    "status": "ERROR"
+   }
+  }
+ },
+ "unstack_holding_first": {
+  "calls": [],
+  "held": "yellow_cube",
+  "is_holding": true,
+  "known": {
+   "blank_area": [
+    160.0,
+    -150.0,
+    0.0
+   ],
+   "blue_cube": [
+    200.0,
+    5.0,
+    150.0
+   ],
+   "green_cube": [
+    170.0,
+    90.0,
+    110.0
+   ],
+   "red_cube": [
+    200.0,
+    0.0,
+    110.0
+   ]
+  },
+  "result": {
+   "grab": "[call('green_cube', target_coord=[170.0, 90.0, 110.0], _auto_unstack=False)]",
+   "move": "[call(target_coord=[190.0, -60.0])]",
+   "r": {
+    "status": "DONE TASK"
+   }
+  }
+ },
+ "unstack_holding_place_fails": {
+  "calls": [],
+  "held": "yellow_cube",
+  "is_holding": true,
+  "known": {
+   "blank_area": [
+    160.0,
+    -150.0,
+    0.0
+   ],
+   "blue_cube": [
+    200.0,
+    5.0,
+    150.0
+   ],
+   "green_cube": [
+    170.0,
+    90.0,
+    110.0
+   ],
+   "red_cube": [
+    200.0,
+    0.0,
+    110.0
+   ]
+  },
+  "result": {
+   "grab": "[]",
+   "move": "[call(target_coord=[190.0, -60.0])]",
+   "r": {
+    "message": "วาง 'yellow_cube' ลงตำแหน่งปลอดภัยไม่สำเร็จ! z",
+    "status": "ERROR"
+   }
+  }
+ },
+ "unstack_no_blocking": {
+  "calls": [],
+  "held": null,
+  "is_holding": false,
+  "known": {
+   "blank_area": [
+    160.0,
+    -150.0,
+    0.0
+   ],
+   "blue_cube": [
+    200.0,
+    5.0,
+    150.0
+   ],
+   "green_cube": [
+    170.0,
+    90.0,
+    110.0
+   ],
+   "red_cube": [
+    200.0,
+    0.0,
+    110.0
+   ]
+  },
+  "result": {
+   "grab": "[call('green_cube', target_coord=[170.0, 90.0, 110.0], _auto_unstack=False)]",
+   "move": "[]",
+   "r": {
+    "status": "DONE TASK"
+   }
+  }
+ },
+ "unstack_not_found_delegates": {
+  "calls": [],
+  "held": null,
+  "is_holding": false,
+  "known": {},
+  "result": {
+   "grab": "[call('pink cube')]",
+   "move": "[]",
+   "r": {
+    "status": "DONE TASK"
+   }
+  }
+ },
+ "unstack_place_blocker_fails": {
+  "calls": [],
+  "held": null,
+  "is_holding": false,
+  "known": {
+   "blank_area": [
+    160.0,
+    -150.0,
+    0.0
+   ],
+   "blue_cube": [
+    200.0,
+    5.0,
+    150.0
+   ],
+   "green_cube": [
+    170.0,
+    90.0,
+    110.0
+   ],
+   "red_cube": [
+    200.0,
+    0.0,
+    110.0
+   ]
+  },
+  "result": {
+   "grab": "[call('blue_cube', _auto_unstack=False)]",
+   "move": "[call(target_coord=[190.0, -60.0])]",
+   "r": {
+    "message": "y",
+    "status": "ERROR"
+   }
+  }
+ },
+ "unstack_yolo_found": {
+  "calls": [],
+  "held": null,
+  "is_holding": false,
+  "known": {
+   "pink_cube": [
+    180.0,
+    20.0,
+    110.0
+   ],
+   "red_cube": [
+    180,
+    20,
+    150
+   ]
+  },
+  "result": {
+   "grab": "[call('red_cube', _auto_unstack=False),\n call('pink_cube', target_coord=[180.0, 20.0, 110.0], _auto_unstack=False)]",
+   "move": "[call(target_coord=[190.0, -60.0])]",
+   "r": {
+    "status": "DONE TASK"
+   }
+  }
+ }
+}
