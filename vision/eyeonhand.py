@@ -44,12 +44,6 @@ def pixel_to_arm(pixel_point):
     transformed_point = affine_matrix @ pixel_point
     return np.round(transformed_point[:2], 1)  # Round to one decimal place
 
-# Define mapping function for place area
-def pixel_to_arm_place(pixel_point):
-    pixel_point = np.array([*pixel_point, 1])  # Add a 1 for matrix calculation
-    transformed_point = affine_matrix_place @ pixel_point
-    return np.round(transformed_point[:2], 1)  # Round to one decimal place
-
 # Use x and y from config.json as test points
 #test_pixel_point = [0,480]
 #mapped_arm_point = pixel_to_arm(test_pixel_point)

@@ -53,8 +53,8 @@ def detect_user_gesture(img) -> str:
                     return "scissors"
                 else:
                     return "scissors"
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"⚠️ <SYSTEM>: mediapipe gesture failed, using fallback: {e}")
 
     # 2. Skin Color + Contour Solidity Fallback
     try:

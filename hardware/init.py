@@ -182,8 +182,8 @@ class LockedMyCobot:
         if hasattr(self._mc, "set_gripper_state"):
             try:
                 return self._call("set_gripper_state", state, speed)
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"⚠️ <SYSTEM>: set_gripper_state failed: {e}")
         return None
 
     def set_fresh_mode(self, mode):
@@ -317,10 +317,6 @@ class CameraManager:
         with self.lock:
             self.ai_results = results
             self.ai_expiry = time.time() + duration
-
-    def set_overlay(self, frame, duration=1.0):
-        # Kept for backward compatibility without freezing live feed
-        pass
 
     def start(self):
         if self._started:

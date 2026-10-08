@@ -76,6 +76,3 @@ class LeftPanel(tk.Frame):
         self.memory_tab = MemoryTab(self.notebook)
         self.notebook.add(self.memory_tab, text=" Memory ")
 
-    # kept for api compatibility
-    def disable_buttons(self): pass
-    def enable_buttons(self): pass

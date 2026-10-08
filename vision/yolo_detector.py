@@ -219,8 +219,8 @@ def scan_with_yolo(object_name: str = "cube"):
                                 if verified_name and verified_name != name:
                                     print(f"🎨 <SYSTEM>: ปรับปรุงสีด้วย HSV: {name} -> {verified_name}")
                                     name = verified_name
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            print(f"⚠️ <SYSTEM>: HSV color verify failed: {e}")
 
                     name_lower = name.lower().replace("_", " ")
                     name_words = set(name_lower.split())

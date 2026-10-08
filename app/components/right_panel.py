@@ -377,9 +377,6 @@ class RightPanel(tk.Frame):
         self.mic_btn.set_text("🔴 Mic: OFF")
         self.mic_btn.set_colors(bg=Theme.DANGER, fg=Theme.PRIMARY_FG, hover_bg=Theme.DANGER_HOVER)
 
-    def _stop_mic_auto(self):
-        self._set_mic_off()
-
     def _toggle_mic(self):
         if not self.mic_on:
             self.mic_on = True

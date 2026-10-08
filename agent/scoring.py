@@ -18,14 +18,6 @@ def get_score() -> int:
     return _CURRENT_SCORE
 
 
-def reset_score() -> int:
-    """Resets total score to 0 and notifies listeners."""
-    global _CURRENT_SCORE
-    _CURRENT_SCORE = 0
-    _notify_listeners()
-    return _CURRENT_SCORE
-
-
 def register_score_listener(callback):
     """Registers a listener function to be called when score updates: callback(new_score)."""
     if callback not in _SCORE_LISTENERS:
@@ -36,8 +28,8 @@ def _notify_listeners():
     for cb in _SCORE_LISTENERS:
         try:
             cb(_CURRENT_SCORE)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"⚠️ <SYSTEM>: score listener failed: {e}")
 
 
 def add_score(points: int, reason: str = "") -> int:
