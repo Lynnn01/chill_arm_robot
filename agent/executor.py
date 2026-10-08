@@ -22,9 +22,57 @@ def _get_raw_tool_map():
             mapping[tool_name] = func
             
     # รองรับ alias เก่าที่ชื่อไม่ตรงกันเป๊ะๆ
-    mapping["play_rps"] = mapping.get("play_rps_game")
+    for alias, real in (("play_rps", "play_rps_game"), ("dance", "dance_celebrate"),
+                        ("execute_code", "execute_python_code"), ("unstack", "unstack_and_grab"),
+                        ("grab", "grab_object"), ("place", "smart_place")):
+        mapping[alias] = mapping.get(real)
     
     return mapping
+
+
+def _filter_args(tool_name: str, func, args: dict) -> dict:
+    """Drop args the tool does not accept (an LLM typo would otherwise raise TypeError and abort the plan)."""
+    import inspect
+    params = inspect.signature(func).parameters
+    if any(p.kind == p.VAR_KEYWORD for p in params.values()):
+        return args
+    for k in [k for k in args if k not in params or k.startswith("_")]:
+        print(f"⚠️ <SYSTEM>: {tool_name} ไม่รู้จัก arg '{k}' → ตัดทิ้ง")
+        args.pop(k)
+    return args
+
+
+_NEEDS_HOLDING = {"move_to", "smart_place", "show_object", "give_to_person"}
+_RELEASES = {"move_to", "smart_place", "give_to_person"}
+_GRABS = {"grab_object", "unstack_and_grab", "grab", "unstack"}
+_EMPTIES_HAND = {"gesture", "dance_celebrate", "dance", "rotate_gripper", "play_rps", "play_rps_game"}
+
+
+def _task_tool_name(task: dict) -> str:
+    return str(task.get("tool", "")).strip().replace("()", "").rstrip("()").strip()
+
+
+def _sanitize_plan(tasks: list) -> list:
+    """Drop steps that can never succeed given what the gripper holds at that point.
+
+    An LLM plan like grab -> move_to -> smart_place has a stray release at the end; running it
+    used to abort the whole plan with "No object held". Simulate the gripper state instead and
+    skip impossible steps so the remaining (valid) steps still run.
+    """
+    from hardware import init
+    holding = bool(init.is_holding_object or init.current_held_object)
+    kept = []
+    for task in tasks:
+        name = _task_tool_name(task)
+        if name in _NEEDS_HOLDING and not holding:
+            print(f"⚠️ <SYSTEM>: ข้าม '{name}' — ณ จุดนี้ของแผนกริปเปอร์ว่างอยู่ (ไม่มีอะไรให้วาง/โชว์/ส่ง)")
+            continue
+        if name in _GRABS:
+            holding = True
+        elif name in _RELEASES or name in _EMPTIES_HAND:
+            holding = False
+        kept.append(task)
+    return kept
 
 
 def _speak_task(task_voice: str, index: int) -> None:
@@ -90,6 +138,7 @@ def execute_plan(tasks: list, plan_summary: str = "", speaker_on: bool = True) -
         list of results for each tool
     """
     tool_map = _get_raw_tool_map()
+    tasks = _sanitize_plan(tasks)
     results = []
     last_grab_coord = None  # pass grab result forward to move_to if needed
 
@@ -97,7 +146,7 @@ def execute_plan(tasks: list, plan_summary: str = "", speaker_on: bool = True) -
     print(f"🤖 <SYSTEM>: มี {len(tasks)} งานที่ต้องทำ ทำต่อเนื่องเลย!")
 
     for i, task in enumerate(tasks):
-        tool_name = str(task.get("tool", "")).strip().replace("()", "").rstrip("()").strip()
+        tool_name = _task_tool_name(task)
         args = dict(task.get("args") or {})
         # catlazy: Fallback ง่ายๆ แทนการ hardcode ดิกชันนารี 50 บรรทัด
         task_voice = task.get("voice", "") or f"กำลังทำตามคำสั่ง {tool_name} เด้อครับ"
@@ -117,6 +166,7 @@ def execute_plan(tasks: list, plan_summary: str = "", speaker_on: bool = True) -
 
         # Strip null/None args
         args = {k: v for k, v in args.items() if v is not None}
+        args = _filter_args(tool_name, tool_map[tool_name], args)
 
         print(f"🤖 <SYSTEM>: [{i+1}/{len(tasks)}] รัน {tool_name}({args})...")
 

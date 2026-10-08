@@ -95,7 +95,7 @@ class LockedMyCobot:
             time.sleep(0.1)
         return None
 
-    def wait_for_arrival(self, target, timeout=3.5, threshold=25.0, mode="coords"):
+    def wait_for_arrival(self, target, timeout=armconfig.ARRIVAL_TIMEOUT, threshold=25.0, mode="coords"):
         """
         บล็อกรอจนกว่าปลายแขนกลจะเคลื่อนที่ถึงพิกัดเป้าหมาย
         mode="coords" หรือ "angles"
@@ -121,8 +121,9 @@ class LockedMyCobot:
                 pass
             
             time.sleep(0.15)
-        
-        return True
+
+        print(f"⚠️ <SYSTEM>: wait_for_arrival timeout {timeout}s ({mode}) target={list(target)[:6]}")
+        return False
 
     def wait_for_z(self, target_z, timeout=10.0, threshold=8.0):
         """
@@ -279,6 +280,15 @@ def close_gripper():
 
     is_holding_object = True
     time.sleep(0.5)
+    try:
+        val = mc.get_gripper_value() if hasattr(mc, "get_gripper_value") else None
+        if isinstance(val, (int, float)):
+            # ค่าใกล้ 0 = หนีบลมเปล่า (ไม่มีของ) — ใช้ค่านี้ปรับ GRIP_EMPTY_MAX ใน .env
+            print(f"🤖 <SYSTEM>: ค่ากริปเปอร์หลังหนีบ = {val}")
+            return val
+    except Exception as e:
+        print(f"⚠️ <SYSTEM>: อ่านค่ากริปเปอร์ไม่ได้: {e}")
+    return None
 
 
 def BotInit(mc):

@@ -184,5 +184,45 @@ class ClassifyColorTest(unittest.TestCase):
         self.assertIsNone(Y.classify_cube_color_hsv(self.crop((128, 128, 128))))
 
 
+class _ConfBox(_Box):
+    def __init__(self, cls, xyxy, conf):
+        super().__init__(cls, xyxy)
+        self.conf = [conf]
+
+
+class GreenStabilityTest(unittest.TestCase):
+    LIME = (0, 230, 150)  # BGR -> H~36: used to be counted as yellow AND green
+
+    def test_lime_green_is_not_yellow(self):
+        crop = _frame(self.LIME)[:40, :40].copy()
+        self.assertEqual(Y.classify_cube_color_hsv(crop), "green_cube")
+
+    def test_yolo_green_kept_when_crop_has_green_pixels(self):
+        # half yellow-ish, half green crop: HSV majority is yellow but YOLO says green with conf 0.35
+        f = _frame((0, 230, 230))
+        f[:, 50:] = (0, 200, 0)
+        f[:, :50] = (0, 230, 230)
+        f[:, 40:50] = (0, 200, 0)  # green share ~60% of yellow share
+        self.assertEqual(Y._refine_name_hsv(f, _ConfBox(2, [0, 0, 100, 100], 0.35), "green_cube"), "green_cube")
+
+    def test_low_conf_still_overridden_by_hsv(self):
+        f = _frame(RED)
+        self.assertEqual(Y._refine_name_hsv(f, _ConfBox(1, [100, 100, 200, 200], 0.2), "blue_cube"), "red_cube")
+
+    def _scan(self, per_call, name="green cube"):
+        return run("v", name, per_call)
+
+    def test_single_frame_flicker_is_rejected(self):
+        green = _ConfBox(2, [500, 300, 600, 400], 0.36)
+        out = self._scan([[green], [], [], []])  # seen in 1 of 4 frames at each angle
+        self.assertIsNone(out["result"])
+
+    def test_two_of_four_frames_accepts_green(self):
+        green = _ConfBox(2, [500, 300, 600, 400], 0.36)
+        out = self._scan([[green], [], [green], []])
+        self.assertIsNotNone(out["result"])
+        self.assertIn("green_cube", out["known"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -63,12 +63,8 @@ def get_yolo_model(model_type: str = "cube"):
         return _cube_model
 
 
-def classify_cube_color_hsv(crop_bgr) -> str:
-    """
-    Non-invasive helper: Classify physical color of cropped cube using HSV color space.
-    Tuned for real-world lighting: glare resistance, lime/warm green, pale yellow.
-    Returns: 'red_cube', 'yellow_cube', 'green_cube', 'blue_cube', or None.
-    """
+def _hsv_color_counts(crop_bgr):
+    """Pixel counts per cube color in the center 70% of the crop. Returns (counts, total) or None."""
     if crop_bgr is None or crop_bgr.size == 0:
         return None
     try:
@@ -88,11 +84,12 @@ def classify_cube_color_hsv(crop_bgr) -> str:
         mask_red2 = cv2.inRange(hsv, (158, 40, 40), (180, 255, 255))
         mask_red = cv2.bitwise_or(mask_red1, mask_red2)
 
-        # Yellow: Hue in 12..38, S>=35, V>=40 (Resistant to desk lamp glare and pale yellow)
-        mask_yellow = cv2.inRange(hsv, (12, 35, 40), (38, 255, 255))
+        # Yellow: Hue in 12..32, S>=35, V>=40 (Resistant to desk lamp glare and pale yellow)
+        mask_yellow = cv2.inRange(hsv, (12, 35, 40), (32, 255, 255))
 
-        # Green: Hue in 35..88, S>=35, V>=30 (Resistant to shadows and lime/warm green)
-        mask_green = cv2.inRange(hsv, (35, 35, 30), (88, 255, 255))
+        # Green: Hue in 33..88, S>=35, V>=30 (Resistant to shadows; lime/warm green starts at H~33).
+        # Bands must NOT overlap with yellow, otherwise a lime-green cube is counted for both colors.
+        mask_green = cv2.inRange(hsv, (33, 35, 30), (88, 255, 255))
 
         # Blue: Hue in 89..138, S>=40, V>=30
         mask_blue = cv2.inRange(hsv, (89, 40, 30), (138, 255, 255))
@@ -104,15 +101,28 @@ def classify_cube_color_hsv(crop_bgr) -> str:
             "blue_cube": cv2.countNonZero(mask_blue),
         }
 
-        best_color, max_count = max(counts.items(), key=lambda item: item[1])
-        total_pixels = center.shape[0] * center.shape[1]
+        return counts, center.shape[0] * center.shape[1]
+    except Exception as e:
+        print(f"⚠️ <SYSTEM>: HSV count failed: {e}")
+        return None
 
-        # Require at least 10% of pixels to match dominant color and minimum 8 pixels
-        if total_pixels > 0 and max_count >= 8 and max_count > total_pixels * 0.10:
-            return best_color
-    except Exception:
-        pass
+
+def _dominant_color(counts: dict, total_pixels: int):
+    """Dominant color name, or None when it covers < 10% of pixels (or < 8 pixels)."""
+    best_color, max_count = max(counts.items(), key=lambda item: item[1])
+    if total_pixels > 0 and max_count >= 8 and max_count > total_pixels * 0.10:
+        return best_color
     return None
+
+
+def classify_cube_color_hsv(crop_bgr) -> str:
+    """
+    Non-invasive helper: Classify physical color of cropped cube using HSV color space.
+    Tuned for real-world lighting: glare resistance, lime/warm green, pale yellow.
+    Returns: 'red_cube', 'yellow_cube', 'green_cube', 'blue_cube', or None.
+    """
+    res = _hsv_color_counts(crop_bgr)
+    return _dominant_color(*res) if res else None
 
 
 def _announce_scan(is_full_desk_scan: bool, name_raw: str, primary_type: str) -> None:
@@ -146,16 +156,35 @@ def _is_full_desk_scan(primary_type: str, obj_lower: str) -> bool:
     )
 
 
+def _box_conf(box) -> float:
+    try:
+        return float(box.conf[0])
+    except Exception:
+        return 0.0
+
+
 def _refine_name_hsv(frame, box, name: str) -> str:
-    """Non-invasive HSV color refinement of a detected cube's class name."""
+    """HSV color refinement of a detected cube's class name.
+
+    YOLO's class is kept when the crop actually contains that color (>= 60% of the HSV
+    winner's pixels). A weakly-detected green cube (conf 0.3-0.4) under warm light has
+    yellow-ish pixels too; overriding it on a mere majority made it invisible to green_cube
+    queries. Below SCAN_TRUST_CONF the old behaviour (HSV majority wins) applies.
+    """
     try:
         ih, iw = frame.shape[:2]
         bx_coords = box.xyxy[0].cpu().numpy()
         bx1, by1 = max(0, int(bx_coords[0])), max(0, int(bx_coords[1]))
         bx2, by2 = min(iw, int(bx_coords[2])), min(ih, int(bx_coords[3]))
         if bx2 > bx1 and by2 > by1:
-            verified_name = classify_cube_color_hsv(frame[by1:by2, bx1:bx2])
+            res = _hsv_color_counts(frame[by1:by2, bx1:bx2])
+            verified_name = _dominant_color(*res) if res else None
             if verified_name and verified_name != name:
+                counts = res[0]
+                keep = 0.6 if _box_conf(box) >= getattr(armconfig, "SCAN_TRUST_CONF", 0.30) else 1.0
+                if name in counts and counts[name] >= keep * counts[verified_name] and counts[name] >= 8:
+                    print(f"🎨 <SYSTEM>: HSV เห็น {verified_name} แต่สี {name} ยังมีพิกเซลมากพอ → เชื่อ YOLO ({_box_conf(box):.2f})")
+                    return name
                 print(f"🎨 <SYSTEM>: ปรับปรุงสีด้วย HSV: {name} -> {verified_name}")
                 return verified_name
     except Exception as e:
@@ -199,6 +228,40 @@ def _target_matches(obj_colors, obj_words, name_colors, name_words, name_lower) 
     return bool(obj_words.intersection(name_words) or any(w in name_lower for w in obj_words if len(w) > 2))
 
 
+def _mem_z(coord) -> float:
+    return float(coord[2]) if len(coord) >= 3 and coord[2] > 0 else armconfig.GRAB_BASE_HEIGHT
+
+
+def _near_xy(a, b) -> bool:
+    t = armconfig.STACK_PROXIMITY_THRESHOLD
+    return abs(a[0] - b[0]) < t and abs(a[1] - b[1]) < t
+
+
+def _placed_items(exclude: str = None):
+    for k, v in init.known_objects.items():
+        if k != exclude and isinstance(v, list) and len(v) >= 2 and "area" not in k.lower():
+            yield k, v
+
+
+def _estimate_z(name: str, coord: list) -> float:
+    """Camera sees the top face only. Keep the remembered Z if the cube has not moved;
+    otherwise sit it one layer above any remembered cube under the same XY."""
+    old = init.known_objects.get(name)
+    if isinstance(old, list) and len(old) >= 2 and math.hypot(coord[0] - old[0], coord[1] - old[1]) <= 15.0:
+        return _mem_z(old)
+    under = [_mem_z(v) for _, v in _placed_items(exclude=name) if _near_xy(v, coord)]
+    return max(under) + armconfig.STACK_HEIGHT_PER_LAYER if under else armconfig.GRAB_BASE_HEIGHT
+
+
+def _is_occluded(name: str, found_cubes: dict) -> bool:
+    """A cube under a cube that the scan just saw cannot be seen from above — it is not gone."""
+    v = init.known_objects.get(name)
+    if not (isinstance(v, list) and len(v) >= 2):
+        return False
+    return any(k in found_cubes and _near_xy(w, v) and _mem_z(w) > _mem_z(v) + 10
+               for k, w in _placed_items(exclude=name))
+
+
 def _calibrate_memory(found_cubes: dict) -> None:
     """Full-desk scan: update moved cubes, add new ones, drop stale ones (keeping the held cube)."""
     old_cube_keys = [k for k in list(init.known_objects.keys()) if "cube" in k.lower()]
@@ -223,6 +286,9 @@ def _calibrate_memory(found_cubes: dict) -> None:
         if held_obj and (old_k == held_obj or held_obj in old_k or old_k in held_obj):
             continue
         if old_k not in found_cubes:
+            if _is_occluded(old_k, found_cubes):
+                print(f"🧱 <SYSTEM>: [Memory Check] '{old_k}' โดนกล่องอื่นทับ มองไม่เห็นจากด้านบน → เก็บไว้ในความจำ")
+                continue
             print(f"🗑️ <SYSTEM>: [Memory Check] ไม่พบ '{old_k}' บนโต๊ะแล้ว → ลบออกจากความจำเพื่อความถูกต้อง 100%")
             init.known_objects.pop(old_k, None)
 
@@ -250,6 +316,43 @@ def _iter_detections(model, results, frame, primary_type, colors, j1, x_offset, 
                 std_name = f"{std_name}_cube"
 
             yield std_name, name_lower, name_words, name_colors, saved_coord
+
+
+def _cast_vote(clusters: list, frame_idx: int, det: tuple) -> None:
+    """Add one detection to the cluster of the same class within 25mm (max 1 vote per frame per cluster)."""
+    std_name, name_lower, name_words, name_colors, coord = det
+    for c in clusters:
+        if c["name"] == std_name and math.hypot(c["x"] - coord[0], c["y"] - coord[1]) < 25.0:
+            if c["last"] != frame_idx:
+                c["votes"] += 1
+                c["last"] = frame_idx
+            c["xs"].append(coord[0])
+            c["ys"].append(coord[1])
+            c["x"], c["y"] = sum(c["xs"]) / len(c["xs"]), sum(c["ys"]) / len(c["ys"])
+            return
+    clusters.append({"name": std_name, "lower": name_lower, "words": name_words, "colors": name_colors,
+                     "x": coord[0], "y": coord[1], "xs": [coord[0]], "ys": [coord[1]], "votes": 1, "last": frame_idx})
+
+
+def _cluster_coord(c: dict) -> list:
+    return [round(c["x"], 2), round(c["y"], 2)]
+
+
+def _confirmed_target(clusters: list, need: int, obj_colors, obj_words):
+    for c in clusters:
+        if c["votes"] >= need and _target_matches(obj_colors, obj_words, c["colors"], c["words"], c["lower"]):
+            return c
+    return None
+
+
+def _finish_targeted(c: dict, primary_type: str, j1: float) -> list:
+    """Targeted scan hit: go home, remember the cube (with stack-aware Z), return [x, y]."""
+    saved_coord = _cluster_coord(c)
+    print(f"🤖 <SYSTEM>: YOLO ({primary_type}) เจอ '{c['name']}' ที่มุม {j1}! ({c['votes']} เฟรมยืนยัน) พิกัดโลก: {saved_coord}")
+    mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
+    init.known_objects[c["name"]] = [saved_coord[0], saved_coord[1], _estimate_z(c["name"], saved_coord)]
+    mc.wait_for_arrival(armconfig.POSE_HOME, mode="angles")
+    return saved_coord
 
 
 def scan_with_yolo(object_name: str = "cube"):
@@ -302,6 +405,8 @@ def scan_with_yolo(object_name: str = "cube"):
     found_cubes = {}
     conf_thresh = getattr(armconfig, "VISION_CONFIDENCE_THRESHOLD", 0.30)
     wait_time = getattr(armconfig, "SCAN_WAIT_PER_ANGLE", 1.5)
+    frames_per_angle = max(1, int(getattr(armconfig, "SCAN_FRAMES_PER_ANGLE", 4)))
+    min_votes = max(1, int(getattr(armconfig, "SCAN_MIN_VOTES", 2)))
 
     for j1 in scan_angles:
         print(f"🤖 <SYSTEM>: YOLO หันกล้องไปที่มุม {j1} องศา (ค้างรอ {wait_time}s)...")
@@ -310,30 +415,47 @@ def scan_with_yolo(object_name: str = "cube"):
         mc.send_angles(current_ready, armconfig.SPEED_GRAB)
         time.sleep(wait_time)
 
-        for attempt in range(2):
+        # Multi-frame voting: a weak detection (conf ~0.3-0.4) flickers frame to frame, so one
+        # lucky/unlucky frame must not decide. Accept a box only after MIN_VOTES frames agree.
+        clusters = []
+        frames_got = 0
+        for attempt in range(frames_per_angle):
             frame = cam_manager.get_frame()
             if frame is None:
                 time.sleep(0.1)
                 continue
+            frames_got += 1
 
             results = model(frame, verbose=False, conf=conf_thresh)
             if hasattr(cam_manager, 'set_ai_results') and len(results) > 0:
                 cam_manager.set_ai_results(results[0], duration=0.8)
 
-            for std_name, name_lower, name_words, name_colors, saved_coord in _iter_detections(
-                    model, results, frame, primary_type, colors, j1, x_offset, y_offset):
-                # 1. Full Desk Scan Mode: Aggregate all cubes
-                if is_full_desk_scan:
-                    found_cubes[std_name] = saved_coord
+            for det in _iter_detections(model, results, frame, primary_type, colors, j1, x_offset, y_offset):
+                _cast_vote(clusters, attempt, det)
 
-                # 2. Targeted Scan Mode: Match requested object and return immediately
-                elif _target_matches(obj_colors, obj_words, name_colors, name_words, name_lower):
-                    print(f"🤖 <SYSTEM>: YOLO ({primary_type}) เจอ '{std_name}' ที่มุม {j1}! พิกัดโลก: {saved_coord}")
-                    mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
-                    init.known_objects[std_name] = [saved_coord[0], saved_coord[1], armconfig.GRAB_BASE_HEIGHT]
-                    return saved_coord
+            # Targeted Scan Mode: return as soon as a matching box has MIN_VOTES frames
+            if not is_full_desk_scan:
+                hit = _confirmed_target(clusters, min_votes, obj_colors, obj_words)
+                if hit:
+                    return _finish_targeted(hit, primary_type, j1)
 
             time.sleep(0.1)
+
+        # Camera delivered fewer frames than MIN_VOTES: accept what we could get rather than never detecting
+        need = min(min_votes, max(frames_got, 1))
+
+        if not is_full_desk_scan:
+            hit = _confirmed_target(clusters, need, obj_colors, obj_words)
+            if hit:
+                return _finish_targeted(hit, primary_type, j1)
+
+        # Full Desk Scan Mode: aggregate every box that was confirmed by enough frames
+        if is_full_desk_scan:
+            for c in clusters:
+                if c["votes"] >= need:
+                    found_cubes[c["name"]] = _cluster_coord(c)
+                else:
+                    print(f"🤔 <SYSTEM>: '{c['name']}' เห็นแค่ {c['votes']}/{frames_got} เฟรม → ยังไม่นับ (กันตรวจผิดชั่วคราว)")
 
     # ── Post-Scan Processing ───────────────────────────────────────────────────
     mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)

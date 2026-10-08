@@ -5,9 +5,10 @@
    "call.open_gripper()",
    "call.mc.send_coords([200.0, 3.0, 200, -173, 0, -45], 40)",
    "call.mc.wait_for_arrival([200.0, 3.0, 200], mode='coords')",
-   "call.mc.send_coords([200.0, 3.0, 150.0, -173, 0, -45], 40)",
-   "call.mc.send_coords([200.0, 3.0, 150.0, -173, 0, -45], 40)",
+   "call.mc.send_coords([200.0, 3.0, 150.0, -173, 0, -45], 25)",
+   "call.mc.send_coords([200.0, 3.0, 150.0, -173, 0, -45], 25)",
    "call.mc.wait_for_z(150.0)",
+   "call.mc.wait_for_arrival([200.0, 3.0, 150.0], timeout=2.0, threshold=12.0)",
    "call.close_gripper()",
    "call.mc.send_coords([200.0, 3.0, 200, -173, 0, -45], 20)",
    "call.mc.wait_for_arrival([200.0, 3.0, 200], mode='coords')",
@@ -92,9 +93,10 @@
    "call.open_gripper()",
    "call.mc.send_coords([200.0, 0.0, 200, -173, 0, -45], 40)",
    "call.mc.wait_for_arrival([200.0, 0.0, 200], mode='coords')",
-   "call.mc.send_coords([200.0, 0.0, 110.0, -173, 0, -45], 40)",
-   "call.mc.send_coords([200.0, 0.0, 110.0, -173, 0, -45], 40)",
+   "call.mc.send_coords([200.0, 0.0, 110.0, -173, 0, -45], 25)",
+   "call.mc.send_coords([200.0, 0.0, 110.0, -173, 0, -45], 25)",
    "call.mc.wait_for_z(110.0)",
+   "call.mc.wait_for_arrival([200.0, 0.0, 110.0], timeout=2.0, threshold=12.0)",
    "call.close_gripper()",
    "call.mc.send_coords([200.0, 0.0, 200, -173, 0, -45], 20)",
    "call.mc.wait_for_arrival([200.0, 0.0, 200], mode='coords')",
@@ -133,9 +135,10 @@
   "calls": [
    "call.mc.send_coords([198.7, -68.5, 180, -175, 0, -45], 40)",
    "call.mc.wait_for_arrival([198.7, -68.5, 180], mode='coords')",
-   "call.mc.send_coords([198.7, -68.5, 110, -175, 0, -45], 40)",
-   "call.mc.send_coords([198.7, -68.5, 110, -175, 0, -45], 40)",
+   "call.mc.send_coords([198.7, -68.5, 110, -175, 0, -45], 25)",
+   "call.mc.send_coords([198.7, -68.5, 110, -175, 0, -45], 25)",
    "call.mc.wait_for_z(110)",
+   "call.mc.wait_for_arrival([198.7, -68.5, 110], timeout=2.0, threshold=12.0)",
    "call.open_gripper()",
    "call.mc.send_coords([198.7, -68.5, 200, -175, 0, -45], 40)",
    "call.mc.wait_for_arrival([198.7, -68.5, 200], mode='coords')",
@@ -145,9 +148,10 @@
    "call.open_gripper()",
    "call.mc.send_coords([170.0, 90.0, 200, -173, 0, -45], 40)",
    "call.mc.wait_for_arrival([170.0, 90.0, 200], mode='coords')",
-   "call.mc.send_coords([170.0, 90.0, 110.0, -173, 0, -45], 40)",
-   "call.mc.send_coords([170.0, 90.0, 110.0, -173, 0, -45], 40)",
+   "call.mc.send_coords([170.0, 90.0, 110.0, -173, 0, -45], 25)",
+   "call.mc.send_coords([170.0, 90.0, 110.0, -173, 0, -45], 25)",
    "call.mc.wait_for_z(110.0)",
+   "call.mc.wait_for_arrival([170.0, 90.0, 110.0], timeout=2.0, threshold=12.0)",
    "call.close_gripper()",
    "call.mc.send_coords([170.0, 90.0, 200, -173, 0, -45], 20)",
    "call.mc.wait_for_arrival([170.0, 90.0, 200], mode='coords')",
@@ -170,7 +174,7 @@
    "green_cube": "in gripper",
    "red_cube": [
     198.7,
-    -68.5,
+    -73.5,
     110
    ]
   },
@@ -188,9 +192,10 @@
    "call.open_gripper()",
    "call.mc.send_coords([170.0, 90.0, 200, -173, 0, -45], 40)",
    "call.mc.wait_for_arrival([170.0, 90.0, 200], mode='coords')",
-   "call.mc.send_coords([170.0, 90.0, 110.0, -173, 0, -45], 40)",
-   "call.mc.send_coords([170.0, 90.0, 110.0, -173, 0, -45], 40)",
+   "call.mc.send_coords([170.0, 90.0, 110.0, -173, 0, -45], 25)",
+   "call.mc.send_coords([170.0, 90.0, 110.0, -173, 0, -45], 25)",
    "call.mc.wait_for_z(110.0)",
+   "call.mc.wait_for_arrival([170.0, 90.0, 110.0], timeout=2.0, threshold=12.0)",
    "call.close_gripper()",
    "call.mc.send_coords([170.0, 90.0, 200, -173, 0, -45], 20)",
    "call.mc.wait_for_arrival([170.0, 90.0, 200], mode='coords')",
@@ -231,9 +236,10 @@
    "call.open_gripper()",
    "call.mc.send_coords([280.0, -280.0, 200, -173, 0, -45], 40)",
    "call.mc.wait_for_arrival([280.0, -280.0, 200], mode='coords')",
-   "call.mc.send_coords([280.0, -280.0, 110.0, -173, 0, -45], 40)",
-   "call.mc.send_coords([280.0, -280.0, 110.0, -173, 0, -45], 40)",
+   "call.mc.send_coords([280.0, -280.0, 110.0, -173, 0, -45], 25)",
+   "call.mc.send_coords([280.0, -280.0, 110.0, -173, 0, -45], 25)",
    "call.mc.wait_for_z(110.0)",
+   "call.mc.wait_for_arrival([280.0, -280.0, 110.0], timeout=2.0, threshold=12.0)",
    "call.close_gripper()",
    "call.mc.send_coords([280.0, -280.0, 200, -173, 0, -45], 20)",
    "call.mc.wait_for_arrival([280.0, -280.0, 200], mode='coords')",
@@ -259,9 +265,10 @@
    "call.open_gripper()",
    "call.mc.send_coords([134.16407864998737, 67.08203932499369, 200, -173, 0, -45], 40)",
    "call.mc.wait_for_arrival([134.16407864998737, 67.08203932499369, 200], mode='coords')",
-   "call.mc.send_coords([134.16407864998737, 67.08203932499369, 110.0, -173, 0, -45], 40)",
-   "call.mc.send_coords([134.16407864998737, 67.08203932499369, 110.0, -173, 0, -45], 40)",
+   "call.mc.send_coords([134.16407864998737, 67.08203932499369, 110.0, -173, 0, -45], 25)",
+   "call.mc.send_coords([134.16407864998737, 67.08203932499369, 110.0, -173, 0, -45], 25)",
    "call.mc.wait_for_z(110.0)",
+   "call.mc.wait_for_arrival([134.16407864998737, 67.08203932499369, 110.0], timeout=2.0, threshold=12.0)",
    "call.close_gripper()",
    "call.mc.send_coords([134.16407864998737, 67.08203932499369, 200, -173, 0, -45], 20)",
    "call.mc.wait_for_arrival([134.16407864998737, 67.08203932499369, 200], mode='coords')",
@@ -287,9 +294,10 @@
    "call.open_gripper()",
    "call.mc.send_coords([200.0, 0.0, 200, -173, 0, -45], 40)",
    "call.mc.wait_for_arrival([200.0, 0.0, 200], mode='coords')",
-   "call.mc.send_coords([200.0, 0.0, 110.0, -173, 0, -45], 40)",
-   "call.mc.send_coords([200.0, 0.0, 110.0, -173, 0, -45], 40)",
+   "call.mc.send_coords([200.0, 0.0, 110.0, -173, 0, -45], 25)",
+   "call.mc.send_coords([200.0, 0.0, 110.0, -173, 0, -45], 25)",
    "call.mc.wait_for_z(110.0)",
+   "call.mc.wait_for_arrival([200.0, 0.0, 110.0], timeout=2.0, threshold=12.0)",
    "call.close_gripper()",
    "call.mc.send_coords([200.0, 0.0, 200, -173, 0, -45], 20)",
    "call.mc.wait_for_arrival([200.0, 0.0, 200], mode='coords')",
@@ -331,9 +339,10 @@
    "call.open_gripper()",
    "call.mc.send_coords([205.0, 5.0, 200, -173, 0, -45], 40)",
    "call.mc.wait_for_arrival([205.0, 5.0, 200], mode='coords')",
-   "call.mc.send_coords([205.0, 5.0, 110.0, -173, 0, -45], 40)",
-   "call.mc.send_coords([205.0, 5.0, 110.0, -173, 0, -45], 40)",
+   "call.mc.send_coords([205.0, 5.0, 110.0, -173, 0, -45], 25)",
+   "call.mc.send_coords([205.0, 5.0, 110.0, -173, 0, -45], 25)",
    "call.mc.wait_for_z(110.0)",
+   "call.mc.wait_for_arrival([205.0, 5.0, 110.0], timeout=2.0, threshold=12.0)",
    "call.close_gripper()",
    "call.mc.send_coords([205.0, 5.0, 200, -173, 0, -45], 20)",
    "call.mc.wait_for_arrival([205.0, 5.0, 200], mode='coords')",
@@ -372,9 +381,10 @@
    "call.open_gripper()",
    "call.mc.send_coords([180.0, 60.0, 200, -173, 0, -45], 40)",
    "call.mc.wait_for_arrival([180.0, 60.0, 200], mode='coords')",
-   "call.mc.send_coords([180.0, 60.0, 110.0, -173, 0, -45], 40)",
-   "call.mc.send_coords([180.0, 60.0, 110.0, -173, 0, -45], 40)",
+   "call.mc.send_coords([180.0, 60.0, 110.0, -173, 0, -45], 25)",
+   "call.mc.send_coords([180.0, 60.0, 110.0, -173, 0, -45], 25)",
    "call.mc.wait_for_z(110.0)",
+   "call.mc.wait_for_arrival([180.0, 60.0, 110.0], timeout=2.0, threshold=12.0)",
    "call.close_gripper()",
    "call.mc.send_coords([180.0, 60.0, 200, -173, 0, -45], 20)",
    "call.mc.wait_for_arrival([180.0, 60.0, 200], mode='coords')",
@@ -400,11 +410,13 @@
    "call.open_gripper()",
    "call.mc.send_coords([200.0, 0.0, 200, -173, 0, -45], 40)",
    "call.mc.wait_for_arrival([200.0, 0.0, 200], mode='coords')",
-   "call.mc.send_coords([200.0, 0.0, 110.0, -173, 0, -45], 40)",
-   "call.mc.send_coords([200.0, 0.0, 110.0, -173, 0, -45], 40)",
+   "call.mc.send_coords([200.0, 0.0, 110.0, -173, 0, -45], 25)",
+   "call.mc.send_coords([200.0, 0.0, 110.0, -173, 0, -45], 25)",
    "call.mc.wait_for_z(110.0)",
    "call.mc.send_coords([200.0, 0.0, 200, -173, 0, -45], 40)",
-   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)"
+   "call.mc.wait_for_arrival([200.0, 0.0, 200], mode='coords')",
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)",
+   "call.mc.wait_for_arrival([0, 0, 0, 0, 0, -45], mode='angles')"
   ],
   "held": null,
   "is_holding": false,
@@ -439,9 +451,10 @@
   "calls": [
    "call.mc.send_coords([142.1, 109.2, 180, -175, 0, -45], 40)",
    "call.mc.wait_for_arrival([142.1, 109.2, 180], mode='coords')",
-   "call.mc.send_coords([142.1, 109.2, 110, -175, 0, -45], 40)",
-   "call.mc.send_coords([142.1, 109.2, 110, -175, 0, -45], 40)",
+   "call.mc.send_coords([142.1, 109.2, 110, -175, 0, -45], 25)",
+   "call.mc.send_coords([142.1, 109.2, 110, -175, 0, -45], 25)",
    "call.mc.wait_for_z(110)",
+   "call.mc.wait_for_arrival([142.1, 109.2, 110], timeout=2.0, threshold=12.0)",
    "call.open_gripper()",
    "call.mc.send_coords([142.1, 109.2, 200, -175, 0, -45], 40)",
    "call.mc.wait_for_arrival([142.1, 109.2, 200], mode='coords')",
@@ -451,14 +464,9 @@
   "held": null,
   "is_holding": false,
   "known": {
-   "red_area": [
-    142.1,
-    109.2,
-    80.0
-   ],
    "red_cube": [
     142.1,
-    109.2,
+    104.2,
     110
    ]
   },
@@ -469,14 +477,15 @@
  },
  "move_to_explicit_height": {
   "calls": [
-   "call.mc.send_coords([250.0, 280.0, 320.0, -175, 0, -45], 40)",
-   "call.mc.wait_for_arrival([250.0, 280.0, 320.0], mode='coords')",
    "call.mc.send_coords([250.0, 280.0, 280.0, -175, 0, -45], 40)",
-   "call.mc.send_coords([250.0, 280.0, 280.0, -175, 0, -45], 40)",
+   "call.mc.wait_for_arrival([250.0, 280.0, 280.0], mode='coords')",
+   "call.mc.send_coords([250.0, 280.0, 280.0, -175, 0, -45], 25)",
+   "call.mc.send_coords([250.0, 280.0, 280.0, -175, 0, -45], 25)",
    "call.mc.wait_for_z(280.0)",
+   "call.mc.wait_for_arrival([250.0, 280.0, 280.0], timeout=2.0, threshold=12.0)",
    "call.open_gripper()",
-   "call.mc.send_coords([250.0, 280.0, 330.0, -175, 0, -45], 40)",
-   "call.mc.wait_for_arrival([250.0, 280.0, 330.0], mode='coords')",
+   "call.mc.send_coords([250.0, 280.0, 280.0, -175, 0, -45], 40)",
+   "call.mc.wait_for_arrival([250.0, 280.0, 280.0], mode='coords')",
    "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)",
    "call.mc.wait_for_arrival([0, 0, 0, 0, 0, -45], mode='angles')"
   ],
@@ -498,9 +507,10 @@
   "calls": [
    "call.mc.send_coords([200.0, 55.0, 180, -175, 0, -45], 40)",
    "call.mc.wait_for_arrival([200.0, 55.0, 180], mode='coords')",
-   "call.mc.send_coords([200.0, 55.0, 110, -175, 0, -45], 40)",
-   "call.mc.send_coords([200.0, 55.0, 110, -175, 0, -45], 40)",
+   "call.mc.send_coords([200.0, 55.0, 110, -175, 0, -45], 25)",
+   "call.mc.send_coords([200.0, 55.0, 110, -175, 0, -45], 25)",
    "call.mc.wait_for_z(110)",
+   "call.mc.wait_for_arrival([200.0, 55.0, 110], timeout=2.0, threshold=12.0)",
    "call.open_gripper()",
    "call.mc.send_coords([200.0, 55.0, 200, -175, 0, -45], 40)",
    "call.mc.wait_for_arrival([200.0, 55.0, 200], mode='coords')",
@@ -512,7 +522,7 @@
   "known": {
    "red_cube": [
     200.0,
-    55.0,
+    50.0,
     110
    ]
   },
@@ -525,9 +535,10 @@
   "calls": [
    "call.mc.send_coords([170.0, 95.0, 180, -175, 0, -45], 40)",
    "call.mc.wait_for_arrival([170.0, 95.0, 180], mode='coords')",
-   "call.mc.send_coords([170.0, 95.0, 140, -175, 0, -45], 40)",
-   "call.mc.send_coords([170.0, 95.0, 140, -175, 0, -45], 40)",
+   "call.mc.send_coords([170.0, 95.0, 140, -175, 0, -45], 25)",
+   "call.mc.send_coords([170.0, 95.0, 140, -175, 0, -45], 25)",
    "call.mc.wait_for_z(140)",
+   "call.mc.wait_for_arrival([170.0, 95.0, 140], timeout=2.0, threshold=12.0)",
    "call.open_gripper()",
    "call.mc.send_coords([170.0, 95.0, 200, -175, 0, -45], 40)",
    "call.mc.wait_for_arrival([170.0, 95.0, 200], mode='coords')",
@@ -549,12 +560,12 @@
    ],
    "green_cube": [
     170.0,
-    95.0,
+    90.0,
     110.0
    ],
    "red_cube": [
     170.0,
-    95.0,
+    90.0,
     140
    ]
   },
@@ -567,9 +578,10 @@
   "calls": [
    "call.mc.send_coords([142.1, 109.2, 180, -175, 0, -45], 40)",
    "call.mc.wait_for_arrival([142.1, 109.2, 180], mode='coords')",
-   "call.mc.send_coords([142.1, 109.2, 110, -175, 0, -45], 40)",
-   "call.mc.send_coords([142.1, 109.2, 110, -175, 0, -45], 40)",
+   "call.mc.send_coords([142.1, 109.2, 110, -175, 0, -45], 25)",
+   "call.mc.send_coords([142.1, 109.2, 110, -175, 0, -45], 25)",
    "call.mc.wait_for_z(110)",
+   "call.mc.wait_for_arrival([142.1, 109.2, 110], timeout=2.0, threshold=12.0)",
    "call.open_gripper()",
    "call.mc.send_coords([142.1, 109.2, 200, -175, 0, -45], 40)",
    "call.mc.wait_for_arrival([142.1, 109.2, 200], mode='coords')",
@@ -581,7 +593,7 @@
   "known": {
    "red_cube": [
     142.1,
-    109.2,
+    104.2,
     110
    ]
   },
@@ -604,9 +616,10 @@
   "calls": [
    "call.mc.send_coords([198.7, -68.5, 180, -175, 0, -45], 40)",
    "call.mc.wait_for_arrival([198.7, -68.5, 180], mode='coords')",
-   "call.mc.send_coords([198.7, -68.5, 110, -175, 0, -45], 40)",
-   "call.mc.send_coords([198.7, -68.5, 110, -175, 0, -45], 40)",
+   "call.mc.send_coords([198.7, -68.5, 110, -175, 0, -45], 25)",
+   "call.mc.send_coords([198.7, -68.5, 110, -175, 0, -45], 25)",
    "call.mc.wait_for_z(110)",
+   "call.mc.wait_for_arrival([198.7, -68.5, 110], timeout=2.0, threshold=12.0)",
    "call.open_gripper()",
    "call.mc.send_coords([198.7, -68.5, 200, -175, 0, -45], 40)",
    "call.mc.wait_for_arrival([198.7, -68.5, 200], mode='coords')",
@@ -638,7 +651,7 @@
    ],
    "yellow_cube": [
     198.7,
-    -68.5,
+    -73.5,
     110
    ]
   },
@@ -651,9 +664,10 @@
   "calls": [
    "call.mc.send_coords([200.0, 5.0, 220, -175, 0, -45], 40)",
    "call.mc.wait_for_arrival([200.0, 5.0, 220], mode='coords')",
-   "call.mc.send_coords([200.0, 5.0, 180, -175, 0, -45], 40)",
-   "call.mc.send_coords([200.0, 5.0, 180, -175, 0, -45], 40)",
+   "call.mc.send_coords([200.0, 5.0, 180, -175, 0, -45], 25)",
+   "call.mc.send_coords([200.0, 5.0, 180, -175, 0, -45], 25)",
    "call.mc.wait_for_z(180)",
+   "call.mc.wait_for_arrival([200.0, 5.0, 180], timeout=2.0, threshold=12.0)",
    "call.open_gripper()",
    "call.mc.send_coords([200.0, 5.0, 230, -175, 0, -45], 40)",
    "call.mc.wait_for_arrival([200.0, 5.0, 230], mode='coords')",
@@ -680,12 +694,12 @@
    ],
    "red_cube": [
     200.0,
-    5.0,
-    150.0
+    0.0,
+    110.0
    ],
    "yellow_cube": [
     200.0,
-    5.0,
+    0.0,
     180
    ]
   },
@@ -698,9 +712,10 @@
   "calls": [
    "call.mc.send_coords([200.0, 15.0, 220, -175, 0, -45], 40)",
    "call.mc.wait_for_arrival([200.0, 15.0, 220], mode='coords')",
-   "call.mc.send_coords([200.0, 15.0, 180, -175, 0, -45], 40)",
-   "call.mc.send_coords([200.0, 15.0, 180, -175, 0, -45], 40)",
+   "call.mc.send_coords([200.0, 15.0, 180, -175, 0, -45], 25)",
+   "call.mc.send_coords([200.0, 15.0, 180, -175, 0, -45], 25)",
    "call.mc.wait_for_z(180)",
+   "call.mc.wait_for_arrival([200.0, 15.0, 180], timeout=2.0, threshold=12.0)",
    "call.open_gripper()",
    "call.mc.send_coords([200.0, 15.0, 230, -175, 0, -45], 40)",
    "call.mc.wait_for_arrival([200.0, 15.0, 230], mode='coords')",
@@ -732,7 +747,7 @@
    ],
    "yellow_cube": [
     200.0,
-    15.0,
+    10.0,
     180
    ]
   },
@@ -745,9 +760,10 @@
   "calls": [
    "call.mc.send_coords([200.0, 10.0, 220, -175, 0, -45], 40)",
    "call.mc.wait_for_arrival([200.0, 10.0, 220], mode='coords')",
-   "call.mc.send_coords([200.0, 10.0, 180, -175, 0, -45], 40)",
-   "call.mc.send_coords([200.0, 10.0, 180, -175, 0, -45], 40)",
+   "call.mc.send_coords([200.0, 10.0, 180, -175, 0, -45], 25)",
+   "call.mc.send_coords([200.0, 10.0, 180, -175, 0, -45], 25)",
    "call.mc.wait_for_z(180)",
+   "call.mc.wait_for_arrival([200.0, 10.0, 180], timeout=2.0, threshold=12.0)",
    "call.open_gripper()",
    "call.mc.send_coords([200.0, 10.0, 230, -175, 0, -45], 40)",
    "call.mc.wait_for_arrival([200.0, 10.0, 230], mode='coords')",
@@ -764,7 +780,7 @@
    ],
    "blue_cube": [
     200.0,
-    10.0,
+    5.0,
     150.0
    ],
    "green_cube": [
@@ -774,7 +790,7 @@
    ],
    "red_cube": [
     200.0,
-    10.0,
+    5.0,
     180
    ]
   },
@@ -787,9 +803,10 @@
   "calls": [
    "call.mc.send_coords([190.0, -35.0, 180, -175, 0, -45], 40)",
    "call.mc.wait_for_arrival([190.0, -35.0, 180], mode='coords')",
-   "call.mc.send_coords([190.0, -35.0, 110, -175, 0, -45], 40)",
-   "call.mc.send_coords([190.0, -35.0, 110, -175, 0, -45], 40)",
+   "call.mc.send_coords([190.0, -35.0, 110, -175, 0, -45], 25)",
+   "call.mc.send_coords([190.0, -35.0, 110, -175, 0, -45], 25)",
    "call.mc.wait_for_z(110)",
+   "call.mc.wait_for_arrival([190.0, -35.0, 110], timeout=2.0, threshold=12.0)",
    "call.open_gripper()",
    "call.mc.send_coords([190.0, -35.0, 200, -175, 0, -45], 40)",
    "call.mc.wait_for_arrival([190.0, -35.0, 200], mode='coords')",
@@ -799,14 +816,9 @@
   "held": null,
   "is_holding": false,
   "known": {
-   "purple_cube": [
-    190.0,
-    -35.0,
-    80.0
-   ],
    "red_cube": [
     190.0,
-    -35.0,
+    -40.0,
     110
    ]
   },

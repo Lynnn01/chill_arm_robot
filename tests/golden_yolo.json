@@ -6,13 +6,14 @@
    "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)"
   ],
   "known": {},
-  "model_calls": 4,
+  "model_calls": 8,
   "result": {}
  },
  "face_target": {
   "calls": [
    "call.mc.send_angles([17.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
-   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)"
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)",
+   "call.mc.wait_for_arrival([0, 0, 0, 0, 0, -45], mode='angles')"
   ],
   "known": {
    "face": [
@@ -21,7 +22,7 @@
     110.0
    ]
   },
-  "model_calls": 1,
+  "model_calls": 2,
   "result": [
    187.5,
    25.0
@@ -58,7 +59,7 @@
     110.0
    ]
   },
-  "model_calls": 4,
+  "model_calls": 8,
   "result": {
    "blue_cube": [
     5.0,
@@ -95,7 +96,7 @@
     110.0
    ]
   },
-  "model_calls": 4,
+  "model_calls": 8,
   "result": {
    "blue_cube": [
     149.68,
@@ -122,7 +123,7 @@
     110.0
    ]
   },
-  "model_calls": 4,
+  "model_calls": 8,
   "result": {
    "green_cube": [
     88.44,
@@ -144,7 +145,7 @@
     110.0
    ]
   },
-  "model_calls": 4,
+  "model_calls": 8,
   "result": {
    "red_cube": [
     198.0,
@@ -166,7 +167,7 @@
     110.0
    ]
   },
-  "model_calls": 4,
+  "model_calls": 8,
   "result": {
    "red_cube": [
     197.98,
@@ -188,7 +189,7 @@
     110.0
    ]
   },
-  "model_calls": 4,
+  "model_calls": 8,
   "result": {
    "blue_cube": [
     240.54,
@@ -210,13 +211,14 @@
    "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)"
   ],
   "known": {},
-  "model_calls": 4,
+  "model_calls": 8,
   "result": null
  },
  "targeted_found_first_angle": {
   "calls": [
    "call.mc.send_angles([17.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
-   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)"
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)",
+   "call.mc.wait_for_arrival([0, 0, 0, 0, 0, -45], mode='angles')"
   ],
   "known": {
    "red_cube": [
@@ -225,7 +227,7 @@
     110.0
    ]
   },
-  "model_calls": 1,
+  "model_calls": 2,
   "result": [
    207.5,
    2.5
@@ -238,13 +240,14 @@
    "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)"
   ],
   "known": {},
-  "model_calls": 4,
+  "model_calls": 8,
   "result": null
  },
  "targeted_thai_name": {
   "calls": [
    "call.mc.send_angles([17.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
-   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)"
+   "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)",
+   "call.mc.wait_for_arrival([0, 0, 0, 0, 0, -45], mode='angles')"
   ],
   "known": {
    "blue_cube": [
@@ -253,7 +256,7 @@
     110.0
    ]
   },
-  "model_calls": 1,
+  "model_calls": 2,
   "result": [
    157.5,
    2.5

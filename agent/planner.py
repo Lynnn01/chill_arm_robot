@@ -34,6 +34,7 @@ async def plan_tasks(contextual_input: str) -> dict:
             ],
             temperature=0.2,
             max_tokens=1536,
+            response_format={"type": "json_object"},  # บังคับ JSON ล้วน ลดแผนพังจาก parse ไม่ได้
         )
         raw = response.choices[0].message.content.strip()
 

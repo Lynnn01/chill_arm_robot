@@ -49,6 +49,12 @@ def _find_in_memory(eng_name: str) -> tuple:
     return None, None
 
 
+def _drop_gripper_aliases(keep: str = None) -> None:
+    """After release the gripper is empty, so no other memory key may stay 'in gripper'."""
+    for k in [k for k, v in init.known_objects.items() if v == "in gripper" and k != keep]:
+        init.known_objects.pop(k, None)
+
+
 def _is_placed(name: str, coord) -> bool:
     """Remembered object with a real [x, y, ...] coordinate (not in gripper, not an 'area')."""
     return isinstance(coord, list) and len(coord) >= 2 and coord != "in gripper" and "area" not in name.lower()
@@ -153,6 +159,10 @@ def _scan_and_locate(object_name: str, eng_name: str, z: float, x_offset: float,
     yolo_coord = yolo_detector.scan_with_yolo(eng_name)
     if yolo_coord:
         robot_coord = yolo_coord
+        # scan_with_yolo บันทึก Z ที่ประเมินจากกองกล่องไว้แล้ว — ใช้ค่านั้นแทน base เพื่อไม่ให้ดิ่งชนกอง
+        _, saved = _find_in_memory(eng_name)
+        if saved and abs(saved[0] - robot_coord[0]) < 1.0 and abs(saved[1] - robot_coord[1]) < 1.0:
+            z = _coord_z(saved)
         init.known_objects[eng_name] = [round(robot_coord[0], 2), round(robot_coord[1], 2), round(z, 2)]
         print(f"🤖 <SYSTEM>: YOLO เจอแล้วที่ {robot_coord} และบันทึกลงความจำ")
         return robot_coord, None
@@ -190,6 +200,8 @@ def _resolve_grab_target(object_name, eng_name, target_coord, z, x_offset, y_off
 
     # 2. SCAN IF NOT IN MEMORY
     robot_coord, err = _scan_and_locate(object_name, eng_name, z, x_offset, y_offset)
+    if robot_coord and isinstance(init.known_objects.get(eng_name), list):
+        z = _coord_z(init.known_objects[eng_name])
     return robot_coord, z, eng_name, err
 
 
@@ -269,6 +281,14 @@ def _mark_aliases_in_gripper(eng_name: str, robot_coord: list, z: float) -> None
 
 
 
+def _retreat_home(above: list) -> None:
+    """Abort path: rise straight up first (never sweep sideways at low Z), then go home."""
+    mc.send_coords(above + armconfig.WRIST_DOWN, armconfig.SPEED_GRAB)
+    mc.wait_for_arrival(above, mode="coords")
+    mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
+    mc.wait_for_arrival(armconfig.POSE_HOME, mode="angles")
+
+
 def raw_grab_object(object_name: str, target_coord: list = None, _auto_unstack: bool = True) -> list:
     """Grab an object. Returns [x, y] robot coord."""
     err = _put_down_held("กริปเปอร์ถือ '{held}' อยู่ → วางลงตำแหน่งที่ปลอดภัยอัตโนมัติก่อนแล้วค่อยหยิบใหม่...")
@@ -294,37 +314,47 @@ def raw_grab_object(object_name: str, target_coord: list = None, _auto_unstack: 
         return raw_unstack_and_grab(object_name)
 
     _clamp_grab_coord(robot_coord)
+    z = max(armconfig.COORD_Z_MIN, min(armconfig.COORD_Z_MAX - armconfig.Z_CLEARANCE, z))
+    # เข้าหาจากเหนือยอดกองเสมอ — กล่องชั้นบนของหอคอยสูงอาจอยู่ที่ระดับ Z_SAFE_TRAVEL พอดี
+    above = [robot_coord[0], robot_coord[1], max(armconfig.Z_SAFE_TRAVEL, z + armconfig.Z_CLEARANCE)]
+    at_z = [robot_coord[0], robot_coord[1], z]
 
     init.open_gripper()
-    mc.send_coords([robot_coord[0], robot_coord[1], armconfig.Z_SAFE_TRAVEL] + armconfig.WRIST_DOWN, armconfig.SPEED_GRAB)
-    mc.wait_for_arrival([robot_coord[0], robot_coord[1], armconfig.Z_SAFE_TRAVEL], mode="coords")
+    mc.send_coords(above + armconfig.WRIST_DOWN, armconfig.SPEED_GRAB)
+    mc.wait_for_arrival(above, mode="coords")
     time.sleep(0.5)  # พักเคลียร์บอร์ดให้พร้อมรับคำสั่งดำดิ่งถัดไป
 
     print(f"🤖 <SYSTEM>: กำลังพุ่งหัวลงไปหยิบที่ Z={z}...")
-    mc.send_coords([robot_coord[0], robot_coord[1], z] + armconfig.WRIST_DOWN, armconfig.SPEED_GRAB)
+    mc.send_coords(at_z + armconfig.WRIST_DOWN, armconfig.SPEED_DESCEND)
     time.sleep(0.2)
-    mc.send_coords([robot_coord[0], robot_coord[1], z] + armconfig.WRIST_DOWN, armconfig.SPEED_GRAB)  # ส่งคำสั่งย้ำป้องกันเฟิร์มแวร์เมิน
+    mc.send_coords(at_z + armconfig.WRIST_DOWN, armconfig.SPEED_DESCEND)  # ส่งคำสั่งย้ำป้องกันเฟิร์มแวร์เมิน
     reached_z = mc.wait_for_z(z)   # รอเฉพาะแกน Z — ไม่สนใจ XY drift
 
     if not reached_z:
         print(f"⚠️ <SYSTEM>: ไม่สามารถลงไปถึงระดับหยิบ Z={z} ได้! ดึงหัวกลับตำแหน่งปลอดภัยและยกเลิกภารกิจ")
-        mc.send_coords([robot_coord[0], robot_coord[1], armconfig.Z_SAFE_TRAVEL] + armconfig.WRIST_DOWN, armconfig.SPEED_GRAB)
-        time.sleep(1.5)
-        mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
+        _retreat_home(above)
         return {"status": "ERROR", "message": f"Joint stall at target Z={z}. Object unreachable."}
-    
-    time.sleep(0.5)  # รอให้หัวนิ่งสนิทที่ระดับ Z จริงก่อนสั่งหนีบ
-    init.close_gripper()
+
+    mc.wait_for_arrival(at_z, timeout=2.0, threshold=12.0)  # รอ XY นิ่งก่อนหนีบ
+    time.sleep(0.3)
+    grip_val = init.close_gripper()
     time.sleep(1.2)  # รอกริปเปอร์หนีบเสร็จสนิท
 
-    _record_grabbed(get_english_name(object_name), robot_coord, z)
+    if armconfig.GRIP_EMPTY_MAX >= 0 and isinstance(grip_val, (int, float)) and grip_val <= armconfig.GRIP_EMPTY_MAX:
+        print(f"⚠️ <SYSTEM>: หนีบไม่โดน '{eng_name}' (ค่ากริปเปอร์ {grip_val}) → ล้างพิกัดในความจำให้สแกนใหม่รอบหน้า")
+        init.open_gripper()
+        init.known_objects.pop(eng_name, None)
+        _retreat_home(above)
+        return {"status": "ERROR", "message": f"Missed grab: {object_name} not in gripper (value={grip_val}). Scan again."}
 
-    mc.send_coords([robot_coord[0], robot_coord[1], armconfig.Z_SAFE_TRAVEL] + armconfig.WRIST_DOWN, armconfig.SPEED_LIFT)
-    mc.wait_for_arrival([robot_coord[0], robot_coord[1], armconfig.Z_SAFE_TRAVEL], mode="coords")
-    
+    _record_grabbed(eng_name, robot_coord, z)
+
+    mc.send_coords(above + armconfig.WRIST_DOWN, armconfig.SPEED_LIFT)
+    mc.wait_for_arrival(above, mode="coords")
+
     mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
     mc.wait_for_arrival(armconfig.POSE_HOME, mode="angles")
-        
+
     print(f"✅ <SYSTEM>: DONE TASK - {object_name}")
 
     return {"status": "DONE TASK", "data": robot_coord}
@@ -598,8 +628,8 @@ def raw_move_to(target_coord: list = None, target_name: str = None, target_heigh
     th = max(armconfig.COORD_Z_MIN, min(armconfig.COORD_Z_MAX, int(target_height)))
 
     # Dynamic approach and retreat heights based on actual target height
-    z_approach = max(armconfig.Z_PRE_PLACE, th + 40)
-    z_retreat = max(armconfig.Z_SAFE_TRAVEL, th + 50)
+    z_approach = min(armconfig.COORD_Z_MAX, max(armconfig.Z_PRE_PLACE, th + armconfig.Z_CLEARANCE))
+    z_retreat = min(armconfig.COORD_Z_MAX, max(armconfig.Z_SAFE_TRAVEL, th + 50))
 
     print(f"🤖 <SYSTEM>: กำลังเคลื่อนย้ายวัตถุไปวางที่พิกัด {tc} ความสูง {th} (เข้าประชิดที่ Z={z_approach})...")
     mc.send_coords([tc[0], tc[1], z_approach] + armconfig.WRIST_PLACE, armconfig.SPEED_GRAB)
@@ -607,11 +637,12 @@ def raw_move_to(target_coord: list = None, target_name: str = None, target_heigh
     time.sleep(0.3)
 
     print(f"🤖 <SYSTEM>: กำลังลดระดับหัวลงวางที่ Z={th}...")
-    mc.send_coords([tc[0], tc[1], th] + armconfig.WRIST_PLACE, armconfig.SPEED_GRAB)
+    mc.send_coords([tc[0], tc[1], th] + armconfig.WRIST_PLACE, armconfig.SPEED_DESCEND)
     time.sleep(0.2)
-    mc.send_coords([tc[0], tc[1], th] + armconfig.WRIST_PLACE, armconfig.SPEED_GRAB)
+    mc.send_coords([tc[0], tc[1], th] + armconfig.WRIST_PLACE, armconfig.SPEED_DESCEND)
     mc.wait_for_z(th)
-    time.sleep(0.4)  # รอให้นิ่งสนิทที่ระดับพิกัดเป้าหมายจริงก่อนเปิดกริปเปอร์
+    mc.wait_for_arrival([tc[0], tc[1], th], timeout=2.0, threshold=12.0)  # รอ XY นิ่งก่อนปล่อย
+    time.sleep(0.3)  # รอให้นิ่งสนิทที่ระดับพิกัดเป้าหมายจริงก่อนเปิดกริปเปอร์
     init.open_gripper()
     time.sleep(1.0)
 
@@ -621,11 +652,12 @@ def raw_move_to(target_coord: list = None, target_name: str = None, target_heigh
     mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
     mc.wait_for_arrival(armconfig.POSE_HOME, mode="angles")
 
-    # บันทึกความสูงจริงของวัตถุที่วางลงในความจำ
-    init.known_objects[held_obj_name] = [round(tc[0], 2), round(tc[1], 2), round(th, 2)]
-    if target_name:
-        eng_target = get_english_name(target_name)
-        init.known_objects[eng_target] = [round(tc[0], 2), round(tc[1], 2), round(th - armconfig.STACK_HEIGHT_PER_LAYER, 2)]
+    # บันทึกพิกัดในเฟรมเดียวกับกล้อง/ความจำ (ก่อนบวก STACK offset) — ถ้าเก็บ tc
+    # การวางซ้อนชั้นถัดไปจะบวก offset ซ้ำ ทำให้หอคอยเอียงสะสมชั้นละ STACK_*_OFFSET
+    mem_x = max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, float(target_coord[0])))
+    mem_y = max(armconfig.COORD_XY_MIN, min(armconfig.COORD_XY_MAX, float(target_coord[1])))
+    init.known_objects[held_obj_name] = [round(mem_x, 2), round(mem_y, 2), round(th, 2)]
+    _drop_gripper_aliases(held_obj_name)
     init.current_held_object = None
     init.is_holding_object = False
 
@@ -686,11 +718,9 @@ def raw_move(x: float, y: float, z: float, speed: int = 40) -> str:
 # ── rotate_gripper ───────────────────────────────────────────────────────────
 
 def raw_rotate_gripper(angle_range: int = 45, speed: int = 40) -> str:
-    if init.is_holding_object or init.current_held_object:
-        held = init.current_held_object or "held_object"
-        print(f"⚠️ <SYSTEM>: กริปเปอร์ถือ '{held}' อยู่ → วางลงตำแหน่งที่ปลอดภัยอัตโนมัติก่อน...")
-        safe_spot = raw_find_safe_spot()
-        raw_move_to(target_coord=safe_spot)
+    err = _put_down_held("กริปเปอร์ถือ '{held}' อยู่ → วางลงตำแหน่งที่ปลอดภัยอัตโนมัติก่อน...")
+    if err:
+        return err
 
     # Clamp angle_range to safe range (-90 to +90) to prevent Joint 6 limit overflow (-180..180)
     angle_range = max(-90, min(90, int(angle_range)))
@@ -716,11 +746,9 @@ def raw_rotate_gripper(angle_range: int = 45, speed: int = 40) -> str:
 # ── dance_celebrate ──────────────────────────────────────────────────────────
 
 def raw_dance_celebrate() -> str:
-    if init.is_holding_object or init.current_held_object:
-        held = init.current_held_object or "held_object"
-        print(f"⚠️ <SYSTEM>: กริปเปอร์ถือ '{held}' อยู่ → วางลงตำแหน่งที่ปลอดภัยอัตโนมัติก่อนเต้น...")
-        safe_spot = raw_find_safe_spot()
-        raw_move_to(target_coord=safe_spot)
+    err = _put_down_held("กริปเปอร์ถือ '{held}' อยู่ → วางลงตำแหน่งที่ปลอดภัยอัตโนมัติก่อนเต้น...")
+    if err:
+        return err
 
     print("Dancing! 💃 (Upright Victory Dance)")
     speed = armconfig.SPEED_DANCE
@@ -748,11 +776,9 @@ def raw_gesture(action: str) -> str:
     if action not in valid_actions:
         return f"Error: action must be one of {valid_actions}."
 
-    if init.is_holding_object or init.current_held_object:
-        held = init.current_held_object or "held_object"
-        print(f"⚠️ <SYSTEM>: กริปเปอร์ถือ '{held}' อยู่ → วางลงตำแหน่งที่ปลอดภัยอัตโนมัติก่อนทำท่าทาง...")
-        safe_spot = raw_find_safe_spot()
-        raw_move_to(target_coord=safe_spot)
+    err = _put_down_held("กริปเปอร์ถือ '{held}' อยู่ → วางลงตำแหน่งที่ปลอดภัยอัตโนมัติก่อนทำท่าทาง...")
+    if err:
+        return err
 
     print(f"Gesture: {action.upper()}")
     speed = armconfig.SPEED_DANCE
@@ -824,16 +850,19 @@ def raw_clean_desk() -> str:
         if isinstance(res_grab, dict) and res_grab.get("status") == "ERROR":
             continue
         # Pass target_height=None so raw_move_to calculates proper layer stacking height automatically
-        raw_move_to(target_coord=corner_coord)
+        res_move = raw_move_to(target_coord=corner_coord)
+        if isinstance(res_move, dict) and res_move.get("status") == "ERROR":
+            return res_move
+
+    print(f"✅ <SYSTEM>: DONE TASK - Clean desk ({len(found_objects)} objects)")
+    return {"status": "DONE TASK", "message": f"จัดเก็บ {len(found_objects)} ชิ้นเข้ามุมแล้ว"}
 
 # ── play_rps ─────────────────────────────────────────────────────────────────
 
 def raw_play_rps_game() -> dict:
-    if init.is_holding_object or init.current_held_object:
-        held = init.current_held_object or "held_object"
-        print(f"⚠️ <SYSTEM>: กริปเปอร์ถือ '{held}' อยู่ → วางลงตำแหน่งที่ปลอดภัยอัตโนมัติก่อนเล่นเกม...")
-        safe_spot = raw_find_safe_spot()
-        raw_move_to(target_coord=safe_spot)
+    err = _put_down_held("กริปเปอร์ถือ '{held}' อยู่ → วางลงตำแหน่งที่ปลอดภัยอัตโนมัติก่อนเล่นเกม...")
+    if err:
+        return err
 
     from agent.tools.shares.rps_game import raw_play_rps_game as _play
     return _play()
@@ -1032,6 +1061,7 @@ def raw_give_to_person() -> dict:
     if not init.is_holding_object and not init.current_held_object:
         return {"status": "ERROR", "message": "หุ่นยนต์ไม่ได้ถืออะไรอยู่เลย"}
         
+    held = init.current_held_object  # open_gripper() ล้างค่านี้ — เก็บไว้ก่อน
     print("🤖 <SYSTEM>: กำลังยื่นของไปให้ที่ด้านหน้า...")
     target_coord = [180.0, 0.0, 150.0]
     
@@ -1059,9 +1089,10 @@ def raw_give_to_person() -> dict:
     mc.send_angles(armconfig.POSE_HOME, armconfig.SPEED_GRAB)
     mc.wait_for_arrival(armconfig.POSE_HOME, mode="angles")
     
-    if init.current_held_object:
-        init.known_objects.pop(init.current_held_object, None)
-        init.current_held_object = None
+    if held:
+        init.known_objects.pop(held, None)
+    _drop_gripper_aliases()
+    init.current_held_object = None
     init.is_holding_object = False
     
     print("✅ <SYSTEM>: DONE TASK - Handover to person")
@@ -1080,6 +1111,8 @@ def raw_sort_by_color() -> dict:
     if not found_objects:
         return {"status": "DONE TASK", "message": "ไม่พบสิ่งของบนโต๊ะเลย"}
         
+    # scan_with_yolo("cube") คืน known_objects ทั้งก้อน — เอาเฉพาะกล่องที่วางอยู่จริง (ไม่เอา area / in gripper)
+    found_objects = {k: v for k, v in found_objects.items() if _is_placed(k, v) and "cube" in k.lower()}
     success_count = 0
     for full_name, coord in found_objects.items():
         target_zone = DEFAULT_ZONE
@@ -1097,8 +1130,9 @@ def raw_sort_by_color() -> dict:
             continue
             
         if init.is_holding_object or init.current_held_object:
-            raw_move_to(target_coord=target_zone)
-            success_count += 1
+            res_move = raw_move_to(target_coord=target_zone)
+            if isinstance(res_move, dict) and res_move.get("status") == "DONE TASK":
+                success_count += 1
             
     mc.send_angles(armconfig.POSE_HOME, 40)
     mc.wait_for_arrival(armconfig.POSE_HOME, mode="angles")
