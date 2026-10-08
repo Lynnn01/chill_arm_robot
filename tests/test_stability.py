@@ -104,5 +104,56 @@ class ExecutorArgsTest(unittest.TestCase):
             self.assertTrue(callable(m[alias]), alias)
 
 
+class RetryAndVerifyTest(unittest.TestCase):
+    def test_missed_grab_rescans_and_retries_once(self):
+        known = {"red_cube": [200.0, 0.0, 110.0]}
+        grips = iter([1, 30])  # first close on air, second on the cube
+        scan = mock.Mock(return_value=[205.0, 3.0])
+        with mock.patch.object(armconfig, "GRIP_EMPTY_MAX", 5.0):
+            out = run_scenario(lambda: _raw.raw_grab_object("red_cube"), known=known,
+                               patches={"hardware.init.close_gripper": lambda: next(grips),
+                                        "vision.yolo_detector.scan_with_yolo": scan})
+        self.assertEqual(out["result"]["status"], "DONE TASK")
+        scan.assert_called_once()  # forgot the stale coordinate -> fresh scan
+        self.assertEqual(out["result"]["data"][0], 205.0)
+
+    def test_retry_gives_up_after_configured_attempts(self):
+        known = {"red_cube": [200.0, 0.0, 110.0]}
+        scan = mock.Mock(return_value=[205.0, 3.0])
+        with mock.patch.object(armconfig, "GRIP_EMPTY_MAX", 5.0), mock.patch.object(armconfig, "GRAB_RETRIES", 1):
+            out = run_scenario(lambda: _raw.raw_grab_object("red_cube"), known=known,
+                               patches={"hardware.init.close_gripper": lambda: 1,
+                                        "vision.yolo_detector.scan_with_yolo": scan})
+        self.assertEqual(out["result"]["status"], "ERROR")
+        self.assertTrue(out["result"]["message"].startswith("Missed grab"))
+
+    def _verify(self, readings):
+        rec = mock.MagicMock()
+        rec.safe_get_coords.side_effect = readings
+        with mock.patch.object(_raw, "mc", rec), mock.patch.object(_raw.time, "sleep", lambda s: None):
+            res = _raw._verify_xy([200.0, 0.0, 110.0], armconfig.WRIST_DOWN, "grab", "red_cube")
+        return res, rec
+
+    def test_short_x_is_corrected_once(self):
+        res, rec = self._verify([[190.0, 0.0, 110.0, 0, 0, 0], [199.0, 0.0, 110.0, 0, 0, 0]])
+        self.assertTrue(res["corrected"])
+        rec.send_coords.assert_called_once()
+        self.assertAlmostEqual(res["err"][0], -1.0)
+
+    def test_in_tolerance_is_left_alone(self):
+        res, rec = self._verify([[198.0, 1.0, 110.0, 0, 0, 0]])
+        self.assertFalse(res["corrected"])
+        rec.send_coords.assert_not_called()
+
+    def test_absurd_reading_is_not_chased(self):
+        res, rec = self._verify([[0.0, 0.0, 200.0, 0, 0, 0]])  # stale / mock position
+        self.assertFalse(res["corrected"])
+        rec.send_coords.assert_not_called()
+
+    def test_no_reading_is_safe(self):
+        res, _ = self._verify([None, None, None])
+        self.assertIsNone(res["actual"])
+
+
 if __name__ == "__main__":
     unittest.main()

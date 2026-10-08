@@ -192,11 +192,61 @@ def _refine_name_hsv(frame, box, name: str) -> str:
     return name
 
 
-def _box_to_world(box, j1: float, x_offset: float, y_offset: float) -> list:
-    """Pixel box center -> arm base-frame [x, y] (rotated by the scan angle j1, offset, clamped)."""
+def _color_mask(hsv, color_name: str):
+    """Binary mask of one cube color (same bands as _hsv_color_counts)."""
+    if color_name == "red_cube":
+        return cv2.bitwise_or(cv2.inRange(hsv, (0, 40, 40), (11, 255, 255)),
+                              cv2.inRange(hsv, (158, 40, 40), (180, 255, 255)))
+    bands = {"yellow_cube": ((12, 35, 40), (32, 255, 255)),
+             "green_cube": ((33, 35, 30), (88, 255, 255)),
+             "blue_cube": ((89, 40, 30), (138, 255, 255))}
+    if color_name not in bands:
+        return None
+    lo, hi = bands[color_name]
+    return cv2.inRange(hsv, lo, hi)
+
+
+def _color_centroid_px(frame, box, name: str):
+    """Pixel centroid of the largest blob of the cube's own color inside the YOLO box, or None.
+
+    A YOLO box is looser than the cube (shadow, side face, background; worse at conf 0.3-0.4),
+    so its center wanders. The colored blob stays on the cube. Falls back to None (= use the
+    box center) when the blob is too small to trust."""
+    try:
+        if frame is None:
+            return None
+        ih, iw = frame.shape[:2]
+        x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+        bx1, by1 = max(0, int(x1)), max(0, int(y1))
+        bx2, by2 = min(iw, int(math.ceil(x2))), min(ih, int(math.ceil(y2)))
+        if bx2 - bx1 < 8 or by2 - by1 < 8:
+            return None
+        mask = _color_mask(cv2.cvtColor(frame[by1:by2, bx1:bx2], cv2.COLOR_BGR2HSV), name)
+        if mask is None:
+            return None
+        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3)))
+        n, labels, stats, cents = cv2.connectedComponentsWithStats(mask, connectivity=8)
+        if n < 2:
+            return None
+        best = 1 + int(stats[1:, cv2.CC_STAT_AREA].argmax())
+        if stats[best, cv2.CC_STAT_AREA] < 0.15 * (bx2 - bx1) * (by2 - by1):
+            return None
+        cx, cy = cents[best]  # centroid of pixel indices -> +0.5 gives pixel-edge coordinates
+        return bx1 + float(cx) + 0.5, by1 + float(cy) + 0.5
+    except Exception as e:
+        print(f"⚠️ <SYSTEM>: color centroid failed: {e}")
+        return None
+
+
+def _box_to_world(box, j1: float, x_offset: float, y_offset: float, center_px=None) -> list:
+    """Pixel center -> arm base-frame [x, y] (rotated by the scan angle j1, offset, clamped).
+
+    center_px: precise cube center from _color_centroid_px; defaults to the YOLO box center."""
     x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
     center_x = (x1 + x2) / 2
     center_y = (y1 + y2) / 2
+    if center_px is not None:
+        center_x, center_y = center_px
 
     if getattr(armconfig, 'CAMERA_FLIP_HORIZONTAL', False):
         center_x = 640 - center_x
@@ -293,6 +343,22 @@ def _calibrate_memory(found_cubes: dict) -> None:
             init.known_objects.pop(old_k, None)
 
 
+def _measured_j1(commanded_j1: float) -> float:
+    """Scan angle (relative to POSE_READY) from the arm's real J1; falls back to the commanded one.
+
+    The world rotation must use where the camera really points. Mock/no-reading/garbage -> commanded."""
+    try:
+        angles = mc.safe_get_angles()
+        if isinstance(angles, (list, tuple)) and len(angles) >= 6 and all(isinstance(a, (int, float)) for a in angles):
+            actual = float(angles[0]) - float(armconfig.POSE_READY[0])
+            if abs(actual - commanded_j1) <= getattr(armconfig, "SCAN_J1_MAX_DEVIATION", 8.0):
+                return actual
+            print(f"⚠️ <SYSTEM>: J1 จริง {angles[0]:.1f}° ต่างจากที่สั่งมาก → ใช้มุมที่สั่ง ({commanded_j1}°)")
+    except Exception as e:
+        print(f"⚠️ <SYSTEM>: อ่านมุม J1 ไม่ได้: {e}")
+    return commanded_j1
+
+
 def _iter_detections(model, results, frame, primary_type, colors, j1, x_offset, y_offset):
     """Lazily yield (std_name, name_lower, name_words, name_colors, world_coord) per detected box."""
     for result in results:
@@ -308,7 +374,8 @@ def _iter_detections(model, results, frame, primary_type, colors, j1, x_offset, 
             name_words = set(name_lower.split())
             name_colors = name_words.intersection(colors)
 
-            saved_coord = _box_to_world(box, j1, x_offset, y_offset)
+            center_px = _color_centroid_px(frame, box, name) if primary_type == "cube" else None
+            saved_coord = _box_to_world(box, j1, x_offset, y_offset, center_px)
 
             # Standardize cube key (e.g. "red_cube")
             std_name = name.lower()
@@ -413,7 +480,13 @@ def scan_with_yolo(object_name: str = "cube"):
         current_ready = armconfig.POSE_READY.copy()
         current_ready[0] = current_ready[0] + j1
         mc.send_angles(current_ready, armconfig.SPEED_GRAB)
-        time.sleep(wait_time)
+        arrived = mc.wait_for_arrival(current_ready, mode="angles",
+                                      threshold=getattr(armconfig, "SCAN_ARRIVAL_THRESHOLD", 6.0))
+        if arrived is False:
+            print(f"⚠️ <SYSTEM>: แขนยังไม่ถึงมุมสแกน {j1}° ภายในเวลา → รอเพิ่ม {wait_time}s")
+            time.sleep(wait_time)
+        time.sleep(getattr(armconfig, "SCAN_SETTLE_AFTER_ARRIVAL", 0.6))
+        j1_real = _measured_j1(j1)
 
         # Multi-frame voting: a weak detection (conf ~0.3-0.4) flickers frame to frame, so one
         # lucky/unlucky frame must not decide. Accept a box only after MIN_VOTES frames agree.
@@ -430,7 +503,7 @@ def scan_with_yolo(object_name: str = "cube"):
             if hasattr(cam_manager, 'set_ai_results') and len(results) > 0:
                 cam_manager.set_ai_results(results[0], duration=0.8)
 
-            for det in _iter_detections(model, results, frame, primary_type, colors, j1, x_offset, y_offset):
+            for det in _iter_detections(model, results, frame, primary_type, colors, j1_real, x_offset, y_offset):
                 _cast_vote(clusters, attempt, det)
 
             # Targeted Scan Mode: return as soon as a matching box has MIN_VOTES frames

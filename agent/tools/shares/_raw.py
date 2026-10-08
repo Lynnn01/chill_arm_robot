@@ -9,6 +9,7 @@ import time
 import json
 import math
 import os
+import csv
 from hardware.init import mc
 from hardware import init
 import armconfig
@@ -281,6 +282,74 @@ def _mark_aliases_in_gripper(eng_name: str, robot_coord: list, z: float) -> None
 
 
 
+def _log_motion(row: dict) -> None:
+    """Append one row to the motion CSV (commanded vs actual position, grip value...). Never raises."""
+    path = getattr(armconfig, "MOTION_LOG", "")
+    if not path:
+        return
+    try:
+        full = path if os.path.isabs(path) else os.path.join(init.PROJECT_ROOT, path)
+        os.makedirs(os.path.dirname(full), exist_ok=True)
+        fields = ["time", "action", "name", "tx", "ty", "tz", "ax", "ay", "az", "err_x", "err_y",
+                  "corrected", "grip", "result"]
+        new = not os.path.exists(full)
+        with open(full, "a", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=fields, extrasaction="ignore")
+            if new:
+                w.writeheader()
+            w.writerow({"time": time.strftime("%Y-%m-%d %H:%M:%S"), **row})
+    except Exception as e:
+        print(f"⚠️ <SYSTEM>: เขียน motion log ไม่ได้: {e}")
+
+
+def _read_xyz():
+    """Real [x, y, z] from the arm, or None (no reading / mock / garbage)."""
+    try:
+        c = mc.safe_get_coords()
+    except Exception:
+        return None
+    if isinstance(c, (list, tuple)) and len(c) >= 3 and all(isinstance(v, (int, float)) for v in c[:3]):
+        return [float(c[0]), float(c[1]), float(c[2])]
+    return None
+
+
+def _verify_xy(target: list, wrist: list, action: str, name: str = "") -> dict:
+    """Closed-loop check after reaching Z: compare the real XY with the commanded one and fix once.
+
+    wait_for_z only watches Z, so a head that stopped short in X (arm reach / droop) used to
+    close the gripper off-center. Reads beyond XY_FIX_MAX are treated as stale/mock and only logged."""
+    tol = getattr(armconfig, "XY_TOLERANCE", 4.0)
+    fix_max = getattr(armconfig, "XY_FIX_MAX", 40.0)
+    actual = _read_xyz()
+    row = {"action": action, "name": name, "tx": round(target[0], 1), "ty": round(target[1], 1),
+           "tz": round(target[2], 1), "corrected": 0}
+    if actual is None:
+        _log_motion({**row, "result": "no_reading"})
+        return {"actual": None, "err": None, "corrected": False}
+
+    err = (actual[0] - target[0], actual[1] - target[1])
+    dist = math.hypot(*err)
+    corrected = False
+    if tol < dist <= fix_max:
+        print(f"🎯 <SYSTEM>: [{action}] XY คลาด {dist:.1f}mm (X {err[0]:+.1f}, Y {err[1]:+.1f}) → สั่งแก้ซ้ำ")
+        mc.send_coords(list(target) + list(wrist), armconfig.SPEED_DESCEND)
+        mc.wait_for_arrival(list(target), timeout=3.0, threshold=6.0)
+        again = _read_xyz()
+        if again is not None:
+            actual = again
+            err = (actual[0] - target[0], actual[1] - target[1])
+            dist = math.hypot(*err)
+        corrected = True
+    elif dist > fix_max:
+        print(f"⚠️ <SYSTEM>: [{action}] ค่าตำแหน่งจริงต่างจากเป้า {dist:.0f}mm — น่าจะอ่านค่าผิด ไม่แก้")
+    else:
+        print(f"🎯 <SYSTEM>: [{action}] XY ตรงเป้า (คลาด {dist:.1f}mm)")
+    _log_motion({**row, "ax": round(actual[0], 1), "ay": round(actual[1], 1), "az": round(actual[2], 1),
+                 "err_x": round(err[0], 1), "err_y": round(err[1], 1), "corrected": int(corrected),
+                 "result": "ok" if dist <= tol else "off"})
+    return {"actual": actual, "err": err, "corrected": corrected}
+
+
 def _retreat_home(above: list) -> None:
     """Abort path: rise straight up first (never sweep sideways at low Z), then go home."""
     mc.send_coords(above + armconfig.WRIST_DOWN, armconfig.SPEED_GRAB)
@@ -290,12 +359,29 @@ def _retreat_home(above: list) -> None:
 
 
 def raw_grab_object(object_name: str, target_coord: list = None, _auto_unstack: bool = True) -> list:
-    """Grab an object. Returns [x, y] robot coord."""
+    """Grab an object. Returns [x, y] robot coord.
+
+    A missed grab (gripper closed on air, needs GRIP_EMPTY_MAX) forgets the stale coordinate,
+    re-scans the desk and tries again up to GRAB_RETRIES times."""
+    result = _grab_attempt(object_name, target_coord, _auto_unstack, first=True)
+    retries = getattr(armconfig, "GRAB_RETRIES", 1)
+    for n in range(1, retries + 1):
+        if not (isinstance(result, dict) and result.get("status") == "ERROR"
+                and str(result.get("message", "")).startswith("Missed grab")):
+            break
+        print(f"🔁 <SYSTEM>: หยิบพลาด → สแกนหา '{object_name}' ใหม่แล้วลองอีกครั้ง ({n}/{retries})")
+        # target_coord=None: the caller's coordinate is the one that just missed
+        result = _grab_attempt(object_name, None, _auto_unstack, first=False)
+    return result
+
+
+def _grab_attempt(object_name: str, target_coord, _auto_unstack: bool, first: bool):
     err = _put_down_held("กริปเปอร์ถือ '{held}' อยู่ → วางลงตำแหน่งที่ปลอดภัยอัตโนมัติก่อนแล้วค่อยหยิบใหม่...")
     if err:
         return err
 
-    init.BotInit(mc)
+    if first:
+        init.BotInit(mc)
 
     with open(init.CONFIG_PATH, "r", encoding="utf-8") as f:
         cfg = json.load(f)
@@ -336,9 +422,13 @@ def raw_grab_object(object_name: str, target_coord: list = None, _auto_unstack: 
         return {"status": "ERROR", "message": f"Joint stall at target Z={z}. Object unreachable."}
 
     mc.wait_for_arrival(at_z, timeout=2.0, threshold=12.0)  # รอ XY นิ่งก่อนหนีบ
+    xy = _verify_xy(at_z, armconfig.WRIST_DOWN, "grab", eng_name)  # XY จริงตรงเป้าไหม — แก้ซ้ำถ้าคลาด
     time.sleep(0.3)
     grip_val = init.close_gripper()
     time.sleep(1.2)  # รอกริปเปอร์หนีบเสร็จสนิท
+    _log_motion({"action": "grab_close", "name": eng_name, "tx": round(at_z[0], 1), "ty": round(at_z[1], 1),
+                 "tz": round(z, 1), "grip": grip_val, "corrected": int(bool(xy["corrected"])),
+                 "result": "closed"})
 
     if armconfig.GRIP_EMPTY_MAX >= 0 and isinstance(grip_val, (int, float)) and grip_val <= armconfig.GRIP_EMPTY_MAX:
         print(f"⚠️ <SYSTEM>: หนีบไม่โดน '{eng_name}' (ค่ากริปเปอร์ {grip_val}) → ล้างพิกัดในความจำให้สแกนใหม่รอบหน้า")
@@ -642,6 +732,7 @@ def raw_move_to(target_coord: list = None, target_name: str = None, target_heigh
     mc.send_coords([tc[0], tc[1], th] + armconfig.WRIST_PLACE, armconfig.SPEED_DESCEND)
     mc.wait_for_z(th)
     mc.wait_for_arrival([tc[0], tc[1], th], timeout=2.0, threshold=12.0)  # รอ XY นิ่งก่อนปล่อย
+    _verify_xy([tc[0], tc[1], th], armconfig.WRIST_PLACE, "place", held_obj_name)
     time.sleep(0.3)  # รอให้นิ่งสนิทที่ระดับพิกัดเป้าหมายจริงก่อนเปิดกริปเปอร์
     init.open_gripper()
     time.sleep(1.0)

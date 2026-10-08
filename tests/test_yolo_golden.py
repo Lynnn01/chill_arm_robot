@@ -224,5 +224,35 @@ class GreenStabilityTest(unittest.TestCase):
         self.assertIn("green_cube", out["known"])
 
 
+class CenterAndAngleTest(unittest.TestCase):
+    def test_centroid_ignores_loose_box_padding(self):
+        # cube patch at x 100..200 but the (loose) box extends 40px to the left over gray table
+        f = _frame((128, 128, 128))
+        f[100:200, 100:200] = RED
+        box = _Box(0, [60, 100, 200, 200])
+        cx, cy = Y._color_centroid_px(f, box, "red_cube")
+        self.assertAlmostEqual(cx, 150.0, delta=1.0)  # not the box center 130
+        self.assertAlmostEqual(cy, 150.0, delta=1.0)
+
+    def test_centroid_falls_back_when_color_absent(self):
+        f = _frame((128, 128, 128))
+        self.assertIsNone(Y._color_centroid_px(f, _Box(0, [100, 100, 200, 200]), "red_cube"))
+
+    def test_measured_j1_is_used_when_plausible(self):
+        rec = mock.MagicMock()
+        rec.safe_get_angles.return_value = [armconfig.POSE_READY[0] + 13.0, 0, 0, 0, 0, 0]
+        with mock.patch.object(Y, "mc", rec):
+            self.assertAlmostEqual(Y._measured_j1(15), 13.0)
+
+    def test_measured_j1_falls_back_on_garbage_or_mock(self):
+        rec = mock.MagicMock()
+        rec.safe_get_angles.return_value = [0, 0, 0, 0, 0, -45]  # mock arm: J1=0 -> -17.75 vs commanded 0
+        with mock.patch.object(Y, "mc", rec):
+            self.assertEqual(Y._measured_j1(0), 0)
+        rec.safe_get_angles.return_value = None
+        with mock.patch.object(Y, "mc", rec):
+            self.assertEqual(Y._measured_j1(30), 30)
+
+
 if __name__ == "__main__":
     unittest.main()

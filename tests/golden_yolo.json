@@ -2,7 +2,11 @@
  "empty_results": {
   "calls": [
    "call.mc.send_angles([17.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.wait_for_arrival([17.75, -0.79, 0.35, -75, 1.14, -28.12], mode='angles', threshold=6.0)",
+   "call.mc.safe_get_angles()",
    "call.mc.send_angles([32.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.wait_for_arrival([32.75, -0.79, 0.35, -75, 1.14, -28.12], mode='angles', threshold=6.0)",
+   "call.mc.safe_get_angles()",
    "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)"
   ],
   "known": {},
@@ -12,6 +16,8 @@
  "face_target": {
   "calls": [
    "call.mc.send_angles([17.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.wait_for_arrival([17.75, -0.79, 0.35, -75, 1.14, -28.12], mode='angles', threshold=6.0)",
+   "call.mc.safe_get_angles()",
    "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)",
    "call.mc.wait_for_arrival([0, 0, 0, 0, 0, -45], mode='angles')"
   ],
@@ -31,6 +37,8 @@
  "frame_none_never_detects": {
   "calls": [
    "call.mc.send_angles([17.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.wait_for_arrival([17.75, -0.79, 0.35, -75, 1.14, -28.12], mode='angles', threshold=6.0)",
+   "call.mc.safe_get_angles()",
    "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)"
   ],
   "model_calls": 0,
@@ -39,7 +47,11 @@
  "full_scan_calibrate_moved_stale_held": {
   "calls": [
    "call.mc.send_angles([17.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.wait_for_arrival([17.75, -0.79, 0.35, -75, 1.14, -28.12], mode='angles', threshold=6.0)",
+   "call.mc.safe_get_angles()",
    "call.mc.send_angles([32.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.wait_for_arrival([32.75, -0.79, 0.35, -75, 1.14, -28.12], mode='angles', threshold=6.0)",
+   "call.mc.safe_get_angles()",
    "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)"
   ],
   "known": {
@@ -81,7 +93,11 @@
  "full_scan_new_cubes": {
   "calls": [
    "call.mc.send_angles([17.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.wait_for_arrival([17.75, -0.79, 0.35, -75, 1.14, -28.12], mode='angles', threshold=6.0)",
+   "call.mc.safe_get_angles()",
    "call.mc.send_angles([32.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.wait_for_arrival([32.75, -0.79, 0.35, -75, 1.14, -28.12], mode='angles', threshold=6.0)",
+   "call.mc.safe_get_angles()",
    "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)"
   ],
   "known": {
@@ -113,7 +129,11 @@
  "full_scan_thai_generic": {
   "calls": [
    "call.mc.send_angles([17.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.wait_for_arrival([17.75, -0.79, 0.35, -75, 1.14, -28.12], mode='angles', threshold=6.0)",
+   "call.mc.safe_get_angles()",
    "call.mc.send_angles([32.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.wait_for_arrival([32.75, -0.79, 0.35, -75, 1.14, -28.12], mode='angles', threshold=6.0)",
+   "call.mc.safe_get_angles()",
    "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)"
   ],
   "known": {
@@ -135,7 +155,11 @@
  "full_scan_unchanged_position_kept": {
   "calls": [
    "call.mc.send_angles([17.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.wait_for_arrival([17.75, -0.79, 0.35, -75, 1.14, -28.12], mode='angles', threshold=6.0)",
+   "call.mc.safe_get_angles()",
    "call.mc.send_angles([32.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.wait_for_arrival([32.75, -0.79, 0.35, -75, 1.14, -28.12], mode='angles', threshold=6.0)",
+   "call.mc.safe_get_angles()",
    "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)"
   ],
   "known": {
@@ -157,7 +181,11 @@
  "hsv_overrides_model_name": {
   "calls": [
    "call.mc.send_angles([17.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.wait_for_arrival([17.75, -0.79, 0.35, -75, 1.14, -28.12], mode='angles', threshold=6.0)",
+   "call.mc.safe_get_angles()",
    "call.mc.send_angles([32.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.wait_for_arrival([32.75, -0.79, 0.35, -75, 1.14, -28.12], mode='angles', threshold=6.0)",
+   "call.mc.safe_get_angles()",
    "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)"
   ],
   "known": {
@@ -179,7 +207,11 @@
  "hsv_tiny_crop_keeps_name": {
   "calls": [
    "call.mc.send_angles([17.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.wait_for_arrival([17.75, -0.79, 0.35, -75, 1.14, -28.12], mode='angles', threshold=6.0)",
+   "call.mc.safe_get_angles()",
    "call.mc.send_angles([32.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.wait_for_arrival([32.75, -0.79, 0.35, -75, 1.14, -28.12], mode='angles', threshold=6.0)",
+   "call.mc.safe_get_angles()",
    "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)"
   ],
   "known": {
@@ -207,7 +239,11 @@
  "targeted_color_mismatch_skipped": {
   "calls": [
    "call.mc.send_angles([17.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.wait_for_arrival([17.75, -0.79, 0.35, -75, 1.14, -28.12], mode='angles', threshold=6.0)",
+   "call.mc.safe_get_angles()",
    "call.mc.send_angles([32.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.wait_for_arrival([32.75, -0.79, 0.35, -75, 1.14, -28.12], mode='angles', threshold=6.0)",
+   "call.mc.safe_get_angles()",
    "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)"
   ],
   "known": {},
@@ -217,6 +253,8 @@
  "targeted_found_first_angle": {
   "calls": [
    "call.mc.send_angles([17.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.wait_for_arrival([17.75, -0.79, 0.35, -75, 1.14, -28.12], mode='angles', threshold=6.0)",
+   "call.mc.safe_get_angles()",
    "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)",
    "call.mc.wait_for_arrival([0, 0, 0, 0, 0, -45], mode='angles')"
   ],
@@ -236,7 +274,11 @@
  "targeted_not_found": {
   "calls": [
    "call.mc.send_angles([17.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.wait_for_arrival([17.75, -0.79, 0.35, -75, 1.14, -28.12], mode='angles', threshold=6.0)",
+   "call.mc.safe_get_angles()",
    "call.mc.send_angles([32.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.wait_for_arrival([32.75, -0.79, 0.35, -75, 1.14, -28.12], mode='angles', threshold=6.0)",
+   "call.mc.safe_get_angles()",
    "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)"
   ],
   "known": {},
@@ -246,6 +288,8 @@
  "targeted_thai_name": {
   "calls": [
    "call.mc.send_angles([17.75, -0.79, 0.35, -75, 1.14, -28.12], 40)",
+   "call.mc.wait_for_arrival([17.75, -0.79, 0.35, -75, 1.14, -28.12], mode='angles', threshold=6.0)",
+   "call.mc.safe_get_angles()",
    "call.mc.send_angles([0, 0, 0, 0, 0, -45], 40)",
    "call.mc.wait_for_arrival([0, 0, 0, 0, 0, -45], mode='angles')"
   ],
